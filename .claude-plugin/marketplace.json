@@ -1,0 +1,14 @@
+{
+  "name": "kit-local",
+  "description": "Local marketplace for the kit plugin",
+  "owner": {
+    "name": "Miles Zeilstra"
+  },
+  "plugins": [
+    {
+      "name": "kit",
+      "source": "./",
+      "description": "Minimal dev workflow: roadmap, build, launch, commit, convert"
+    }
+  ]
+}
