@@ -1,6 +1,6 @@
 {
-  "name": "kit-local",
-  "description": "Local marketplace for the kit plugin",
+  "name": "airmile",
+  "description": "AirMile's Claude Code plugins",
   "owner": {
     "name": "Miles Zeilstra"
   },

@@ -49,16 +49,30 @@ Code already has a native feature (plan mode, subagents, `AGENTS.md` loading, `/
 
 ## Install
 
-kit is installed from a local marketplace (this repo is both the plugin and its marketplace).
+This repo is both the plugin and its marketplace (`airmile`). It's private, so installing needs
+a GitHub login that can read `AirMile/claude-kit`.
+
+**Any machine (installs a copy from GitHub):**
 
 ```bash
-claude plugin marketplace add ~/Projects/claude-kit
-claude plugin install kit@kit-local
-claude plugin details kit
+claude plugin marketplace add AirMile/claude-kit
+claude plugin install kit@airmile
 ```
 
-`details` should list 11 skills, 1 agent and 2 hooks. Skills are available in **new** sessions;
-in a running session use `/reload-plugins`.
+Get updates later with `claude plugin marketplace update airmile`.
+
+**The machine you develop kit on (runs straight from your clone):**
+
+```bash
+git clone https://github.com/AirMile/claude-kit ~/Projects/claude-kit
+claude plugin marketplace add ~/Projects/claude-kit
+claude plugin install kit@airmile
+```
+
+Edits in the clone take effect after `/reload-plugins`; `/commit` pushes them to GitHub.
+
+Check with `claude plugin details kit`: it should list 11 skills, 1 agent and 2 hooks. Skills
+are available in **new** sessions; in a running session use `/reload-plugins`.
 
 Skills are namespaced as `/kit:<skill>` (e.g. `/kit:build`). The bare name (`/build`) also works as
 long as no other skill or command uses it.
@@ -89,7 +103,7 @@ On Windows, copy the file instead (symlinks need admin rights there).
 
 - Edits to this repo take effect after `/reload-plugins` (no version bump needed for a local
   marketplace).
-- Remove: `claude plugin marketplace remove kit-local` (also uninstalls the plugin).
+- Remove: `claude plugin marketplace remove airmile` (also uninstalls the plugin).
 
 ---
 
@@ -950,7 +964,7 @@ behind it can go. Eval runs use the CLI's own login: if they fail with `Not logg
 
 ```
 .claude-plugin/plugin.json        manifest (name: kit)
-.claude-plugin/marketplace.json   local marketplace (kit-local)
+.claude-plugin/marketplace.json   marketplace (airmile)
 skills/<name>/SKILL.md            one workflow per skill
 skills/build/references/           debug.md, spec-template.md (loaded on demand)
 skills/commit/scripts/            staging-check.js
