@@ -787,7 +787,7 @@ columns, above the prompt otherwise):
   the pane didn't have focus yet; the catch is that Tab onto a button there presses it. Below that, `docs/roadmap.md` live, grouped by phase (a release: `v1 · MVP`, `v1.1 · Sharing`; any `##` heading works, shown as written): a
   card per feature with its state, and for one in progress its step (define → build → verify, with the criteria count while verifying). **Pick
   up** (open), **Build** (spec ready), **Resume** (building) or **Verify** (ready to verify)
-  clears the chat and runs `/build <slug>` in the fresh one, which continues at that step. A feature not started has **↗** (Pick up) and **⋯**, a row of buttons that
+  clears the chat and runs `/build <slug>` in the fresh one, which continues at that step. A feature not started has **▶** (Pick up), on the desktop app **↗** (a chip that starts `/build <slug>` in a new worktree session; the card then says "sent to worktree", later "runs on <branch>" once that session commits the spec, and pressing ↗ again asks "Again?") and **⋯**, a row of buttons that
   move it to another phase or to `## Later`, or remove it; a phase heading folds its
   cards (a folded heading turns dim), finished phases wait behind one "✓ v1 · MVP, …" line, and in an unfinished one the done features fold into one "✓ n done" line; **Remove** asks once ("Remove?") before it acts; **+ Add** in a phase heading adds one, and **+ Add** in the Later heading adds an idea there; a Later idea's ⋯ restores it. Done and in-progress features can't
   be edited there (their state is `/build`'s). The whole heading text folds a phase, or Later. In plan

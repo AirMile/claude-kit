@@ -53,9 +53,9 @@ Check, in one Bash call: `git rev-parse --is-inside-work-tree`, `AGENTS.md`, `CL
    deploys from the default branch, for team work, or for parallel sessions) / Trunk (solo, one
    session at a time, nothing deploys from the default branch).
 7. **Parallel sessions**: write `.worktreeinclude` with the gitignored files a fresh worktree
-   needs (`.env`, `.env.local`, … that exist). `.claude/launch.json` exists → set
-   `"autoPort": true` on the dev server (the desktop app then picks a free port and passes it
-   as `PORT`). A local database → fill the database line in `AGENTS.md § Git`.
+   needs: `.env*` that exist and files the dev/build config loads (`git check-ignore`).
+   `.claude/launch.json` exists → set `"autoPort": true` on the dev server (the desktop app then
+   passes a free port as `PORT`). A local database → fill the database line in `AGENTS.md § Git`.
 8. Report.
 
 ### AGENTS.md template (≤ 100 lines)

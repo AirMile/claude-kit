@@ -92,7 +92,9 @@ for (const l of learnings) {
 }
 out.push(`## Learnings (${learnings.length}), grouped by target AGENTS.md`, "");
 for (const d of Object.keys(groups).sort()) {
-  out.push(`### ${d === "." ? "AGENTS.md (root)" : `${d}/AGENTS.md`}`);
+  const gone = d !== "." && !fs.existsSync(path.join(root, d));
+  const note = gone ? " (dir no longer exists: place where that code lives now)" : "";
+  out.push(`### ${d === "." ? "AGENTS.md (root)" : `${d}/AGENTS.md`}${note}`);
   for (const l of groups[d])
     out.push(`- [${l.type || "note"}] ${oneLine(l.summary, 220)}`);
   out.push("");
