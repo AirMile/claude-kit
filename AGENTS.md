@@ -74,7 +74,7 @@ tagged per skill. Runs are non-interactive: test routing, files, tool calls and 
 not flows that need a human answer. Cheap run for one skill (what `/improve` uses):
 
 ```bash
-claude plugin eval . --trust-plugin --scaffold --allow-tools Bash Write Edit EnterPlanMode ExitPlanMode \
+claude plugin eval . --trust-plugin --scaffold --allow-tools Bash Write Edit \
   --runs 1 --ablation none --no-publish --threshold 0 --max-cost-usd 3 --tag <skill>
 ```
 
@@ -82,3 +82,16 @@ Full check with the no-plugin baseline (after a model release, or monthly): drop
 --ablation none --tag`, raise `--max-cost-usd`. A case whose Δ is ~0 means the skill line it
 tests adds nothing: candidate for deletion. Every fixed behaviour bug gets a regression case
 first (see `skills/improve`). Results land in `evals/results/` (gitignored).
+
+What the eval sandbox can't show (Claude Code 2.1.287), so graders must not depend on it:
+
+- No `EnterPlanMode`/`ExitPlanMode` (headless, `dontAsk`): assert "stopped before approval"
+  with `tool_used` Write/Edit `max: 0` instead.
+- A prompt that starts with `/kit:<skill>` is expanded, not a `Skill` call: `tool_used: Skill`
+  only works for a skill fired by natural language or by another skill.
+- `llm` with `focus: trace` sees only the first and last 12 trace lines, so mid-run
+  Write/Edit calls are cut. Grade written files: `regex` with `target: {source: file, path}`.
+- git (the `/usr/bin/git` xcrun shim) fails on macOS: xcrun caches in `/var/folders/…`, which
+  the sandbox blocks; `TMPDIR`/`DEVELOPER_DIR` don't help and case `env` only takes `EVAL_*`.
+  Skills fall back to reading `.git`; commit/worktree steps go untested. A non-shim git
+  ahead of `/usr/bin` in the shell profile's PATH (e.g. Homebrew's) should work (untested).

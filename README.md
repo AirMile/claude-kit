@@ -1014,10 +1014,10 @@ regression case that fails, so every real piece of friction becomes a permanent 
 ```bash
 cd ~/Projects/claude-kit
 # cheap: one run per case, no baseline (~1 agent run per case)
-claude plugin eval . --trust-plugin --scaffold --allow-tools Bash Write Edit EnterPlanMode ExitPlanMode \
+claude plugin eval . --trust-plugin --scaffold --allow-tools Bash Write Edit \
   --runs 1 --ablation none --no-publish --threshold 0 --max-cost-usd 3
 # full: 3 runs per case + a no-plugin baseline, to see what kit adds (Δ)
-claude plugin eval . --trust-plugin --scaffold --allow-tools Bash Write Edit EnterPlanMode ExitPlanMode \
+claude plugin eval . --trust-plugin --scaffold --allow-tools Bash Write Edit \
   --max-cost-usd 15
 ```
 
