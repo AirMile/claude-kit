@@ -20,6 +20,10 @@ Resolve the source (ask once if nothing was given):
 | Figma URL                   | Figma MCP: `get_design_context` + `get_variable_defs` + `get_screenshot` for the node                |
 | Live URL                    | Browser: full-page screenshot + computed styles of key elements (colors, fonts, spacing per section) |
 
+Figma: a sparse (outline-only) `get_design_context` → call it per visible child node; never one
+call for a multi-section frame. Figma MCP missing → AskUserQuestion: Reconnect via `/mcp`
+(Recommended) / an exported frame PNG.
+
 Then the target: which page/route or component file. Existing file → this is a **patch**: keep
 everything the source does not show (data fetching, props, handlers, copy that's real).
 
@@ -48,9 +52,12 @@ stylesheet; say what you added.
 - **Sections**: the page split top to bottom, with the component per section (reuse existing
   components first; grep before creating).
 - **Mapping table** per category: `source value → token` (1:1 copy: one row per section for
-  spacing; one row per color segment for two-tone headings).
+  spacing; per color segment of a heading also weight/italic; one line-count row per heading;
+  overlaps, fixed heights and aspect ratios exact). An accent font on one word of a Figma
+  heading is usually emphasis → reuse the codebase's accent pattern before adding a font.
 - **Assets**: which images/icons come from the source (exported files, never redrawn), which
-  stay props/data.
+  stay props/data. Figma's `localhost` asset URLs die when Figma closes → download them in this
+  run. SVGs stay files: never inline, redraw or swap for a library icon.
 - **Responsive**: how the layout collapses at mobile width.
 
 `ExitPlanMode`. Reject → adjust.
@@ -69,14 +76,15 @@ Dev server: only a server this session started (default port taken → a free on
 
 Each round:
 
-1. Screenshot the result at the source's width; `Read` it next to the source.
+1. Scroll top to bottom once, then screenshot the result at the source's width; `Read` it next
+   to the source.
 2. Console errors → fix first.
 3. List discrepancies, fix in order: layout/structure → spacing/sizing → colors/details.
 4. 1:1 copy with a Figma/URL source → also compare computed values of key elements against the
    source values from step 1; any mismatch is a finding.
 
-After the loop: mobile check at 375px: no horizontal overflow
-(`scrollWidth === clientWidth`), readable text, sensible stacking.
+After the loop: check 390 / 768 / 1440px: no horizontal overflow (`scrollWidth ===
+clientWidth`), readable text, breakpoint switches visible.
 
 Stop when no significant discrepancies remain or after round 3 (list what's left).
 
@@ -95,5 +103,5 @@ CONVERT · <mode> · <source>
 target   <file(s)>
 tokens   <reused n · added n>
 rounds   <n> · remaining: <issues or none>
-mobile   <ok | issues>
+widths   <ok | issues at 390, 768, 1440>
 ```
