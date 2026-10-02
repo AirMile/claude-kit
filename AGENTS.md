@@ -96,4 +96,5 @@ What the eval sandbox can't show (Claude Code 2.1.287), so graders must not depe
   The sandbox also hides other git binaries from PATH lookup (stat denied), so `git` always
   resolves to the shim; Homebrew git runs only by full path (`/opt/homebrew/bin/git`), which
   the model finds by itself only sometimes. Grade git outcomes, not commands: have the prompt
-  write `git` output to a file and regex that file (see `commit-no-push`).
+  write `git` output to a file and regex that file (see `commit-no-push`). With only Apple's
+  git installed, the `commit-*` cases always fail on macOS: ignore those scores there.
