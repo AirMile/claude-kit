@@ -17,16 +17,19 @@ tier without new evidence.
 ## Reproduce first (tier 2+)
 
 Make the bug observable before editing: a failing test when the behaviour is testable, otherwise
-a browser repro (steps + screenshot/console). The repro is the done-check at the end.
+a browser repro (steps + screenshot/console). The repro is the done-check at the end. A repro
+that passes before the fix doesn't reproduce the bug: fix the repro first.
 
 ## Hypothesis loop (tier 2)
 
 1. Write it down before touching code: "Cause is X; if so I'll see Y" (a log value, DOM state,
    network response, failing assertion).
 2. Get Y with the cheapest instrument: targeted log, console, network tab, one screenshot.
+   Read console/network filtered (errors only, or the one failing request), never the full log.
+   Tag every added log `[DBG:<slug>]`.
 3. Confirmed → fix the proven cause. Refuted → new hypothesis from what you saw. No new evidence
    → no new fix.
-4. Repro passes. Remove the instrumentation.
+4. Repro passes. Remove the instrumentation: done only when `grep -rn "DBG:<slug>"` is empty.
 
 Library API involved → check current docs (context7) before fixing.
 
@@ -35,6 +38,9 @@ Library API involved → check current docs (context7) before fixing.
 Spawn one Explore subagent (`model: sonnet`) with: the symptom, the repro, what was tried and
 why it failed, and the files suspected. Ask for: the causal chain with `path:line` evidence and
 one recommended fix. Then present that fix as a short plan (plan mode) before applying it.
+
+Regression with a known good commit → `git bisect run <throwaway script>` (exit 0 good, 1 bad;
+clean tree first), then `git bisect reset`.
 
 ## Finish
 
