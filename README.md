@@ -24,7 +24,7 @@ Code already has a native feature (plan mode, subagents, `AGENTS.md` loading, `/
 - [Core idea: your repo is the state](#core-idea-your-repo-is-the-state)
 - [Files kit maintains in your project](#files-kit-maintains-in-your-project)
 - [Skills](#skills)
-  - [/roadmap](#roadmap)
+  - [/product](#product)
   - [/setup](#setup)
   - [/build](#build)
   - [/commit](#commit)
@@ -114,8 +114,9 @@ On Windows, copy the file instead (symlinks need admin rights there).
 **A brand-new idea**
 
 ```
-/roadmap a habit tracker for people who quit after a week
-/setup            → scaffolds the stack from docs/product.md, writes AGENTS.md
+/setup a habit tracker for people who quit after a week
+                  → /product interview, scaffold, AGENTS.md
+                    (started outside a project? it makes the folder first)
 /build             → builds the first roadmap item
 /build             → and the next one …
 ```
@@ -124,7 +125,7 @@ On Windows, copy the file instead (symlinks need admin rights there).
 
 ```
 /setup            → reads the repo, writes AGENTS.md + docs/
-/roadmap             → writes docs/product.md and the roadmap from a short interview
+/product             → writes docs/product.md and the roadmap from a short interview
 /build <slug>
 ```
 
@@ -197,8 +198,8 @@ your-project/
 | ---------------------- | ------------------- | ----------------------------- | -------------------------------------------- |
 | `AGENTS.md` (root)     | `/setup`, `lessons` | every session                 | always, at session start                     |
 | `<dir>/AGENTS.md`      | `lessons`           | every session                 | lazily, when Claude reads a file in that dir |
-| `docs/product.md`         | `/roadmap`             | `/build`, `/convert`, `/setup` | on demand                                    |
-| `docs/roadmap.md`      | `/roadmap`, `/build`    | `/build`                       | on demand                                    |
+| `docs/product.md`         | `/product`             | `/build`, `/convert`, `/setup` | on demand                                    |
+| `docs/roadmap.md`      | `/product`, `/build`    | `/build`                       | on demand                                    |
 | `docs/specs/<slug>.md` | `/build`             | `/build`, verifier             | on demand                                    |
 | `docs/decisions.md`    | `/build`, `/setup`   | `/build`                       | on demand                                    |
 
@@ -344,14 +345,14 @@ it is.
 
 ## Skills
 
-### /roadmap
+### /product
 
 Turn an idea into `docs/product.md` + `docs/roadmap.md`, or update them later.
 
 ```
-/roadmap <idea>          new project (when docs/product.md doesn't exist)
-/roadmap add <item>      update: add, reorder, remove or reword roadmap items
-/roadmap critique        stress-test product.md and the roadmap without changing it
+/product <idea>          new project (when docs/product.md doesn't exist)
+/product add <item>      update: add, reorder, remove or reword roadmap items
+/product critique        stress-test product.md and the roadmap without changing it
 ```
 
 **New**
@@ -380,14 +381,15 @@ offers to apply the changes through Update.
 
 Make a project kit-ready. Idempotent: running it again only fills gaps.
 
-It detects one of four situations:
+It detects one of five situations:
 
-| Situation                                             | What happens                                                                                                    |
-| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Empty folder, no docs/product.md                                | Stops: run `/roadmap` first                                                                                        |
-| Empty folder, `docs/product.md` exists                   | **Scaffold**: runs the stack's official generator, adds a test runner, boots the dev server once, then onboards |
-| A v1 project (`.project/`, no `docs/roadmap.md` yet) | **Migrate** (below)                                                                                             |
-| Any other existing code                               | **Onboard**                                                                                                     |
+| Situation                                                  | What happens                                                                                                    |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Not in a project (home folder, or a folder of projects)    | **New folder**: asks the name, creates the folder + `git init`, moves the session there; send `/setup` again    |
+| Empty folder, no docs/product.md                           | **Product first**: runs the `/product` interview, then scaffolds                                                |
+| Empty folder, `docs/product.md` exists                     | **Scaffold**: runs the stack's official generator, adds a test runner, boots the dev server once, then onboards |
+| A v1 project (`.project/`, no `docs/roadmap.md` yet)       | **Migrate** (below)                                                                                             |
+| Any other existing code                                    | **Onboard**                                                                                                     |
 
 **Onboard** reads the manifest, scripts, test/lint config and recent git history, then:
 
@@ -493,7 +495,7 @@ It's logged in the feature's spec under `## Fixes` and committed as `fix:`.
    spec + roadmap. The report suggests `/simplify` for diffs over ~150 lines and
    `/security-review` for auth, stored user input or payments. When the feature closed the last
    open item of its phase, the report says so and suggests `/launch` (`major` for a `vX` heading,
-   `minor` for `vX.Y`), then `/roadmap` to sort
+   `minor` for `vX.Y`), then `/product` to sort
    `## Later`. It never pushes.
 
    Finish asks no questions, so a feature run only stops for the plan approval, the safe point
@@ -776,7 +778,7 @@ versions skip it. It never writes files.
 **Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
 columns, above the prompt otherwise):
 
-- **Roadmap**: `/roadmap` (no argument) opens a project dashboard, titled with the product's name. On top, in its own block:
+- **Roadmap**: `/product` (no argument) opens a project dashboard, titled with the product's name. On top, in its own block:
   context and plan usage (a value turns amber from 60%, red from 85%) with **Compact** and **Clear**; git state (branch,
   changed files, commits not on `origin/HEAD`) with **Diff** (`/diff`, where it exists) and
   **Commit** when files changed and **Launch** when commits aren't live; then kit's skills:
@@ -894,8 +896,8 @@ small changes; use `/build` once it's a feature.
 
 | Situation                 | Flow                                                                     |
 | ------------------------- | ------------------------------------------------------------------------ |
-| New idea                  | `/roadmap` → `/setup` (scaffold) → `/build` → `/build` …                      |
-| Existing repo, no kit yet | `/setup` → `/roadmap` → `/build`                                             |
+| New idea                  | `/setup <idea>` (folder, interview, scaffold) → `/build` → `/build` …         |
+| Existing repo, no kit yet | `/setup` → `/product` → `/build`                                             |
 | v1 project                | `/setup` (migrate) → check the roadmap → `/build`                         |
 | Interrupted work          | new chat → `/build` (or `/build <slug>`)                                   |
 | Bug in a finished feature | `/build "fix: …"` → logged in that spec's `## Fixes`                      |
@@ -904,8 +906,8 @@ small changes; use `/build` once it's a feature.
 | Go live / release         | `/launch` (checks, notes, merge or version tag)                          |
 | Before delivering a site  | `/audit` → fix the small things → `/launch`                              |
 | Understand what was built | `/explain` (last change), `/explain <slug>` or `/explain <file>`          |
-| New idea mid-project      | `/roadmap add <idea>`; verifier notes are also offered as roadmap items     |
-| Rethink the plan          | `/roadmap critique`                                                         |
+| New idea mid-project      | `/product add <idea>`; verifier notes are also offered as roadmap items     |
+| Rethink the plan          | `/product critique`                                                         |
 | Design → code             | `/convert <source>`, or put the source in a spec's `Design:` and `/build` |
 | Visual foundation         | `/theme` before the first UI work, or `/theme from-code` to clean up |
 | A kit skill annoyed you   | `/improve <skill> "what happened"` |
@@ -1000,6 +1002,8 @@ and grades what happened: files written, tools called, the order of calls, text 
 | `commit-blocks-env` | `staging-check.js` runs and a `.env` file never ends up in the commit |
 | `commit-no-push` | `/commit` commits but never pushes on its own |
 | `setup-migrates-v1` | the v1 migration keeps real items/lessons and drops v1-only ones (judged by a model) |
+| `setup-empty-folder` | an empty folder runs the `/product` interview instead of stopping; nothing is written or scaffolded before approval |
+| `setup-new-folder` | in a folder of projects, setup makes a new project folder and hands off, writes no docs there |
 | `lessons-nested` | a module-specific lesson lands in that module's `AGENTS.md` |
 
 Runs are non-interactive: nobody answers questions or approves plans. So the suite tests the

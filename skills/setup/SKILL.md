@@ -1,7 +1,7 @@
 ---
 name: setup
 description: Set up or migrate a project for kit (AGENTS.md, docs/, scaffold). Use with /setup.
-argument-hint: "[nothing | scaffold]"
+argument-hint: "[nothing | idea for a new project]"
 allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/scripts/migrate-v1.js *)
 ---
 
@@ -13,16 +13,34 @@ from a worktree session (it writes files every worktree needs).
 
 ## 0. Detect the situation
 
-Check, in one Bash call: `git rev-parse --is-inside-work-tree`, `AGENTS.md`, `CLAUDE.md`,
+Check, in one Bash call: `pwd`, `git rev-parse --is-inside-work-tree`, `AGENTS.md`, `CLAUDE.md`,
 `.claude/CLAUDE.md`, `CLAUDE.local.md` (and symlinks), `docs/product.md`, `docs/roadmap.md`,
-`.project/`, `git worktree list`, any source files / package manifest, `.gitignore`.
+`.project/`, `git worktree list`, any source files / package manifest, `.gitignore`, and which
+subfolders hold a `.git` or a manifest.
 
-| Situation                                       | Route                                                       |
-| ----------------------------------------------- | ----------------------------------------------------------- |
-| No source files, no `docs/product.md`           | Stop: "Empty project: run `/roadmap` first, then `/setup`." |
-| No source files, `docs/product.md` exists       | **A. Scaffold**                                             |
-| `.project/` exists and no `docs/roadmap.md` yet | **C. Migrate v1**                                           |
-| Otherwise                                       | **B. Onboard**                                              |
+| Situation                                                              | Route                |
+| ---------------------------------------------------------------------- | -------------------- |
+| No git, no manifest, and cwd is `$HOME`, `/` or a folder of projects   | **N. New folder**    |
+| No source files, no `docs/product.md`                                  | **P. Product first** |
+| No source files, `docs/product.md` exists                              | **A. Scaffold**      |
+| `.project/` exists and no `docs/roadmap.md` yet                        | **C. Migrate v1**    |
+| Otherwise                                                              | **B. Onboard**       |
+
+## N. New folder
+
+1. Ask the project name (open question; the arg as idea hints a name). Path: `<cwd>/<kebab-name>`,
+   or `~/Projects/<kebab-name>` when cwd is `$HOME` and that folder exists. Taken and not empty
+   → ask another name.
+2. `mkdir -p` it and `git init` there.
+3. Move the session: `mcp__ccd_directory__change_directory` (desktop) moves it when this turn
+   ends → tell the user to send `/setup` (plus the idea) there. Tool missing (CLI) → print
+   `cd <path> && claude`, then `/setup`. Stop: never write project files outside the session.
+
+## P. Product first
+
+Empty folder: invoke the `kit:product` skill (Skill tool) with the arg as the idea. It interviews,
+then writes `docs/product.md` and `docs/roadmap.md` with `scaffold` first. Cancelled → stop.
+Written → continue here with **A** (don't stop at its report).
 
 ## A. Scaffold (greenfield)
 
@@ -39,8 +57,8 @@ Check, in one Bash call: `git rev-parse --is-inside-work-tree`, `AGENTS.md`, `CL
 ## B. Onboard
 
 1. Read the manifest(s), scripts, lint/format/test config, and `git log -15 --oneline`.
-2. Write `AGENTS.md` from the template below, filling only what you verified. Unknown → omit the
-   line, never a placeholder.
+2. Write `AGENTS.md` (≤ 100 lines) from `${CLAUDE_SKILL_DIR}/references/agents-template.md`,
+   filling only what you verified. Unknown → omit the line, never a placeholder.
 3. **No `CLAUDE.md`**: Claude Code reads `AGENTS.md` (root and nested) natively only when no
    `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` exists. Move their durable content
    into `AGENTS.md`, then delete them (show what moves first). A symlink between the two → one
@@ -58,48 +76,10 @@ Check, in one Bash call: `git rev-parse --is-inside-work-tree`, `AGENTS.md`, `CL
    passes a free port as `PORT`). A local database → fill the database line in `AGENTS.md § Git`.
 8. Report.
 
-### AGENTS.md template (≤ 100 lines)
-
-```markdown
-# <project name>
-
-<one sentence: what it is and for whom>
-
-## Commands
-
-- Dev: `<cmd>` → http://localhost:<port>
-- Test: `<cmd>` (single file: `<cmd> <path>`)
-- Lint / typecheck: `<cmd>`
-- Build: `<cmd>`
-
-## Conventions
-
-- <only what differs from the stack's defaults>
-
-## Pitfalls
-
-- <non-obvious traps, each with its reason>
-
-## Git
-
-- Workflow: <branches | trunk>
-- Fresh worktree: `<install cmd>` before anything else
-- Dev server: only use one this session started. Default port taken → a free one via `PORT`,
-  and point the app's own URL variables (e.g. `NEXT_PUBLIC_SERVER_URL`) at it too.
-- Database: worktrees share the local one → <own `DATABASE_URL` per worktree | schema push off
-  outside the main checkout>; migrations only from the main checkout.
-- Merge conflicts in docs/roadmap.md, docs/decisions.md or AGENTS.md: keep both sides' lines.
-
-## Docs
-
-- Product intent: `docs/product.md` · roadmap: `docs/roadmap.md` · specs: `docs/specs/`
-- Decisions and why: `docs/decisions.md`
-```
-
 ### docs/ format headers
 
-`docs/roadmap.md`: the `roadmap` skill owns this format; copy its header and an empty
-`# Roadmap` from `${CLAUDE_PLUGIN_ROOT}/skills/roadmap/SKILL.md § Formats` when /roadmap has not run.
+`docs/roadmap.md`: the `product` skill owns this format; copy its header and an empty
+`# Roadmap` from `${CLAUDE_PLUGIN_ROOT}/skills/product/SKILL.md § Formats` when /product has not run.
 
 `docs/decisions.md`:
 
@@ -121,7 +101,7 @@ CLAUDE.md summary. Work from that output instead of reading the JSON yourself.
    runbooks, pitfalls) for `AGENTS.md`. Drop `## User Preferences`, `## Project`, `## Project
 Context`, the GENERATED marker, `{{…}}` placeholders, `.project/` rules, Frontend Edit Rules.
 2. **Product** → `.project/project-seed.md` → `docs/product.md`, condensed to the product format
-   (see `roadmap` skill: What · For whom · Why · Non-goals · Stack).
+   (see `product` skill: What · For whom · Why · Non-goals · Stack).
 3. **Backlog** → the script's roadmap lines → `docs/roadmap.md`. Drop v1-only items (re-running
    v1 manual tests, `.project`/worktree tooling).
 4. **Learnings** → at most ~15 that pass the `lessons` criteria, in the `AGENTS.md` the script
@@ -144,7 +124,7 @@ docs/         <files created>
 migrated      <n roadmap items, n lessons, worktrees kept/removed> (v1 only)
 git           <branches | trunk> · .worktreeinclude <files | —>
 desktop       Settings → Claude Code: branch prefix, auto-archive after PR merge
-next          /roadmap (no roadmap) · /build (roadmap ready)
+next          /product (no roadmap) · /build (roadmap ready)
 ```
 
 Do not commit; offer `/commit`.

@@ -1,16 +1,17 @@
 ---
-name: roadmap
-description: Shape an idea into docs/product.md + a roadmap, or update the roadmap. Use with /roadmap.
+name: product
+description: Shape an idea into docs/product.md + a roadmap, or update the roadmap. Use with /product.
 argument-hint: "[idea | add <item> | brainstorm | critique]"
 ---
 
-# Roadmap
+# Product
 
 Turns an idea into two files every later step reads: `docs/product.md` (what and why) and
 `docs/roadmap.md` (ordered features = the backlog). When they exist, it updates them instead.
 
 ## 0. Route
 
+- No git, no manifest, cwd is `$HOME`, `/` or a folder of projects → stop: `/setup` first.
 - `docs/product.md` missing → **New**.
 - Exists, no arg → **show** the roadmap live (below) and stop: the user edits in the pane, or
   says what to change. No pane (tool missing) → **Update** and ask what to change.
@@ -66,13 +67,13 @@ user can also add, reword, move or shelve open items. Tool missing → skip.
 
 ## Critique
 
-Stress-test product.md and the roadmap without editing it first. Three lenses, max 3 findings each, concrete:
+Stress-test product.md and the roadmap without editing them. Three lenses, max 3 findings each:
 
 1. **Assumptions**: what must be true for this to work, and which one is least proven?
 2. **Failure modes**: how does the MVP disappoint its first real user?
 3. **Smaller version**: what is the smallest roadmap that still tests the core idea?
 
-Then offer: apply suggested roadmap/roadmap edits (via Update) or leave as is.
+Then offer: apply suggested product/roadmap edits (via Update) or leave as is.
 
 ## Brainstorm
 
@@ -139,7 +140,7 @@ fitting phase (or `## Later`) via **Update** step 2-4.
 ## Report
 
 ```
-ROADMAP · <new | update | critique>
+PRODUCT · <new | update | critique>
 product.md  <created | updated | unchanged>
 roadmap     <n open> · next: <first open slug>
 next        /setup (no code yet) · /build <slug>

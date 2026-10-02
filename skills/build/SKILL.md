@@ -155,7 +155,7 @@ tests      <pass count> · <suite command>
 later      +<n> ideas added under ## Later (or —)
 commit     <hash> <subject>
 suggest    </simplify, /security-review, or —>
-phase      <heading> done · /launch [major|minor], then /roadmap to sort ## Later (only when one ended)
+phase      <heading> done · /launch [major|minor], then /product to sort ## Later (only when one ended)
 next       <next open roadmap slug, or —>
 ```
 

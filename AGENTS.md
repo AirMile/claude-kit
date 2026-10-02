@@ -11,7 +11,7 @@ Claude Code plugin (`.claude-plugin/plugin.json`, name `kit`). Successor to `cla
   `hooks/push-guard.test.cjs` is its regression test. Its `modules` names `hooks/register.tsx`,
   the kit mod (Claude Code 2.1.287+): compaction note, safe-point band, usage figures, and
   the tools `mcp__kit__roadmap_view` / `mcp__kit__theme_view` (`hooks/roadmap-open.ts`,
-  `hooks/theme-view.tsx`) that `/roadmap` and `/theme` call to open their panes (the
+  `hooks/theme-view.tsx`) that `/product` and `/theme` call to open their panes (the
   roadmap pane draws through the pure `roadmap-{dashboard,phase,card,later}.tsx` on the
   shapes in `roadmap-parts.tsx`), plus `mcp__kit__fresh_start`
   (`hooks/fresh-start.ts`), which `/build`'s safe point calls to clear and resume. Only `register.tsx` registers events; `$`
@@ -30,7 +30,7 @@ each file carries its own format in a `<!-- format: … -->` header:
 - no `CLAUDE.md`: its presence would stop Claude Code from reading `AGENTS.md`
 - `docs/product.md`, `docs/roadmap.md`, `docs/specs/<slug>.md`, `docs/decisions.md`
 
-Change a format → update the header template in the skill that writes it (`roadmap` for
+Change a format → update the header template in the skill that writes it (`product` for
 product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.md` for specs).
 
 ## Budgets (hard)

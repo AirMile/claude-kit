@@ -5,7 +5,7 @@ import { PANE, roadmapOpened } from "./roadmap-view";
 import { inRoot } from "./spec";
 import { list } from "./theme-view";
 
-// Opens the roadmap pane (roadmap-view.tsx draws it): the tool /roadmap calls, with items for
+// Opens the roadmap pane (roadmap-view.tsx draws it): the tool /product calls, with items for
 // a read-only draft (plan mode) or none for docs/roadmap.md live.
 
 export const roadmapTool: ToolSpec = {

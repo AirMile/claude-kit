@@ -102,8 +102,8 @@ function dashboard(p: Parts) {
       ) : null}
       <Box gap={1} marginTop={1}>
         {p.isSetUp ? null : skill("setup", "Setup", "kit:setup", "", true)}
-        {skill("ideas", "Ideas", "kit:roadmap", "brainstorm")}
-        {skill("critique", "Critique", "kit:roadmap", "critique")}
+        {skill("ideas", "Ideas", "kit:product", "brainstorm")}
+        {skill("critique", "Critique", "kit:product", "critique")}
         {skill("theme", "Theme", "kit:theme")}
         {skill("audit", "Audit", "kit:audit")}
       </Box>

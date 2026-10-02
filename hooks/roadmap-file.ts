@@ -1,4 +1,4 @@
-// docs/roadmap.md, read and edited line by line (format: skills/roadmap/SKILL.md § Formats).
+// docs/roadmap.md, read and edited line by line (format: skills/product/SKILL.md § Formats).
 // Pure: text in, text out; every line the edit doesn't touch is kept byte for byte.
 // Edits refuse done and in-progress items: their state belongs to /build.
 
