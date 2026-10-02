@@ -19,7 +19,8 @@ is a better skill, not a bigger one: kit stays small only if every refinement pa
 - **Skill**: the first argument (`build`, `commit`, …, or `verifier` for the agent, `push-guard`
   / `format-on-save` for a hook). Missing → ask which one.
 - **Observations**: the quoted argument, plus any Skill Feedback points raised earlier in this
-  conversation for that skill. None at all → ask: "What went wrong or felt clumsy?"
+  conversation for that skill. None → scan this chat's run of it (skipped/improvised steps,
+  corrections, "Other" answers, avoidable questions, failed tool calls); still none → ask.
 
 ## 1. Read (only what this skill needs)
 
