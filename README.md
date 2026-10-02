@@ -781,13 +781,13 @@ columns, above the prompt otherwise):
   changed files, commits not on `origin/HEAD`) with **Diff** (`/diff`, where it exists) and
   **Commit** when files changed and **Launch** when commits aren't live; then kit's skills:
   **Setup** (only when `AGENTS.md` is missing), **Ideas**, **Critique**, **Theme** and
-  **Audit**. Those buttons
-  put the command in your prompt box and you press Enter to run it (a plugin can't run a command
-  itself: it would wait for your next message); a done feature's **Explain** fills
-  `/explain <slug>`. Below that, `docs/roadmap.md` live, grouped by phase (a release: `v1 · MVP`, `v1.1 · Sharing`; any `##` heading works, shown as written): a
+  **Audit**. One click on a button runs its command at once (a second click within 2 seconds
+  counts as a double click and is ignored; if running fails, the command lands in your prompt box); a done
+  feature's **Explain** runs `/explain <slug>`. On the desktop app a click also counts when
+  the pane didn't have focus yet; the catch is that Tab onto a button there presses it. Below that, `docs/roadmap.md` live, grouped by phase (a release: `v1 · MVP`, `v1.1 · Sharing`; any `##` heading works, shown as written): a
   card per feature with its state, and for one in progress its step (define → build → verify, with the criteria count while verifying). **Pick
   up** (open), **Build** (spec ready), **Resume** (building) or **Verify** (ready to verify)
-  fills `/clear`; after your Enter it fills `/build <slug>`, which continues at that step. A feature not started has **↗** (Pick up) and **⋯**, a row of buttons that
+  clears the chat and runs `/build <slug>` in the fresh one, which continues at that step. A feature not started has **↗** (Pick up) and **⋯**, a row of buttons that
   move it to another phase or to `## Later`, or remove it; a phase heading folds its
   cards (a folded heading turns dim), finished phases wait behind one "✓ v1 · MVP, …" line, and in an unfinished one the done features fold into one "✓ n done" line; **Remove** asks once ("Remove?") before it acts; **+ Add** in a phase heading adds one, and **+ Add** in the Later heading adds an idea there; a Later idea's ⋯ restores it. Done and in-progress features can't
   be edited there (their state is `/build`'s). The whole heading text folds a phase, or Later. In plan

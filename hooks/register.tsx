@@ -7,7 +7,6 @@ import type {
 
 import { freshStart, freshTool } from "./fresh-start";
 import {
-  roadmapCleared,
   roadmapEdited,
   roadmapStale,
   roadmapTool,
@@ -117,9 +116,6 @@ export const register: Register = (on) => {
       meters = meters.filter((m) => m.label !== "ctx");
       roadmapUsage(meters);
       $.ui.invalidate("ui.render");
-      // A feature's button filled /clear: hand the fresh chat its /kit:build line.
-      const build = roadmapCleared();
-      if (build) $.clock.after(300, () => void $.prompt.fill({ text: build }));
     }
     return next(e);
   });

@@ -2,6 +2,7 @@ import type { ElementTable, EngineInterface, On, ToolSpec } from "claude-code";
 
 import * as file from "./roadmap-file";
 import { body } from "./roadmap-dashboard";
+import { pressOnFocus, tracked } from "./roadmap-press";
 import type { Card, Git, Usage } from "./roadmap-parts";
 import { inRoot, parseSpec, type SpecState } from "./spec";
 import { list } from "./theme-view";
@@ -29,6 +30,7 @@ let added = 0;
 let adding: string | null = null; // the phase whose "+ Add" field is open
 let menuOpen: string | null = null; // the card or Later idea whose ⋯ row is open
 let confirming: string | null = null; // an armed Clear or Remove, waiting for its 2nd press
+let sent = 0; // when a button last ran a command: presses right after it are a double click
 // Phases the user folded or unfolded against the default (a finished phase starts folded).
 const toggled = new Set<string>();
 
@@ -63,14 +65,6 @@ export function roadmapEdited(path: string): boolean {
 // Called after every turn (session.measure): it may have committed, built or launched.
 export function roadmapStale(): void {
   needsLoad = true;
-}
-
-// After a /clear: the /kit:build line a feature's button left for the fresh chat, if any.
-let pendingBuild: string | null = null;
-export function roadmapCleared(): string | null {
-  const line = pendingBuild;
-  pendingBuild = null;
-  return line;
 }
 
 // Context and plan limits, as register.tsx measures them after each turn.
@@ -125,6 +119,7 @@ async function productName($: EngineInterface): Promise<string> {
 }
 
 export function roadmapView(on: On) {
+  pressOnFocus(on);
   on("tool.check", { tool: "mcp__kit__roadmap_view" }, () => ({
     decision: "allow",
   }));
@@ -202,18 +197,28 @@ export function roadmapView(on: On) {
       if (message !== undefined) note = message;
       $.ui.invalidate("ui.render");
     };
-    // Puts a slash command in the prompt box; the person's Enter runs it. A plugin can't run
-    // one itself: $.command.run waits for the person's next message and $.prompt.submit
-    // refuses a text starting with /. A feature's button fills /clear first; register.tsx
-    // fills /kit:build <slug> once the chat is cleared (roadmapCleared).
+    // Runs a slash command at once (a feature's button clears the chat first, as fresh-start.ts
+    // does), outside the press: inside it, $.command.run waits on the turn. A press within 2s
+    // of the last is a double click and dropped; not "until the run settles": /compact's run
+    // may not settle, which held every button. Failing, the line goes in the prompt box.
     const run = async (command: string, args: string, fresh: boolean) => {
       const line = `/${command}${args ? ` ${args}` : ""}`;
-      pendingBuild = fresh ? line : null;
-      const box = await $.prompt.fill({ text: fresh ? "/clear" : line });
-      if (!box.isFilled) {
-        pendingBuild = null;
-        $.ui.toast(`type ${fresh ? `/clear, then ${line}` : line} in the chat`);
-      }
+      const now = await $.clock.now();
+      if (now - sent < 2000) return;
+      sent = now;
+      $.clock.after(50, async () => {
+        let cleared = !fresh;
+        try {
+          if (fresh) await $.command.run({ command: "clear" });
+          cleared = true;
+          await $.command.run(args ? { command, args } : { command });
+        } catch (err) {
+          // Not cleared: building on in this chat would defeat the point.
+          if (cleared) await $.prompt.fill({ text: line });
+          const todo = `${cleared ? "" : "/clear, then "}${line}`;
+          $.ui.toast(`kit: run ${todo} yourself (${String(err)})`);
+        }
+      });
     };
     const edit = async (done: string, change: (text: string) => string) => {
       const path = inRoot(await $.session.root(), PATH);
@@ -231,7 +236,7 @@ export function roadmapView(on: On) {
     };
 
     return body({
-      el,
+      el: tracked(el, e.surface),
       // Input and Select: terminal and desktop only.
       ui:
         e.surface === "terminal" || e.surface === "desktop"

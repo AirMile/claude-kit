@@ -24,8 +24,8 @@ export type Usage = {
 };
 export type Git = { changed: number; branch: string; unpushed: number | null };
 export type Actions = {
-  build: (slug: string) => void; // fills /clear, then /kit:build <slug> in the fresh chat
-  run: (command: string, args?: string) => void; // fills the prompt box: the Enter is the user's
+  build: (slug: string) => void; // runs /clear, then /kit:build <slug> in the fresh chat
+  run: (command: string, args?: string) => void; // runs the slash command at once
   edit: (done: string, change: (text: string) => string) => void;
   fold: (phase: string) => void;
   toggleAdd: (phase: string, folded: boolean) => void;
