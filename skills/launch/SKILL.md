@@ -33,12 +33,14 @@ launch; stop.
 Stop first when: uncommitted changes (offer `/commit`) · branch behind the default branch (sync
 it first: in a desktop worktree session use the app's sync; otherwise merge the default branch)
 · no `origin` remote (offer `gh repo create --private --source . --push`, only on an explicit
-yes).
+yes). Sync conflicts: lockfiles and generated files → take one side, then reinstall/regenerate;
+source files → typecheck each right after resolving; full suite green before the merge commit.
 
 ## 1. Checks
 
 From `AGENTS.md § Commands`: install if needed, then build, tests, typecheck/lint. Any failure →
-stop and report; nothing goes live red.
+stop and report; nothing goes live red. A dev server this session runs in this folder → stop it
+before `build` (Next.js ≤ 15 shares the output dir: the dev page silently stops hydrating).
 
 Then scan the range (`git diff --stat` + targeted reads):
 
@@ -49,7 +51,9 @@ Then scan the range (`git diff --stat` + targeted reads):
   missing from `.env.example` → must be set on the host first.
 - **Host or runtime config** changed (`vercel.json`, `next.config.*`, middleware, headers,
   redirects) → call it out.
-- **Dependencies**: lockfile changed → list new packages and major-version bumps.
+- **Dependencies**: lockfile changed → list new packages and major-version bumps, and run
+  `npm audit --omit=dev --audit-level=high` (or `osv-scanner scan source -r .` when installed).
+  Only vulnerabilities in packages this range added or bumped raise the risk.
 - **Sensitive areas** (auth, payments, user input stored server-side) → recommend
   `/security-review` before going live.
 
