@@ -105,7 +105,7 @@ commit, depending on the branch:
 - **Feature branch**: Push + open PR (Recommended) / Push only / Not now. PR = `gh pr create`
   with a title from the commit(s) and, in `feature=<slug>` mode, the spec's Goal and criteria as
   the body. No `gh` → push only and say so.
-- **Default branch**: Not now (Recommended) / Push. In `branches` mode (`AGENTS.md § Git`) warn
+- **Default branch**: Not now / Push, no recommendation (the user decides). In `branches` mode (`AGENTS.md § Git`) warn
   first that this skips review and, on hosts that deploy from it, goes live; suggest `/launch`.
 
 The push-guard hook blocks unconfirmed pushes; after the user confirms, run
