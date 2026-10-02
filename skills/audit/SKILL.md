@@ -15,7 +15,8 @@ the rest lands on the roadmap.
 - **Target**: a URL argument (staging or production), else the local app. Local → prefer a
   production build (`build` + `start` from `AGENTS.md`) over the dev server, since dev mode
   distorts errors and speed. Use only a server this session started (free port when the
-  default is taken); stop only what you started.
+  default is taken); stop only what you started. Your own dev server in this folder → stop it
+  before `build` (Next.js ≤ 15 shares the output dir: the dev page silently stops hydrating).
 - **Pages**: `sitemap.xml` → else follow internal links from the home page (max 30) → else the
   routes on disk (`app/`, `pages/`, `src/routes/`). Dynamic routes: one example each.
 
@@ -23,10 +24,11 @@ Say the page count and target in one line before starting.
 
 ## 1. Check every page
 
-Open each page in the browser at 1280px and evaluate
-`${CLAUDE_SKILL_DIR}/references/page-check.js` in the page (it returns JSON: title, description,
-h1 count, lang, canonical, og:image, images without alt or oversized, inputs without label,
-horizontal overflow, link list). Also collect console errors and failed requests (4xx/5xx).
+Open each page in the browser at 1280px, scroll to the bottom once (scroll-triggered content),
+then evaluate `${CLAUDE_SKILL_DIR}/references/page-check.js` in the page (it returns JSON: title,
+description, h1 count, lang, canonical, og:image, images without alt or oversized, inputs without
+label, horizontal overflow, link list). Also collect console errors (minus extension, HMR and
+favicon noise) and failed requests (4xx/5xx).
 
 Then, per page:
 
@@ -41,14 +43,19 @@ Once for the whole site:
 - **Links**: `curl -s -o /dev/null -w "%{http_code}"` every unique internal link → list non-2xx.
 - **Speed** (only if `npx lighthouse` works): performance score + LCP/CLS for the home page and
   the heaviest page.
+- **404**: a non-existent route → the app's own 404 page with a link home.
+- **Raw HTML**: `curl` the home + one content page → the h1 text is in the served HTML.
+- **Crawl basics**: `robots.txt` reachable; JSON-LD present on the home page.
+- **Dark mode / reduced motion** (only when the browser tool can emulate media): identical
+  screenshots, or animations still running → finding.
 
 ## 2. Findings
 
-| Severity   | Examples                                                                                                       |
-| ---------- | -------------------------------------------------------------------------------------------------------------- |
-| Blocker    | console errors, broken links, failed requests, critical axe violations, mobile overflow                        |
-| Should fix | missing title/description, missing alt, unlabeled inputs, serious axe violations, images > 300 KB, no og:image |
-| Nice       | duplicate titles, h1 count ≠ 1, missing canonical, speed below 80                                              |
+| Severity   | Examples                                                                                                                                             |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Blocker    | console errors, broken links, failed requests, critical axe violations, mobile overflow                                                              |
+| Should fix | missing title/description, missing alt, unlabeled inputs, serious axe violations, images > 300 KB, no og:image, no own 404, h1 missing from raw HTML |
+| Nice       | duplicate titles, h1 count ≠ 1, missing canonical, speed below 80, no robots.txt/JSON-LD, dark mode/reduced motion ignored                           |
 
 Group identical findings across pages (one line, page count), don't list them per page.
 
