@@ -27,7 +27,8 @@ stat plus targeted reads.
 Run `node ${CLAUDE_SKILL_DIR}/scripts/staging-check.js` (from anywhere in the repo). Exit 0 →
 nothing to handle. Exit 1 → act on each line:
 
-- `BLOCK <path>` (secret file) → never stage it; leave it unstaged and tell the user.
+- `BLOCK <path>` (secret file) → never stage it; tell the user. Already in history (`git log -1
+  -- <path>` prints a commit) → also: rotate the secret and `git rm --cached` it.
 - `WARN <path>` (large, binary, critical file deleted) → AskUserQuestion per group before
   staging those paths.
 - `IGNORE <pattern>` (untracked files .gitignore should cover) → offer to add the patterns

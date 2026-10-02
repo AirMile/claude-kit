@@ -7,7 +7,8 @@ paths:
 
 - **Simplest CSS first**: pick one approach, apply it, let the user judge. No trial-and-error loops.
 - **Use the project's tokens**: before an arbitrary value (`#hex`, `13px`, `w-[317px]`), look for an
-  existing CSS variable, `@theme` value or Tailwind token and use that.
+  existing CSS variable, `@theme` value or Tailwind token and use that. A raw color with a `dark:`
+  twin → change both (better: make it a token).
 - **Verify data first**: before building UI on a data source, read its actual shape.
 - **Check structural edits in the browser**: after layout, positioning or responsive changes, take
   a screenshot of the running page and look at it. Skip for purely cosmetic edits.
