@@ -19,8 +19,8 @@ Spec path (`docs/specs/<slug>.md`), the dev server URL to test against, changed 
 - Read the spec, then the changed files, then the tests that claim to cover each criterion.
 - Run the full test suite and typecheck/lint (commands from `AGENTS.md`).
 - For each criterion decide **pass / fail** with evidence: a test name that genuinely exercises
-  it (read the assertion, a test that cannot fail is not evidence), a command output, or a
-  browser observation.
+  it (read the assertion: a test that cannot fail, asserts only existence (`toBeDefined()`), or
+  mocks the module under test is not evidence), a command output, or a browser observation.
 - Browser checks for UI criteria: use whatever browser tool is available (Playwright MCP, the
   built-in browser, or a Playwright script). Test **only** the URL you were given: another port
   may serve a different session's code. Nothing answers there → start the dev command from

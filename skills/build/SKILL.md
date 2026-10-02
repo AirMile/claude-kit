@@ -58,7 +58,8 @@ switch to Feature (write a spec for what's left).
 
 ## 2. Small
 
-1. Make the change. Run the scoped tests/lint for the touched files.
+1. The change brings back an alternative `docs/decisions.md` rejected → say so first. Make the
+   change. Run the scoped tests/lint for the touched files.
 2. UI change → screenshot check in the browser (see Verify for the browser rules).
 3. `lessons` if something non-obvious came up.
 4. `commit` (normal mode; no spec, no roadmap edit unless a roadmap item was just completed).
@@ -74,7 +75,8 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
 1. `EnterPlanMode`. Read `docs/product.md` (non-goals!), `docs/decisions.md`, the roadmap line, and
    the code the feature touches. Ask only what you can't answer from those: one question at a
    time, or one AskUserQuestion with concrete options for a real design fork (recommended first).
-   Usually 0-3 questions.
+   Usually 0-3 questions. An unknown the running app can answer (a timing, a count, a log
+   line) → measure it or ask for that reading now; don't guess.
 2. Draft the spec in the plan file using
    `${CLAUDE_SKILL_DIR}/references/spec-template.md`: criteria per happy/edge/error,
    Approach with files, ASCII wireframe for UI, Tests mapping. More than 6 criteria → propose a
@@ -98,7 +100,8 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
 ### 4b. Build (inline)
 
 1. `Status: building`. Spec has `Design:` → follow the `convert` skill's procedure for that UI.
-2. Per criterion: write or extend the test first when it's testable, then the code. Follow
+2. Per criterion: test first when testable (it must fail before the code exists; mock only
+   external boundaries: network, third-party APIs, time, file system), then the code. Follow
    `AGENTS.md` conventions. Library API you're unsure of → context7, don't guess.
 3. Run the full test suite + typecheck/lint once at the end. Fix until green.
 4. Don't check criteria yet: verify does that.
