@@ -6,10 +6,10 @@ import type {
 } from "claude-code";
 
 import { freshStart, freshTool } from "./fresh-start";
+import { roadmapOpen, roadmapTool } from "./roadmap-open";
 import {
   roadmapEdited,
   roadmapStale,
-  roadmapTool,
   roadmapUsage,
   roadmapView,
 } from "./roadmap-view";
@@ -95,6 +95,7 @@ async function refresh($: EngineInterface, figures?: Figures) {
 
 export const register: Register = (on) => {
   roadmapView(on);
+  roadmapOpen(on);
   themeView(on);
   freshStart(on);
 

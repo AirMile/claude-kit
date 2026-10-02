@@ -8,7 +8,7 @@ import {
 } from "./roadmap-parts";
 
 // One feature on the roadmap pane: a done line, or a card with its /build step and its
-// actions (↗ to pick up, ⋯ for the rest). Pure, like roadmap-parts.tsx.
+// actions (▶ to pick up here, ↗ in a worktree, ⋯ for the rest). Pure, like roadmap-parts.tsx.
 
 // A spec's Status → the step it is on (define, build, verify) and what /build then does.
 const STEP: Record<string, [number, string]> = {
@@ -16,6 +16,7 @@ const STEP: Record<string, [number, string]> = {
   building: [1, "Resume"],
   verifying: [2, "Verify"],
   manual: [2, "Verify"],
+  done: [3, "Resume"], // built in a worktree, not merged yet: every step ✓
 };
 const STEPS = ["define", "build", "verify"];
 
@@ -49,7 +50,7 @@ export function card(p: Parts, c: Card) {
         )}
       </Box>
     );
-  // One calm border for every open card. Not started: ↗ picks it up, ⋯ holds the rest. In
+  // One calm border for every open card. Not started: ▶ picks it up, ⋯ holds the rest. In
   // progress: its /build step, with the button to continue on that same line.
   return (
     <Box
@@ -66,19 +67,25 @@ export function card(p: Parts, c: Card) {
         <Text dimColor wrap="wrap">
           {c.description}
         </Text>
-        {p.draft || c.state !== "open" ? null : (
+        {p.draft || c.state !== "open" || spec ? null : (
           <Box gap={2}>
             <Button
               key={`go-${c.slug}`}
               plain
               dimColor
-              label="↗"
+              label="▶"
               onPress={() => p.act.build(c.slug)}
             />
+            {p.canWorktree ? worktree(p, c.slug) : null}
             {c.editable ? more(p, c.slug) : null}
           </Box>
         )}
       </Box>
+      {c.state === "open" && p.away[c.slug] && !spec ? (
+        <Text dimColor wrap="wrap">
+          {p.away[c.slug]}
+        </Text>
+      ) : null}
       {spec ? (
         <Box marginTop={1} justifyContent="space-between" gap={2}>
           <Box gap={2}>
@@ -97,7 +104,12 @@ export function card(p: Parts, c: Card) {
               );
             })}
           </Box>
-          {p.draft ? null : (
+          {/* Open here with a spec: it builds in a worktree, so its branch, no button. */}
+          {c.state === "open" ? (
+            <Text dimColor wrap="wrap">
+              {p.away[c.slug]}
+            </Text>
+          ) : p.draft ? null : (
             <Button
               key={`go-${c.slug}`}
               variant="secondary"
@@ -109,6 +121,26 @@ export function card(p: Parts, c: Card) {
       ) : null}
       {c.editable ? moves(p, c.slug, cardMoves(p, c)) : null}
     </Box>
+  );
+}
+
+// ↗ raises a worktree chip for the feature. Already sent or running elsewhere: the first
+// press asks "Again?", so a feature isn't started twice by accident.
+function worktree(p: Parts, slug: string) {
+  const key = `worktree:${slug}`;
+  const armed = p.confirming === key;
+  return (
+    <p.el.Button
+      key={key}
+      plain
+      dimColor={!armed}
+      label={armed ? "Again?" : "↗"}
+      onPress={() =>
+        p.away[slug]
+          ? p.act.confirm(key, () => p.act.worktree(slug))
+          : p.act.worktree(slug)
+      }
+    />
   );
 }
 

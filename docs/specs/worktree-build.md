@@ -3,7 +3,7 @@ Criteria are checked [x] when built AND verified. -->
 
 # worktree-build
 
-Status: defined
+Status: done
 Design: —
 
 ## Goal
@@ -15,19 +15,24 @@ running elsewhere, so the same feature isn't started twice. Proven possible by t
 
 ## Acceptance criteria
 
-- [ ] Happy: on the desktop an open card shows two buttons: `▶` builds here (clears the chat,
+- [x] Happy: on the desktop an open card shows two buttons: `▶` builds here (clears the chat,
       as `↗` does today) and `↗` raises a "Build <slug>" worktree chip whose prompt is
       `/kit:build <slug>`; after `↗` the card shows a dim "sent to worktree" line.
-- [ ] Happy: once another branch has a commit touching `docs/specs/<slug>.md` (the claim
+- [x] Happy: once another branch has a commit touching `docs/specs/<slug>.md` (the claim
       `/build` commits), the open card shows "runs on <branch>" instead, in any session and
       after a reload.
-- [ ] Edge: `↗` on a card that is sent or running arms "Again?"; a second press within 4s
+- [x] Edge: `↗` on a card that is sent or running arms "Again?"; a second press within 4s
       raises another chip, one press alone does nothing. A "sent" mark with no claim after
       1 hour is dropped (chip dismissed or never started).
-- [ ] Edge: in the terminal (no `ccd_session`) and in a draft pane there is no `↗`; `▶` and ⋯
+- [x] Edge: in the terminal (no `ccd_session`) and in a draft pane there is no `↗`; `▶` and ⋯
       work as before.
-- [ ] Error: `spawn_task` answers `isError` or throws → toast "kit: worktree chip failed
+- [x] Error: `spawn_task` answers `isError` or throws → toast "kit: worktree chip failed
       (<reason>)", and the card gets no mark.
+
+- [x] Happy: a claimed feature whose branch is checked out in a worktree on this machine
+      shows that worktree's live `/build` step (define → build → verify, criteria count)
+      like an in-progress card, with "runs on <branch>" in place of its button. (Added after
+      manual test 1.)
 
 ## Out of scope
 
@@ -49,6 +54,9 @@ running elsewhere, so the same feature isn't started twice. Proven possible by t
   `act.confirm` when `away[slug]`), dim `away` line under the description.
 - `hooks/roadmap-view.tsx`: load `away` with the other git facts; `canWorktree =
 e.surface === "desktop" && !draft`; `act.worktree` → spawn, toast on error, reload.
+- Worktree steps: `git worktree list --porcelain` → `worktrees()` { branch: path };
+  `away()` returns the spec path for a claim checked out here; the view parses it into
+  `specs`; the card hides ▶ ↗ ⋯ for it and draws the step row with the branch.
 - `AGENTS.md`: mod read-list gains "spec claims on other branches" and the `$.store` mark;
   `README.md` button legend if it names `↗`. `plugin.json` → 0.3.4.
 
@@ -70,10 +78,28 @@ e.surface === "desktop" && !draft`; `act.worktree` → spawn, toast on error, re
 
 ## Handoff
 
-Branch `feat/worktree-build`. User picked: `$.store` mark + git claim; `↗` (today's in-chat
-icon) becomes the worktree button, in-chat gets `▶`. kit repo has no docs/roadmap.md, so no
-roadmap line. Test mod `spawn-test` lives in ~/.claude/dev-mods (not in repo).
+—
 
 ## Verify
+
+Auto (kit:verifier, 2026-10-02): 5/5 pass by code reading + tests. `claude plugin test .`
+10 pass; push-guard 16 pass; hooks validate (scratch copy); tsc clean apart from the
+pre-existing roadmap-dashboard.tsx:61 error. Verifier notes applied: `$.store.set` failures
+in toWorktree are caught; AGENTS.md layout line rewrapped.
+Re-run for criterion 6 (added after manual test 1): pass, 12 tests; real git data maps
+feat/worktree-build to its spec. Note applied: opening a draft clears `specs`/`away`.
+Note left: roadmap-view.tsx is 304 lines; the next addition moves readAway to its own file.
+
+Manual (test 1 passed before criterion 6; user asked for the worktree steps):
+1. Chip + buttons (desktop): `▶ ↗ ⋯` on an open card; ↗ → chip, "sent to worktree"; the
+   chip's session runs the /kit:build skill; ▶ still builds here.
+2. Again? + runs on: one ↗ press arms "Again?" (reverts after 4s), two raise a chip; after
+   the claim commit the card says "runs on <branch>", also in a second session.
+3. Terminal: no ↗; ▶ and ⋯ work.
+4. Worktree steps: after the chip's session commits its spec, the card shows that
+   worktree's step row live with "runs on <branch>", no ▶ ↗ ⋯.
+
+Manual outcome (2026-10-02, kit 0.3.5, desktop, kit-test): 1 pass; 2 pass (Again?);
+3 skipped (terminal); 4 pass (worktree step row with "runs on claude/…").
 
 ## Fixes

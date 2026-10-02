@@ -1,11 +1,11 @@
-import type { ElementTable, EngineInterface, On, ToolSpec } from "claude-code";
+import type { ElementTable, EngineInterface, On } from "claude-code";
 
 import * as file from "./roadmap-file";
 import { body } from "./roadmap-dashboard";
 import { pressOnFocus, tracked } from "./roadmap-press";
 import type { Card, Git, Usage } from "./roadmap-parts";
+import * as wt from "./roadmap-worktree";
 import { inRoot, parseSpec, type SpecState } from "./spec";
-import { list } from "./theme-view";
 
 // The roadmap pane, opened by /roadmap: a project dashboard. Live: reads docs/roadmap.md, the
 // open features' specs and git state, and edits open items in place (roadmap-file.ts keeps
@@ -13,12 +13,15 @@ import { list } from "./theme-view";
 // mode passes items as data, read-only. Drawing: roadmap-dashboard.tsx + roadmap-parts.tsx; done and in-progress
 // state stays /build's.
 
-const PANE = "kit-roadmap";
+export const PANE = "kit-roadmap";
 const PATH = "docs/roadmap.md";
 
-let draft: { product: string; cards: Card[]; later: string[] } | null = null;
-let live: { product: string; roadmap: file.Roadmap } | null = null;
+export type Draft = { product: string; cards: Card[]; later: string[] };
+let draft: Draft | null = null;
+let product = "Roadmap"; // docs/product.md's name, read when the pane opens (roadmap-open.ts)
+let live: file.Roadmap | null = null;
 let specs: Record<string, SpecState | null> = {};
+let away: Record<string, string> = {}; // open features running elsewhere (roadmap-worktree.ts)
 let git: Git | null = null;
 let isSetUp = true;
 let hasDiff = false;
@@ -34,26 +37,11 @@ let sent = 0; // when a button last ran a command: presses right after it are a 
 // Phases the user folded or unfolded against the default (a finished phase starts folded).
 const toggled = new Set<string>();
 
-export const roadmapTool: ToolSpec = {
-  name: "roadmap_view",
-  description:
-    "Open kit's roadmap pane. No items → it shows docs/roadmap.md live and editable. With " +
-    "items → a read-only draft (plan mode): items in order, ## Later excluded; state open, " +
-    "progress (spec linked, unchecked) or done; phase = the item's heading without '## '.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      product: { type: "string" },
-      items: list({
-        slug: "string",
-        description: "string",
-        state: "string",
-        phase: "string",
-      }),
-      later: { type: "array", items: { type: "string" } },
-    },
-  },
-};
+// Called when /roadmap opens the pane: a draft (plan mode), or null for the live roadmap.
+export function roadmapOpened(next: Draft | null, name: string): void {
+  [draft, product, needsLoad, note] = [next, name, true, ""];
+  [specs, away] = [{}, {}]; // a draft's cards must not show the live pane's specs
+}
 
 // Called on every Write/Edit: a change to docs/roadmap.md or a spec reloads the live pane.
 export function roadmapEdited(path: string): boolean {
@@ -111,81 +99,63 @@ async function readGit($: EngineInterface): Promise<Git | null> {
   };
 }
 
-// docs/product.md's `# <name>`, or "Roadmap" without one.
-async function productName($: EngineInterface): Promise<string> {
-  const root = await $.session.root();
-  const text = await $.fs.read(inRoot(root, "docs/product.md")).catch(() => "");
-  return /^# (.+)$/m.exec(String(text))?.[1]?.trim() || "Roadmap";
+// Open features sent to a worktree (a $.store mark per project) or claimed on another branch
+// (a spec commit there), plus the live spec of a claim checked out in a worktree here. Ended
+// marks are dropped. Best effort: a failing call shows nothing.
+async function readAway($: EngineInterface, root: string, open: string[]) {
+  const git = (args: string[]) =>
+    $.process.run(["git", ...args], { cwd: root }).catch(() => null);
+  const r = await git(wt.CLAIMS_GIT);
+  const t = await git(wt.WORKTREES_GIT);
+  const all = ((await $.store.get(wt.STORE_KEY).catch(() => null)) ??
+    {}) as wt.Marks;
+  const mine = all[root] ?? {};
+  const claimed = r?.exitCode === 0 ? wt.claims(r.stdout) : {};
+  const trees = t?.exitCode === 0 ? wt.worktrees(t.stdout) : {};
+  const now = await $.clock.now();
+  const { lines, specs: at, keep } = wt.away(open, claimed, mine, now, trees);
+  if (Object.keys(keep).length !== Object.keys(mine).length) {
+    const rest = { ...all, [root]: keep };
+    if (!Object.keys(keep).length) delete rest[root];
+    await $.store.set(wt.STORE_KEY, rest).catch(() => {});
+  }
+  const read: Record<string, SpecState | null> = {};
+  for (const [slug, path] of Object.entries(at))
+    read[slug] = parseSpec(await $.fs.read(path).catch(() => null));
+  return { lines, specs: read };
 }
 
 export function roadmapView(on: On) {
   pressOnFocus(on);
-  on("tool.check", { tool: "mcp__kit__roadmap_view" }, () => ({
-    decision: "allow",
-  }));
-
-  on("tool.call", { tool: "mcp__kit__roadmap_view" }, async ($, e) => {
-    const input = e as unknown as {
-      product?: string;
-      items?: Card[];
-      later?: string[];
-    };
-    draft = Array.isArray(input.items)
-      ? {
-          product: input.product ?? "Roadmap",
-          cards: input.items.map((i) => ({
-            ...i,
-            phase: i.phase ?? "",
-            editable: false,
-          })),
-          later: input.later ?? [],
-        }
-      : null;
-    [needsLoad, note] = [true, ""];
-    // The pane is titled with the project's name (an open pane is retitled).
-    const name = draft ? `${draft.product} · draft` : await productName($);
-    const opened = await $.ui.open({ id: PANE, title: name });
-    $.ui.invalidate("ui.render");
-    return {
-      result: opened.isPlaced
-        ? "Roadmap pane shown."
-        : `Roadmap pane not shown (${opened.reason}).`,
-    };
-  });
-
   on("ui.render", { component: "Pane", requestId: PANE }, async ($, e) => {
     const el = $.ui.resolve(e);
     if (needsLoad && !draft) {
       needsLoad = false;
       const root = await $.session.root();
       const text = await $.fs.read(inRoot(root, PATH)).catch(() => null);
-      const product = await productName($);
-      live =
-        typeof text === "string"
-          ? {
-              roadmap: file.parse(text),
-              product,
-            }
-          : null;
+      live = typeof text === "string" ? file.parse(text) : null;
       specs = {};
-      for (const i of live?.roadmap.items ?? [])
+      for (const i of live?.items ?? [])
         if (i.spec && !i.done)
           specs[i.slug] = parseSpec(
             await $.fs.read(inRoot(root, i.spec)).catch(() => null),
           );
       git = await readGit($);
+      const open = (live?.items ?? []).filter((i) => !i.done && !i.spec);
+      const elsewhere = await readAway(
+        $,
+        root,
+        open.map((i) => i.slug),
+      );
+      away = elsewhere.lines;
+      Object.assign(specs, elsewhere.specs); // their /build step, from the worktree
       isSetUp = await $.fs.exists(inRoot(root, "AGENTS.md")).catch(() => true);
       hasDiff = (await $.command.list().catch(() => [])).some(
         (c) => c.name === "diff",
       );
     }
     const view =
-      draft ??
-      (live && {
-        product: live.product,
-        cards: cards(live.roadmap),
-        later: live.roadmap.later,
-      });
+      draft ?? (live && { product, cards: cards(live), later: live.later });
     if (!view)
       return (
         <el.Text dimColor>
@@ -220,6 +190,33 @@ export function roadmapView(on: On) {
         }
       });
     };
+    // Raises the desktop's worktree chip (ccd_session's spawn_task) for /kit:build <slug>,
+    // marked first so the card asks "Again?" at once. Failing: the old mark comes back.
+    const toWorktree = async (slug: string) => {
+      const now = await $.clock.now();
+      if (now - sent < 2000) return;
+      sent = now;
+      const root = await $.session.root();
+      const all = ((await $.store.get(wt.STORE_KEY).catch(() => null)) ??
+        {}) as wt.Marks;
+      const mine = { ...all[root] };
+      const before = mine[slug];
+      const mark = { ...all, [root]: { ...mine, [slug]: now } };
+      await $.store.set(wt.STORE_KEY, mark).catch(() => {});
+      away = { ...away, [slug]: away[slug] ?? "sent to worktree" };
+      redraw();
+      const why = await $.mcp
+        .call("ccd_session", "spawn_task", wt.chip(slug))
+        .then(wt.failure, (err) => String(err));
+      if (why !== null) {
+        if (before === undefined) delete mine[slug];
+        const back = { ...all, [root]: mine };
+        await $.store.set(wt.STORE_KEY, back).catch(() => {});
+        $.ui.toast(`kit: worktree chip failed (${why})`);
+      }
+      needsLoad = true;
+      redraw();
+    };
     const edit = async (done: string, change: (text: string) => string) => {
       const path = inRoot(await $.session.root(), PATH);
       const text = String(await $.fs.read(path).catch(() => ""));
@@ -245,6 +242,8 @@ export function roadmapView(on: On) {
       ...view,
       draft: !!draft,
       specs,
+      away,
+      canWorktree: e.surface === "desktop",
       git,
       isSetUp,
       hasDiff,
@@ -258,6 +257,7 @@ export function roadmapView(on: On) {
       toggled,
       act: {
         build: (slug) => void run("kit:build", slug, true),
+        worktree: (slug) => void toWorktree(slug),
         run: (command, args = "") => void run(command, args, false),
         edit: (done, change) => void edit(done, change),
         fold: (phase) => {

@@ -25,6 +25,7 @@ export type Usage = {
 export type Git = { changed: number; branch: string; unpushed: number | null };
 export type Actions = {
   build: (slug: string) => void; // runs /clear, then /kit:build <slug> in the fresh chat
+  worktree: (slug: string) => void; // raises the desktop's chip: /kit:build <slug> in a worktree
   run: (command: string, args?: string) => void; // runs the slash command at once
   edit: (done: string, change: (text: string) => string) => void;
   fold: (phase: string) => void;
@@ -46,6 +47,8 @@ export type Parts = {
   later: string[];
   draft: boolean;
   specs: Record<string, SpecState | null>;
+  away: Record<string, string>; // open features running elsewhere: "runs on <branch>", …
+  canWorktree: boolean; // the desktop app, which has the worktree chip (ccd_session)
   git: Git | null;
   isSetUp: boolean;
   hasDiff: boolean;
