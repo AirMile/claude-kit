@@ -12,7 +12,7 @@ Code already has a native feature (plan mode, subagents, `AGENTS.md` loading, `/
 `/security-review`) kit uses it instead of rebuilding it.
 
 ```
-11 skills · 1 agent · 2 hooks · 2 scripts · ~1100 lines of skills · ~330 tokens always-on
+11 skills · 1 agent · 2 hooks + 1 mod (2 panes) · 2 scripts · ~1100 lines of skills · ~330 tokens always-on
 ```
 
 ---
@@ -69,7 +69,9 @@ claude plugin marketplace add ~/Projects/claude-kit
 claude plugin install kit@airmile
 ```
 
-Edits in the clone take effect after `/reload-plugins`; `/commit` pushes them to GitHub.
+The install is a copy in `~/.claude/plugins/cache/airmile/kit/<version>/`: edits in the clone
+take effect only after a version bump + update (see [Update](#update--uninstall)); `/commit`
+pushes them to GitHub.
 
 Check with `claude plugin details kit`: it should list 11 skills, 1 agent and 2 hooks. Skills
 are available in **new** sessions; in a running session use `/reload-plugins`.
@@ -101,8 +103,8 @@ On Windows, copy the file instead (symlinks need admin rights there).
 
 ### Update / uninstall
 
-- Edits to this repo take effect after `/reload-plugins` (no version bump needed for a local
-  marketplace).
+- Edits to this repo take effect only after you bump `version` in `.claude-plugin/plugin.json`, then `claude plugin marketplace update airmile && claude plugin update kit@airmile` and start a new session. Without the bump the cached copy stays as it was.
+- Try edits without installing: `claude --plugin-dir ~/Projects/claude-kit`.
 - Remove: `claude plugin marketplace remove airmile` (also uninstalls the plugin).
 
 ---
@@ -309,6 +311,10 @@ Users can create, rename and delete habits; the list survives a reload.
 - src/habits/store.test.ts → happy, error
 - browser: empty-name message visible
 
+## Handoff
+
+- Store keeps names trimmed; the form shows the raw input (user asked for that)
+
 ## Verify
 
 <auto result, manual items and their outcome>
@@ -355,7 +361,8 @@ Turn an idea into `docs/product.md` + `docs/roadmap.md`, or update them later.
 3. Runs 1–3 rounds of clickable questions (audience, MVP size, core experience, stack, then
    gaps). Vision and naming are asked as open questions; visual choices are shown as small
    mocks; competing designs get a trade-off table first.
-4. Shows both files in the plan. **Accept** writes them; **reject** revises.
+4. Shows both files in the plan, and the draft roadmap in the [roadmap pane](#kit-mod).
+   **Accept** writes them; **reject** revises.
 
 Roadmap rules: every item is a user-visible capability buildable in one `/build` run (≤ ~6
 acceptance criteria, otherwise split); dependencies first, then value; greenfield projects start
@@ -465,7 +472,13 @@ It's logged in the feature's spec under `## Fixes` and committed as `fix:`.
    and which test covers which criterion. More than 6 criteria → it proposes a split. It also
    flags roadmap items this feature makes obsolete.
    **Accept** writes `docs/specs/<slug>.md`, links it from the roadmap line (= in progress) and
-   records real decisions in `docs/decisions.md`.
+   records real decisions in `docs/decisions.md`. Then the **safe point**: Continue here, or
+   Fresh start, which drops the exploration and keeps the spec: the mod clears the chat after
+   that turn and runs `/build <slug>` in the fresh one (without the mod: `/clear`, then
+   `/build <slug>` yourself). Or stop early: **Stop here** keeps just the spec, **Build, then
+   stop** builds and leaves verify for later (`Status: verifying`, changes uncommitted until
+   Finish). `/build <slug>` or the roadmap pane picks it up at that step.
+   The [kit mod](#kit-mod) shows your context % above the prompt to help you choose.
 2. **Build (inline).** Test first where testable, then code, following `AGENTS.md`. If the spec
    has a `Design:` source, the UI is built with the `/convert` procedure. Full suite +
    typecheck/lint must be green.
@@ -478,20 +491,25 @@ It's logged in the feature's spec under `## Fixes` and committed as `fix:`.
 5. **Finish.** Spec `Status: done`, roadmap line checked, the verifier's improvement notes (max 3) added under `## Later` in the roadmap **without asking** (delete the ones you don't want;
    `/build` never picks up `## Later` items by itself), `lessons`, then **one commit** with code +
    spec + roadmap. The report suggests `/simplify` for diffs over ~150 lines and
-   `/security-review` for auth, stored user input or payments. It never pushes.
+   `/security-review` for auth, stored user input or payments. When the feature closed the last
+   open item of its phase, the report says so and suggests `/launch` (`major` for a `vX` heading,
+   `minor` for `vX.Y`), then `/roadmap` to sort
+   `## Later`. It never pushes.
 
-   Finish asks no questions, so a feature run only stops for the plan approval and for manual
-   checks that genuinely need you. That keeps it smooth in auto mode.
+   Finish asks no questions, so a feature run only stops for the plan approval, the safe point
+   right after it, and manual checks that genuinely need you. That keeps it smooth in auto mode.
 
 #### Resuming
 
-Stop anywhere (close the chat, run out of context, come back tomorrow). In a new chat:
+Stop anywhere (close the chat, run out of context, come back tomorrow). Before every `Status`
+change `/build` rewrites the spec's `## Handoff` (max 5 lines: deviations, failed attempts,
+your corrections), so what was only said in the chat survives. In a new chat:
 
 ```
 /build habit-crud      (or just /build)
 ```
 
-It reads `Status`, the unchecked criteria and `git status`, says in one line where it picks up,
+It reads `Status`, `## Handoff`, the unchecked criteria and `git status`, says in one line where it picks up,
 and continues: `defined`/`building` → build, `verifying` → verify, `manual` → manual checks.
 
 ### /commit
@@ -570,8 +588,8 @@ project's own idiom so `/convert`, `/build` and the frontend rule use tokens ins
    `primary`, …) with dark values, a neutral scale, type families and scale, spacing, radii,
    shadows and motion (with `prefers-reduced-motion`). Every text/background pair gets a
    **computed** WCAG contrast ratio (≥ 4.5:1 body, ≥ 3:1 large/UI); failing pairs are fixed
-   before you see the plan. A one-file HTML preview (swatches, type, buttons, a card, both
-   themes) is screenshotted into the plan.
+   before you see the plan. The proposal opens in the [theme pane](#kit-mod) (colors with
+   ratios, real fonts, type scale, spacing, radius, shadow, a sample card in both themes).
 3. **Write** to `@theme`, the Tailwind config, or `:root`, plus fonts the framework's way. With
    `from-code` you choose whether to replace the raw values now.
 4. **Record** one convention line in `AGENTS.md` ("use the tokens in <file>"), and a real
@@ -600,8 +618,7 @@ appear in Claude's skill list, so it costs no context).
    and replacing beat adding; net growth needs a one-sentence reason; budgets still hold.
 4. **Check**: budgets, `claude plugin validate`, the push-guard test when hooks changed, a real
    run of a touched script.
-5. **Commit** in the kit repo as `fix(<skill>)` or `refactor(<skill>)`; `/reload-plugins` to use
-   it right away.
+5. **Commit** in the kit repo as `fix(<skill>)` or `refactor(<skill>)`; to use it, bump `version` in `.claude-plugin/plugin.json`, then `claude plugin marketplace update airmile && claude plugin update kit@airmile` and start a new session.
 
 Together with the Skill Feedback rule in `~/.claude/CLAUDE.md` this is the loop: friction is
 noticed during a run → raised after the report → you approve → `/improve` applies it.
@@ -713,7 +730,8 @@ files.
 
 ## Hooks
 
-Both hooks ship with the plugin (`hooks/hooks.json`) and cost no context tokens.
+Both hooks and the context mod ship with the plugin (`hooks/hooks.json`) and cost no context
+tokens.
 
 ### push-guard
 
@@ -738,6 +756,54 @@ holds even in bypass mode, but don't say the same for `ask`.
 `PostToolUse` on Write/Edit. Formats the edited file with **Biome** when the project has a
 `biome.json` (for JS/TS/CSS/JSON) and **Prettier** otherwise (also Markdown, HTML, YAML, SCSS,
 GraphQL). Failures are silent; formatting never blocks an edit.
+
+### kit mod
+
+A [mod](https://code.claude.com/docs/en/plugins/mods/overview) (`hooks/register.tsx` and the
+files next to it): code that runs inside Claude Code. **Requires Claude Code 2.1.287+**; older
+versions skip it. It never writes files.
+
+**Context** (reads the spec of the current `feat/<slug>` or `fix/<slug>` branch):
+
+- **After a compaction** (auto or `/compact`) it adds one line to the new context: slug,
+  `Status`, criteria done, and "re-read the spec, `## Handoff` first". That line comes from
+  disk, not from the summary, so it is always right.
+- **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
+  whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
+- **Usage**: `ctx 114k · session 55% · 2h 53m · week 75% · 4d 3h` on top of the roadmap
+  dashboard, each limit with the time until it resets; updated after every turn.
+
+**Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
+columns, above the prompt otherwise):
+
+- **Roadmap**: `/roadmap` (no argument) opens a project dashboard, titled with the product's name. On top, in its own block:
+  context and plan usage (a value turns amber from 60%, red from 85%) with **Compact** and **Clear**; git state (branch,
+  changed files, commits not on `origin/HEAD`) with **Diff** (`/diff`, where it exists) and
+  **Commit** when files changed and **Launch** when commits aren't live; then kit's skills:
+  **Setup** (only when `AGENTS.md` is missing), **Ideas**, **Critique**, **Theme** and
+  **Audit**. Those buttons
+  put the command in your prompt box and you press Enter to run it (a plugin can't run a command
+  itself: it would wait for your next message); a done feature's **Explain** fills
+  `/explain <slug>`. Below that, `docs/roadmap.md` live, grouped by phase (a release: `v1 · MVP`, `v1.1 · Sharing`; any `##` heading works, shown as written): a
+  card per feature with its state, and for one in progress its step (define → build → verify, with the criteria count while verifying). **Pick
+  up** (open), **Build** (spec ready), **Resume** (building) or **Verify** (ready to verify)
+  fills `/clear`; after your Enter it fills `/build <slug>`, which continues at that step. A feature not started has **↗** (Pick up) and **⋯**, a row of buttons that
+  move it to another phase or to `## Later`, or remove it; a phase heading folds its
+  cards (a folded heading turns dim), finished phases wait behind one "✓ v1 · MVP, …" line, and in an unfinished one the done features fold into one "✓ n done" line; **Remove** asks once ("Remove?") before it acts; **+ Add** in a phase heading adds one, and **+ Add** in the Later heading adds an idea there; a Later idea's ⋯ restores it. Done and in-progress features can't
+  be edited there (their state is `/build`'s). The whole heading text folds a phase, or Later. In plan
+  mode it shows the draft, read-only, without the dashboard.
+- **Theme**: `/theme` shows its proposal before you approve it: colors for light and dark
+  with contrast ratios, a sample card and button, the type scale in the real fonts, spacing,
+  radius and shadow. Google Fonts are fetched as a small glyph subset and embedded (needs
+  network and Node 18+); offline the system font is used. The terminal gets swatches and
+  text. Contrast is computed by the mod and returned to Claude, which fixes failing pairs.
+
+The skills pass their data to the panes as tool calls (`mcp__kit__roadmap_view`,
+`mcp__kit__theme_view`); those are display-only and allowed without a prompt. So is
+`mcp__kit__fresh_start`, which `/build` calls only after you picked Fresh start.
+
+Trunk mode or no matching spec → the context part shows nothing. To turn every mod off, set
+`"disableAllHooks": true` (this also stops push-guard and format-on-save).
 
 ---
 
@@ -998,7 +1064,8 @@ node hooks/push-guard.test.cjs
 claude plugin details kit
 ```
 
-Then `/reload-plugins` in a session and run the skill on a sandbox project.
+Then run the skill on a sandbox project in `claude --plugin-dir ~/Projects/claude-kit`, or
+bump `version` in `.claude-plugin/plugin.json`, then `claude plugin marketplace update airmile && claude plugin update kit@airmile` and start a new session.
 
 The scripts can also be run by hand: `node skills/commit/scripts/staging-check.js` in any repo,
 `node skills/setup/scripts/migrate-v1.js <project>` on a v1 project (read-only).

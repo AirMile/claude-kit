@@ -11,6 +11,9 @@ resume with `/build <slug>`. No checkpoints or background workflows: the spec fi
 Small changes don't need this skill (a plain request + `/commit` is fine); `/build` handles them
 gracefully when it gets one anyway.
 
+**Phase boundaries**: before every `Status:` change, rewrite the spec's `## Handoff` (template
+rule). A fresh chat gets nothing else back, so anything learned only in this chat goes there.
+
 ## 0. Workspace
 
 - **Git mode** from `AGENTS.md § Git`: `branches` (default when missing) or `trunk`.
@@ -39,9 +42,9 @@ Then:
 | Free text describing a bug ("fix", "broken", "error", "doesn't") | **Fix**                                                                                                               |
 | Free text, other                                                 | Size gate → **Small** or **Feature**                                                                                  |
 
-**Resume**: read the spec's `Status` and unchecked criteria, run `git status`/`git diff --stat`,
-and compare with the spec's Approach. Say in one line where you pick up, then continue at the
-step matching the status (`defined`/`building`→4b, `verifying`→5, `manual`→6).
+**Resume**: read the spec's `Status`, `## Handoff` and unchecked criteria, run `git status`/
+`git diff --stat`, and compare with the spec's Approach. Say in one line where you pick up, then
+continue at the step matching the status (`defined`/`building`→4b, `verifying`→5, `manual`→6).
 
 **Size gate**: the change is Small only when **none** hold:
 
@@ -78,13 +81,19 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
    split first. Also check: does this make another roadmap item obsolete? Say so in the plan.
 3. `ExitPlanMode`. Reject → revise. Accept →
    - write the plan text as `docs/specs/<slug>.md` (`Status: defined`); no slug yet → derive one
-     and add a roadmap line;
+     and add a roadmap line (in the first phase that still has open items);
    - add `· spec: docs/specs/<slug>.md` to the roadmap line;
    - a decision with a rejected alternative → append to `docs/decisions.md`;
    - commit just these docs right away (`docs(<slug>): add spec`): that commit is the claim
      other sessions see, and the resume point if this chat dies. With a remote, the plan says
      the branch will be pushed so teammates see the claim; accepting it is the OK, so push
      (`KIT_PUSH_OK=1 git push -u origin HEAD`).
+4. Safe point (the cleanest one): AskUserQuestion: Continue here (Recommended when this chat is
+   short) / Fresh start (`/clear`, then `/build <slug>`: drops the exploration, keeps the spec)
+   / Build, then stop (before verify) / Stop here (spec only; `/build <slug>` builds it later).
+   Fresh → call `mcp__kit__fresh_start` with the slug (the mod clears the chat after this turn
+   and resumes there); tool missing → tell the user to run `/clear`, then `/build <slug>`. End
+   the turn. Never offer it from step 5 on: Finish needs what happened in this chat.
 
 ### 4b. Build (inline)
 
@@ -93,6 +102,8 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
    `AGENTS.md` conventions. Library API you're unsure of → context7, don't guess.
 3. Run the full test suite + typecheck/lint once at the end. Fix until green.
 4. Don't check criteria yet: verify does that.
+5. User chose Build, then stop → `Status: verifying` (Handoff: what verify should look at
+   first), report, end the turn. Changes stay uncommitted: Finish makes the one commit.
 
 ## 5. Verify
 
@@ -102,7 +113,8 @@ It returns: per-criterion pass/fail with evidence, manual items, and at most 3 i
 
 - Fails → fix them (inline), re-run the failing checks yourself. Max 2 rounds; still failing →
   stop, write the state into `## Verify`, report what blocks, and leave `Status: verifying`.
-- All automated criteria pass → check them `[x]` in the spec, record the result under `## Verify`.
+- All automated criteria pass → check them `[x]` in the spec, record the result and the
+  verifier's improvement notes under `## Verify`.
 
 Dev server: follow `AGENTS.md § Git` (only a server this session started; default port taken
 → free port, app URL variables pointed at it). Pass its URL to the verifier. Stop only
@@ -117,9 +129,12 @@ this feature, then re-ask that item. Record outcomes under `## Verify`.
 
 ## 7. Finish
 
-1. `Status: done`; all criteria `[x]`; roadmap line → `[x]`.
-2. Verifier improvement notes → append each as a line under `## Later` in the roadmap, without
-   asking (the user prunes later; `## Later` is never picked up by `/build`). Skip duplicates.
+1. `Status: done`; all criteria `[x]`; roadmap line → `[x]`. Was it the last open item of its
+   phase (`##` heading but Later) → that phase is done: the report's `phase` line (suggest,
+   don't ask). A `vX` heading suggests `/launch major`, `vX.Y` `/launch minor`.
+2. Verifier improvement notes (from `## Verify`) → append each as a line under `## Later` in the
+   roadmap, without asking (the user prunes later; `## Later` is never picked up by `/build`).
+   Skip duplicates.
 3. `lessons`.
 4. Suggest in the report, don't ask: `/simplify` when the diff is over ~150 lines;
    `/security-review` when the feature handles auth, user input stored server-side, or payments.
@@ -137,6 +152,7 @@ tests      <pass count> · <suite command>
 later      +<n> ideas added under ## Later (or —)
 commit     <hash> <subject>
 suggest    </simplify, /security-review, or —>
+phase      <heading> done · /launch [major|minor], then /roadmap to sort ## Later (only when one ended)
 next       <next open roadmap slug, or —>
 ```
 

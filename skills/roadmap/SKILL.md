@@ -1,7 +1,7 @@
 ---
 name: roadmap
 description: Shape an idea into docs/product.md + a roadmap, or update the roadmap. Use with /roadmap.
-argument-hint: "[idea | add <item> | critique]"
+argument-hint: "[idea | add <item> | brainstorm | critique]"
 ---
 
 # Roadmap
@@ -12,8 +12,10 @@ Turns an idea into two files every later step reads: `docs/product.md` (what and
 ## 0. Route
 
 - `docs/product.md` missing → **New**.
-- Exists, arg starts with `critique` → **Critique**.
-- Exists otherwise → **Update** (arg = the change, e.g. `add dark mode`, or empty → ask what to change).
+- Exists, no arg → **show** the roadmap live (below) and stop: the user edits in the pane, or
+  says what to change. No pane (tool missing) → **Update** and ask what to change.
+- Exists, arg starts with `critique` → **Critique**; `brainstorm` → **Brainstorm**.
+- Exists otherwise → **Update** (arg = the change, e.g. `add dark mode`).
 
 ## New
 
@@ -29,8 +31,10 @@ Turns an idea into two files every later step reads: `docs/product.md` (what and
    - Visual choices (layout, look) → show 2-3 ASCII/markdown mocks, don't ask blind.
    - Competing designs → print a short trade-off table before the question.
    - Two free-text answers in a row → switch to open questions.
-4. **Draft** both files (formats below) in the plan file and `ExitPlanMode`. Reject → revise.
-5. **Accept** → write `docs/product.md` and `docs/roadmap.md`. Report and point to next step.
+4. **Draft** both files (formats below) in the plan file, **show** the draft, and
+   `ExitPlanMode`. Reject → revise (show again).
+5. **Accept** → write `docs/product.md` and `docs/roadmap.md`, show it live. Report and point
+   to next step.
 
 ### Roadmap rules
 
@@ -39,16 +43,26 @@ Turns an idea into two files every later step reads: `docs/product.md` (what and
 - Order: dependencies first, then value. Greenfield → first item `scaffold` (handled by `/setup`).
 - Slugs: kebab-case, 1-3 words, unique.
 - 5-15 items for an MVP. More ideas → put them under `## Later` (unordered, not in the flow).
+- Phases are releases: group the items under `## v<version> · <name>`, starting with
+  `v1 · MVP`, then `v1.1 · <name>` (1-4 open at a time). Order across and within = priority.
+  Any other `##` heading but Later (`Phase 1 · MVP`, `Now`) or none at all stays valid.
 
 ## Update
 
 1. Read product.md + roadmap.
-2. Apply the request: add (find the right position by dependency/value; say why), reorder,
+2. Apply the request: add (find the right phase and position by dependency/value; say why), reorder,
    remove, or reword. Check the change against **Non-goals**: a conflict → say so and ask whether
    the non-goal changes (then update product.md too) or the item is dropped.
 3. Never touch `[x]` lines or items that are in progress: a spec link here, or claimed on another
    branch (`git log --all --oneline -1 -- docs/specs/<slug>.md`). Reordering around them is fine.
-4. Show the diff, one confirmation (Apply (Recommended) / Adjust), write.
+4. Show the diff and **show** the resulting roadmap, one confirmation (Apply (Recommended) /
+   Adjust), write.
+
+**Show** = call `mcp__kit__roadmap_view`. A draft not yet written (New, Update before Apply):
+pass the product name, the items in order (`state`: `done` for `[x]`, `progress` for a linked
+unchecked line, else `open`; `phase`: its heading without `## `) and the `## Later` ideas.
+After writing: call it without items; the pane then shows `docs/roadmap.md` live, where the
+user can also add, reword, move or shelve open items. Tool missing → skip.
 
 ## Critique
 
@@ -59,6 +73,13 @@ Stress-test product.md and the roadmap without editing it first. Three lenses, m
 3. **Smaller version**: what is the smallest roadmap that still tests the core idea?
 
 Then offer: apply suggested roadmap/roadmap edits (via Update) or leave as is.
+
+## Brainstorm
+
+Read product.md and the roadmap, then propose 3-5 new features that serve **For whom** and
+**Core experience**, respect **Non-goals**, and aren't on the roadmap or under `## Later` yet:
+one line each with why. AskUserQuestion (multiSelect) which to add; each chosen one goes to the
+fitting phase (or `## Later`) via **Update** step 2-4.
 
 ## Formats
 
@@ -93,14 +114,21 @@ Then offer: apply suggested roadmap/roadmap edits (via Update) or leave as is.
 `docs/roadmap.md`:
 
 ```markdown
-<!-- format: one line per item, order = priority.
+<!-- format: items under phase (release) headings, one line per item, order = priority.
+## v<version> · <name>
 - [ ] **slug** · one-line description
 - [ ] **slug** · description · spec: docs/specs/slug.md   ← in progress (spec exists, not done)
 - [x] **slug** · description · spec: docs/specs/slug.md   ← done -->
 
 # Roadmap
 
+## v1 · MVP
+
 - [ ] **scaffold** · project skeleton, dev server, test runner
+- [ ] **<slug>** · <description>
+
+## v1.1 · <name>
+
 - [ ] **<slug>** · <description>
 
 ## Later

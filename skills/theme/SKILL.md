@@ -24,7 +24,7 @@ From the argument, or one AskUserQuestion (recommended first):
 
 | Source                           | How                                                                                                                    |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Brief ("calm, trustworthy, B2B") | derive from the brief + `docs/product.md` audience                                                                        |
+| Brief ("calm, trustworthy, B2B") | derive from the brief + `docs/product.md` audience                                                                     |
 | Image / screenshot               | read it; take dominant colors, font style, density, corner radius                                                      |
 | URL                              | browser: computed `color`, `background-color`, `font-family`, `font-size`, `border-radius` of key elements             |
 | `from-code`                      | grep raw hex/rgb/hsl, px font sizes and spacing in the code; cluster near-duplicates; propose tokens that replace them |
@@ -36,9 +36,10 @@ From the argument, or one AskUserQuestion (recommended first):
 - **Color**: brand + accent, a neutral scale (50 … 950), and semantic roles: `bg`, `surface`,
   `fg`, `muted`, `border`, `primary`, `primary-fg`, `success`, `warning`, `danger`. Dark theme
   values for every semantic role.
-- **Contrast**: compute WCAG ratios for every text-on-background pair (fg/bg, muted/bg,
-  primary-fg/primary, in both themes) with a short `node -e` calculation, never by eye. Body
-  text ≥ 4.5:1, large text and UI ≥ 3:1. Fix failing pairs before showing the plan.
+- **Contrast**: WCAG ratios for every text-on-background pair (fg/bg, muted/bg,
+  primary-fg/primary, in both themes), computed, never by eye: the preview tool below returns
+  them (no tool → a short `node -e` calculation). Body text ≥ 4.5:1, large text and UI ≥ 3:1.
+  Fix failing pairs before showing the plan.
 - **Typography**: 1-2 families (Google Fonts or system stack), a type scale (xs … 4xl) with
   line heights; `clamp()` for display sizes.
 - **Spacing**: a 4px-based scale; **radius**: 2-4 steps; **shadow**: 2-3 levels.
@@ -46,9 +47,11 @@ From the argument, or one AskUserQuestion (recommended first):
 - A table of the roles with values and contrast ratios, plus 2-3 lines on the direction (why
   these choices fit the brief/source).
 
-Visual choices are hard to judge as text: write a one-file HTML preview to the OS temp
-directory (swatches with contrast ratios, type scale, buttons, a card, both themes), open it in
-the browser, screenshot it, and reference the screenshot in the plan.
+Visual choices are hard to judge as text: call `mcp__kit__theme_view` with the proposal (hex
+colors per role for light and dark, fonts with `google: true` for Google Fonts, type scale,
+spacing, radius, shadow in px). It shows them in kit's theme pane (real fonts on desktop) and
+returns the contrast table; ✗ pairs → adjust and call again. Tool missing (Claude Code before
+2.1.287) → the table in the plan is the preview.
 
 `ExitPlanMode`. Reject → revise the plan and preview.
 

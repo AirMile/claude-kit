@@ -1,5 +1,6 @@
 {
-  "description": "kit: confirm before git push, format files after edits",
+  "description": "kit: confirm before git push, format files after edits, context mod",
+  "modules": ["./register.tsx"],
   "hooks": {
     "PreToolUse": [
       {

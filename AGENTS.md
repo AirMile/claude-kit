@@ -8,7 +8,13 @@ Claude Code plugin (`.claude-plugin/plugin.json`, name `kit`). Successor to `cla
 - `skills/<name>/SKILL.md`: one workflow per skill
 - `agents/verifier.md`: fresh-context verify subagent used by `build`
 - `hooks/hooks.json`: push-guard (PreToolUse) + format-on-save (PostToolUse);
-  `hooks/push-guard.test.cjs` is its regression test
+  `hooks/push-guard.test.cjs` is its regression test. Its `modules` names `hooks/register.tsx`,
+  the kit mod (Claude Code 2.1.287+): compaction note, safe-point band, usage figures, and
+  the tools `mcp__kit__roadmap_view` / `mcp__kit__theme_view` (`hooks/*-view.tsx`) that
+  `/roadmap` and `/theme` call to open their panes (the roadmap pane draws through the pure
+  `roadmap-{dashboard,phase,card,later}.tsx` on the shapes in `roadmap-parts.tsx`), plus `mcp__kit__fresh_start`
+  (`hooks/fresh-start.ts`), which `/build`'s safe point calls to clear and resume. Only `register.tsx` registers events; `$`
+  never crosses an import (the validator refuses it), so `hooks/spec.ts` stays pure
 - `skills/<name>/scripts/`: deterministic helpers (commit: `staging-check.js`, setup:
   `migrate-v1.js`), called via `${CLAUDE_SKILL_DIR}` and allowed in the skill's `allowed-tools`
 - `rules/frontend.md`: path-scoped user rule; plugins can't ship rules, so it is symlinked to
@@ -32,8 +38,17 @@ product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.m
 - No `shared/` directory, no JSON state files
 - Scripts only for deterministic checks or conversions with fixed output (Node, so they run on
   macOS and Windows). Never for reading/editing roadmap or spec files: those are small and the
-  model handles them; a script there is how v1 regrew
+  model handles them; a script there is how v1 regrew. One exception: the roadmap pane edits
+  open items of `docs/roadmap.md` (add, change phase, move to Later, remove, restore) via
+  `hooks/roadmap-file.ts`, which keeps untouched lines byte for byte and refuses done and
+  in-progress items (their state is `/build`'s); `hooks/roadmap-file.test.ts` guards it
 - Hooks and scripts must work on Windows too (e.g. `npx` is `npx.cmd` there)
+- The mod (`hooks/*.ts*`) costs no context (it runs as code), so no total line budget: one
+  purpose per file, ≤ ~300 lines each (larger → split). It reads only specs (`Status` +
+  criteria), `docs/roadmap.md` and read-only git state (status, branch, commits not on
+  `origin/HEAD`), and writes only through `roadmap-file.ts`. Change a view
+  tool's schema or the roadmap format → update `roadmap-file.ts` and the skill that writes it.
+  Tests: `claude plugin test .`
 - A rule that needs a second paragraph of exceptions is a sign to cut it, not to extend it
 - Check: `wc -l skills/*/SKILL.md`
 
@@ -43,8 +58,10 @@ product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.m
 - Lean on native Claude Code features (plan mode, subagents, `/simplify`, `/security-review`,
   AGENTS.md loading) instead of rebuilding them.
 - Never push without the user's explicit OK (enforced by `hooks/push-guard.cjs`).
-- Validate after edits: `claude plugin validate .` and `node hooks/push-guard.test.cjs`; in a
-  session `/reload-plugins`.
+- Validate after edits: `claude plugin validate .` and `node hooks/push-guard.test.cjs`. The
+  install is a cached copy per version: to use edits, bump `version` in `plugin.json`, then
+  `claude plugin marketplace update airmile && claude plugin update kit@airmile` (or test with
+  `claude --plugin-dir .`).
 
 ## Evals
 

@@ -34,9 +34,15 @@ Design: <path or Figma URL, or —>
 
 - <which test file(s) cover which criteria; what is checked in the browser>
 
+## Handoff
+
+<rewritten by build at every Status change, max 5 lines: deviations from Approach, what was
+tried and failed, user corrections, what the next step does first>
+
 ## Verify
 
-<filled by build: auto result, then manual items with steps + expected, then outcome>
+<filled by build: auto result, verifier notes, then manual items with steps + expected, then
+outcome>
 
 ## Fixes
 
@@ -48,3 +54,5 @@ Rules:
 - Criteria are observable (a user or a test can see them), never "code is clean".
 - More than 6 criteria → propose splitting into two roadmap items before writing.
 - Every criterion maps to at least one line under **Tests** (automated or browser).
+- **Handoff** is replaced, never appended: only what a fresh chat needs and the spec doesn't
+  already say. Nothing worth saying → `—`.
