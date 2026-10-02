@@ -22,12 +22,12 @@ framework and where the global stylesheet lives.
 
 From the argument, or one AskUserQuestion (recommended first):
 
-| Source                           | How                                                                                                                    |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Brief ("calm, trustworthy, B2B") | derive from the brief + `docs/product.md` audience                                                                     |
-| Image / screenshot               | read it; take dominant colors, font style, density, corner radius                                                      |
-| URL                              | browser: computed `color`, `background-color`, `font-family`, `font-size`, `border-radius` of key elements             |
-| `from-code`                      | grep raw hex/rgb/hsl, px font sizes and spacing in the code; cluster near-duplicates; propose tokens that replace them |
+| Source                           | How                                                                                                                                                        |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Brief ("calm, trustworthy, B2B") | derive from the brief + `docs/product.md` audience; avoid the generic AI look (Inter/Roboto by default, purple-blue gradients, gradient text) unless asked |
+| Image / screenshot               | read it; take dominant colors, font style, density, corner radius                                                                                          |
+| URL                              | browser: computed `color`, `background-color`, `font-family`, `font-size`, `border-radius` of key elements                                                 |
+| `from-code`                      | grep raw hex/rgb/hsl, px font sizes and spacing in the code; cluster near-duplicates; propose tokens that replace them                                     |
 
 ## 2. Propose (plan mode)
 
@@ -35,7 +35,8 @@ From the argument, or one AskUserQuestion (recommended first):
 
 - **Color**: brand + accent, a neutral scale (50 … 950), and semantic roles: `bg`, `surface`,
   `fg`, `muted`, `border`, `primary`, `primary-fg`, `success`, `warning`, `danger`. Dark theme
-  values for every semantic role.
+  values for every semantic role. Neutrals carry a hint of the brand hue (no zero-chroma gray, no
+  pure `#000`); dark uses lighter surfaces instead of shadows, accents slightly desaturated.
 - **Contrast**: WCAG ratios for every text-on-background pair (fg/bg, muted/bg,
   primary-fg/primary, in both themes), computed, never by eye: the preview tool below returns
   them (no tool → a short `node -e` calculation). Body text ≥ 4.5:1, large text and UI ≥ 3:1.
@@ -43,7 +44,9 @@ From the argument, or one AskUserQuestion (recommended first):
 - **Typography**: 1-2 families (Google Fonts or system stack), a type scale (xs … 4xl) with
   line heights; `clamp()` for display sizes.
 - **Spacing**: a 4px-based scale; **radius**: 2-4 steps; **shadow**: 2-3 levels.
-- **Motion**: durations (fast/base/slow), 2 easings, and a `prefers-reduced-motion` rule.
+- **Motion**: durations (fast/base/slow) within 100–250ms (UI never > 300ms), 2 easings
+  (`cubic-bezier(0.16, 1, 0.3, 1)`, `cubic-bezier(0.33, 1, 0.68, 1)`), and a
+  `prefers-reduced-motion` rule.
 - A table of the roles with values and contrast ratios, plus 2-3 lines on the direction (why
   these choices fit the brief/source).
 
