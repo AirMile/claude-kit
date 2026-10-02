@@ -1,5 +1,5 @@
 ---
-type: tool_used
-tool: Bash
-input_match: "git commit"
+type: regex
+target: { source: file, path: commit-counts.txt }
+pattern: "^2\\n"
 ---

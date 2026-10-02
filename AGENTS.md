@@ -93,5 +93,7 @@ What the eval sandbox can't show (Claude Code 2.1.287), so graders must not depe
   Write/Edit calls are cut. Grade written files: `regex` with `target: {source: file, path}`.
 - git (the `/usr/bin/git` xcrun shim) fails on macOS: xcrun caches in `/var/folders/…`, which
   the sandbox blocks; `TMPDIR`/`DEVELOPER_DIR` don't help and case `env` only takes `EVAL_*`.
-  Skills fall back to reading `.git`; commit/worktree steps go untested. A non-shim git
-  ahead of `/usr/bin` in the shell profile's PATH (e.g. Homebrew's) should work (untested).
+  The sandbox also hides other git binaries from PATH lookup (stat denied), so `git` always
+  resolves to the shim; Homebrew git runs only by full path (`/opt/homebrew/bin/git`), which
+  the model finds by itself only sometimes. Grade git outcomes, not commands: have the prompt
+  write `git` output to a file and regex that file (see `commit-no-push`).
