@@ -133,8 +133,8 @@ this feature, then re-ask that item. Record outcomes under `## Verify`.
    phase (`##` heading but Later) → that phase is done: the report's `phase` line (suggest,
    don't ask). A `vX` heading suggests `/launch major`, `vX.Y` `/launch minor`.
 2. Verifier improvement notes (from `## Verify`) → append each as a line under `## Later` in the
-   roadmap, without asking (the user prunes later; `## Later` is never picked up by `/build`).
-   Skip duplicates.
+   roadmap (add the heading at the end when missing), without asking (the user prunes later;
+   `## Later` is never picked up by `/build`). Skip duplicates.
 3. `lessons`.
 4. Suggest in the report, don't ask: `/simplify` when the diff is over ~150 lines;
    `/security-review` when the feature handles auth, user input stored server-side, or payments.
