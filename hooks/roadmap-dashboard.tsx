@@ -26,6 +26,11 @@ const tone = (pct: number) =>
 function dashboard(p: Parts) {
   const { Box, Text, Button } = p.el;
   const g = p.git;
+  // Two lines: context and the 5h session, then the weekly limit.
+  const usageRows = [
+    p.usage.filter((u) => u.label !== "week"),
+    p.usage.filter((u) => u.label === "week"),
+  ].filter((row) => row.length);
   const skill = (
     key: string,
     label: string,
@@ -50,19 +55,23 @@ function dashboard(p: Parts) {
       paddingY={1}
     >
       {/* Usage, with the two commands that act on the context: compact or clear it. */}
-      <Box justifyContent="space-between" gap={2}>
-        <Text wrap="wrap">
-          {p.usage.map((u, i) => (
-            <Text key={u.label}>
-              {i ? "     " : ""}
-              <Text dimColor>{`${u.label} `}</Text>
-              <Text bold color={tone(u.pct)}>
-                {u.value}
-              </Text>
-              {u.note ? <Text dimColor>{` · ${u.note}`}</Text> : null}
+      <Box justifyContent="space-between" gap={2} marginBottom={1}>
+        <Box flexDirection="column">
+          {usageRows.map((row, r) => (
+            <Text key={r}>
+              {row.map((u, i) => (
+                <Text key={u.label}>
+                  {i ? "     " : ""}
+                  <Text dimColor>{`${u.label} `}</Text>
+                  <Text bold color={tone(u.pct)}>
+                    {u.value}
+                  </Text>
+                  {u.note ? <Text dimColor>{` · ${u.note}`}</Text> : null}
+                </Text>
+              ))}
             </Text>
           ))}
-        </Text>
+        </Box>
         <Box gap={1}>
           {skill("compact", "Compact", "compact")}
           {skill("clear", "Clear", "clear")}
