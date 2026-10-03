@@ -19,7 +19,9 @@ The source is a Figma URL with a `node-id` (ask once if none was given). Read it
   multi-section frame. The returned code is a reference to adapt, not code to paste.
 - `get_code_connect_map` → sections already mapped to a component: reuse that component.
 - `get_motion_context` (recursive) when the frame has prototype interactions or animated variants.
-- A mobile frame of the same page exists → read it too; it decides the collapse, not you.
+- A mobile frame of the same page exists (check the frame names on its Figma page; a large
+  `get_metadata` result is saved to a file → regex the top-level frames) → read it too; it
+  decides the collapse, not you.
 
 Figma MCP missing → AskUserQuestion: Reconnect via `/mcp` (Recommended) / an exported frame PNG
 (`Read` it; every value from it is `estimated` in the report).
@@ -94,7 +96,8 @@ Each round:
 3. List discrepancies, fix in order: layout/structure → spacing/sizing → colors/details.
 4. Compare computed values of key elements against the Figma values from step 1; any mismatch
    is a finding (skip for a PNG source).
-5. Motion rows: trigger the state, then compare computed `transform`/`opacity`/`transition` (or
+5. Motion rows: trigger the state in a headless browser (Playwright; a hidden pane freezes
+   transitions), then compare computed `transform`/`opacity`/`transition` (or
    `element.getAnimations()`) against the expected value; a screenshot doesn't prove motion.
 
 After the loop: check 390 / 768 / 1440px: no horizontal overflow (`scrollWidth ===
@@ -104,7 +107,10 @@ Stop when no significant discrepancies remain or after round 3 (list what's left
 
 ## 8. Refine and finish
 
-Show the final screenshot; AskUserQuestion: Looks right (Recommended) / Adjust (describe).
+Open the page in the browser pane when the session has one (`preview_start` the dev server,
+`navigate` to the route; Payload: the temporary dev route, kept until approval) so the user can
+scroll and click; else show the final screenshot. AskUserQuestion: Looks right (Recommended) /
+Adjust (describe).
 Adjust → targeted edit + re-screenshot, repeat.
 
 Standalone → `lessons` if a non-obvious convention surfaced, then `commit`. Inside `/build` →

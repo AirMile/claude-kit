@@ -52,9 +52,9 @@ Migrations, seed and writing documents change a database other people may use.
   the credentials) and exactly what gets written. Production → never.
 - Migration: the project's flow from `AGENTS.md` (create, read the SQL, migrate, generate types,
   commit migration + types together).
-- Content: a new page or an empty database → the seed. A page that already exists in the CMS →
-  never the full seed (it overwrites editor changes); add only the new block, as a draft, with
-  a small local-API script.
+- Content: an empty database → the seed. A new page → seed only that page, as draft (give the
+  seed `--only <slug>` / `--draft` if it lacks them). A page that already exists → never the
+  seed (it overwrites editor changes); add only the new block, as a draft, with a local-API script.
 - What the CMS already holds beats the frame: report copy differences, don't overwrite them.
 
 ## 6. Checks (no database needed)
