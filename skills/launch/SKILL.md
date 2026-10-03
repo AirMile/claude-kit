@@ -90,9 +90,11 @@ In order, stopping on the first failure:
    (`## [X.Y.Z] - YYYY-MM-DD`), commit `chore(release): vX.Y.Z`.
 2. **Merge**. The user said Go live, so pushes use `KIT_PUSH_OK=1 git push` (PowerShell:
    `$env:KIT_PUSH_OK=1; git push`).
-   - Feature branch (no PRs): it is synced already (step 0), so `git push origin
-HEAD:<default>`; in the main checkout also `git switch <default>` and `git merge --ff-only
-<branch>`.
+   - Feature branch, `Land: pr` (`AGENTS.md § Git`) + `gh`: push the branch, PR (existing or
+     `gh pr create`), then `gh pr merge --squash --delete-branch`.
+   - Feature branch, `Land: merge` or no `gh`: synced in step 0, so push it as the default
+     branch (`git push origin HEAD:<default>`); in the main checkout also fast-forward the
+     local one (`git switch <default>`, then `git merge --ff-only <branch>`).
    - Already on the default branch: push it.
 3. **Tag** the merged result, not your branch tip: `git fetch`, then tag `origin/<default>`.
    Versioned → `vX.Y.Z`; continuous → `release-YYYY-MM-DD` (`.2`, `.3` on the same day) as a
@@ -110,8 +112,8 @@ The range touched an `AGENTS.md`, `.claude/rules/` or a skill → suggest `/doct
 ## 6. Clean up (no orphan worktrees)
 
 - The merged branch: delete it locally when no worktree has it checked out (`git branch -d`).
-- This session runs in a desktop worktree → offer to archive it (no PR, so the app's
-  auto-archive doesn't fire).
+- This session runs in a desktop worktree → merged through a PR with the app's _Auto-archive
+  after PR merge or close_ on, the app archives it; otherwise offer to archive it.
 - Other worktrees (`git worktree list`) whose branch is now merged into `origin/<default>` and
   have no uncommitted changes → list them and offer to archive those sessions (the desktop app
   asks you per session) or, for worktrees the app doesn't know, `git worktree remove`.

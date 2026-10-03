@@ -647,13 +647,15 @@ The step from "done on my branch" to "live", for solo and team work.
    else patch).
 4. **Go / no-go** block: risk in plain language, what must happen before (migrations, env vars),
    and the rollback path. Nothing happens until you say Go live.
-5. **Go live**: changelog + version commit (versioned), a direct merge into the default branch
-   (no PRs), push, and a tag on the merged commit: `vX.Y.Z`, or `release-YYYY-MM-DD` as a
-   rollback anchor for continuous deploys. No remote yet → it offers to create a private GitHub repo.
+5. **Go live**: changelog + version commit (versioned), the merge (`Land: pr` → PR + squash
+   merge, `Land: merge` → a direct merge into the default branch), push, and a tag on the
+   merged commit: `vX.Y.Z`, or `release-YYYY-MM-DD` as a rollback anchor for continuous
+   deploys. No remote yet → it offers to create a private GitHub repo.
    Never publishes to a package registry without a separate OK.
 6. **After**: checks that the production URL (from `AGENTS.md`) answers once the host deployed.
 7. **Clean up**: deletes the merged branch, and lists other worktrees whose branch is merged and
-   clean, offering to archive those sessions (the app asks you per session), this one too.
+   clean, offering to archive those sessions (the app asks you per session). Merged through a PR
+   with _Auto-archive after PR merge or close_ on, the current worktree session archives itself.
 
 ### /audit
 
@@ -809,16 +811,18 @@ Trunk mode or no matching spec → the context part shows nothing. To turn every
 
 ## Git, branches and parallel sessions
 
-**Branches, no pull requests.** The default branch is always live (on Vercel and similar hosts,
-a push to it deploys). Every feature or fix gets its own branch; when `/build` finishes it, the
-branch is merged straight into the default branch and pushed, without a PR or a question.
+**Branches, landed per project.** The default branch is always live (on Vercel and similar
+hosts, a push to it deploys). Every feature or fix gets its own branch. How a finished `/build`
+lands is set per project with `Land:` in `AGENTS.md § Git`: `merge` merges it straight into the
+default branch and pushes, `pr` pushes the branch and opens a pull request. Missing → `/build`
+asks once and writes the answer.
 
 Set per project in `AGENTS.md § Git` (`/setup` asks):
 
-| Mode                 | When                                                                                            | What the skills do                                                                                                                                                                            |
-| -------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `branches` (default) | parallel sessions, or the host deploys from the default branch                                  | `/build` creates `feat/<slug>` / `fix/<slug>` when you're on the default branch and merges it into the default branch when the feature is done; `/launch` tags and versions |
-| `trunk`              | solo, **one session at a time**, nothing deploys from the default branch (e.g. school projects) | commits straight to the default branch                                                                                                                                                        |
+| Mode                 | When                                                                                            | What the skills do                                                                                                                                             |
+| -------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `branches` (default) | parallel sessions, or the host deploys from the default branch                                  | `/build` creates `feat/<slug>` / `fix/<slug>` when you're on the default branch and lands it per `Land:` when the feature is done; `/launch` tags and versions |
+| `trunk`              | solo, **one session at a time**, nothing deploys from the default branch (e.g. school projects) | commits straight to the default branch                                                                                                                         |
 
 **Parallel sessions: use the desktop app's worktrees.** Start each task in its own session with
 the **worktree** option next to the branch name. Every session then has its own copy of the
@@ -853,7 +857,7 @@ own worktree system; it makes itself safe for this:
   plan is approved (the plan says so), and fetches before checking claims.
 - **Worktrees are always the app's.** `/build` never creates one itself: a worktree made from
   inside a session works for git, but the desktop app doesn't know about it, so you'd lose the
-  syncing with the base branch and archiving (tested).
+  PR panel, syncing with the base branch and auto-archive (tested).
 
 How two parallel sessions play out:
 
@@ -863,13 +867,14 @@ Session A (+ New session, "worktree")        Session B (same)
  /build → installs deps → takes "reminders"   /build → skips "reminders" (claimed)
  plan → accept → spec commit = claim           → takes "streaks" → spec commit
  build → verifier on its own port             build → verifier on its own port
- → commit → merged into main + pushed          → commit → merged into main + pushed
- → archive the session (worktree removed)      same; roadmap conflict → keep both lines
+ → commit → Land: merge → main + pushed         → commit → Land: pr → push + PR
+ → archive the session (worktree removed)      app follows CI → merge → session auto-archives
 ```
 
-**Recommended desktop setting** (Settings → Claude Code): a branch prefix to keep these
-branches together. Without PRs the app's auto-archive doesn't fire: archive a finished worktree
-session yourself (`/launch` offers it).
+**Recommended desktop settings** (Settings → Claude Code): a branch prefix to keep these
+branches together, and with `Land: pr` _Auto-archive after PR merge or close_ so finished
+sessions clean themselves up (the app follows the PR's CI and can auto-fix or auto-merge it).
+With `Land: merge` no PR exists, so archive a finished worktree session yourself.
 
 ### Plain chats (no skill)
 

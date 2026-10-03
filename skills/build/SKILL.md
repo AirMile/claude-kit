@@ -142,7 +142,8 @@ this feature, then re-ask that item. Record outcomes under `## Verify`.
 4. Suggest in the report, don't ask: `/simplify` when the diff is over ~150 lines;
    `/security-review` when the feature handles auth, user input stored server-side, or payments.
 5. `commit feature=<slug>` → one commit with code + spec + roadmap. On a feature branch the
-   commit skill merges it into the default branch (no PRs); versions and tags are `/launch`.
+   commit skill lands it per `AGENTS.md § Git` (`Land: merge` or `pr`); versions and tags are
+   `/launch`.
 6. Merge conflicts in `docs/roadmap.md`, `docs/decisions.md` or `AGENTS.md` when syncing with
    the default branch → keep both sides' lines (parallel sessions each add their own).
 

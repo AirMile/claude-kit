@@ -71,9 +71,10 @@ Written → continue here with **A** (don't stop at its report).
    committed `dist/`) → `permissions.deny` `Read(./**/<dir>/**/*)` in `.claude/settings.json`
    (gitignored paths are skipped already). Main language has an LSP plugin in
    `claude-plugins-official` (e.g. `typescript-lsp`) → suggest it in the report; don't install.
-7. **Git mode** for `AGENTS.md § Git`: AskUserQuestion: Branches (Recommended for parallel
-   sessions; `/build` merges each finished feature into the default branch, no PRs) / Trunk
-   (one session at a time, commits straight to the default branch).
+7. **Git** for `AGENTS.md § Git`, one AskUserQuestion with two questions. Workflow: Branches
+   (Recommended for parallel sessions or a host that deploys the default branch) / Trunk (one
+   session at a time, commits straight to the default branch). Land, how a finished `/build`
+   goes in: Merge + push (Recommended solo) / Pull request (team, or CI to watch).
 8. **Parallel sessions**: write `.worktreeinclude` with the gitignored files a fresh worktree
    needs: `.env*` that exist and files the dev/build config loads (`git check-ignore`).
    `.claude/launch.json` exists → set `"autoPort": true` on the dev server (the desktop app then
@@ -128,7 +129,7 @@ docs/         <files created>
 migrated      <n roadmap items, n lessons, worktrees kept/removed> (v1 only)
 git           <branches | trunk> · .worktreeinclude <files | —>
 context       deny <paths | —> · lsp <plugin to install | —>
-desktop       Settings → Claude Code: branch prefix
+desktop       Settings → Claude Code: branch prefix (+ auto-archive after PR merge with Land: pr)
 next          /product (no roadmap) · /build (roadmap ready)
 ```
 

@@ -100,23 +100,30 @@ session.
 
 ## 6. Push
 
-No PRs: finished work goes straight into the default branch. Otherwise never push unless the
-user asked for it in this request, or answers yes now.
+`feature=<slug>` mode lands the finished work as the project chose; otherwise never push unless
+the user asked for it in this request, or answers yes now.
 
-- **`feature=<slug>` mode on a feature branch** → merge into the default branch without asking
-  (the user's standing choice): `git fetch`; merge `origin/<default>` into the branch (conflicts:
-  roadmap/decisions/AGENTS.md keep both sides, others resolve or stop; it brought commits → run
-  the suite again); `KIT_PUSH_OK=1 git push origin HEAD:<default>`. In the main checkout also
-  `git switch <default>`, `git merge --ff-only <branch>`, `git branch -d <branch>`.
-- **Feature branch, plain `/commit`** (work in progress): Push branch / Not now.
-- **Default branch**: Not now / Push, no recommendation (the user decides). On a host that
-  deploys from it, say first that this goes live; suggest `/launch`.
+- **`feature=<slug>` mode** → `Land:` in `AGENTS.md § Git`, without asking. Missing → one
+  AskUserQuestion (Merge into <default> + push / Push + PR), then write `- Land: <merge | pr>`
+  under `## Git` so the next run doesn't ask.
+  - `merge`, feature branch: `git fetch`; merge `origin/<default>` into the branch (conflicts:
+    roadmap/decisions/AGENTS.md keep both sides, others resolve or stop; it brought commits →
+    run the suite again); `git push origin HEAD:<default>`. In the main checkout also
+    `git switch <default>`, `git merge --ff-only <branch>`, `git branch -d <branch>`.
+  - `merge`, default branch (trunk): push it.
+  - `pr`: push the branch, then `gh pr create` with a title from the commit(s) and the spec's
+    Goal and criteria as the body (a PR is open already → the push updates it). No `gh` → push
+    only and say so.
+- **Feature branch, plain `/commit`**: Push + open PR / Push only / Not now (`Land: pr` →
+  recommend the PR, `merge` → Push only).
+- **Default branch, plain `/commit`**: Not now / Push, no recommendation (the user decides). On a
+  host that deploys from it, say first that this goes live; suggest `/launch`.
 
-The push-guard hook blocks unconfirmed pushes; after the user confirms, run
+The push-guard hook blocks unconfirmed pushes; after the user confirms (or `Land:` lands it), run
 `KIT_PUSH_OK=1 git push` (PowerShell: `$env:KIT_PUSH_OK=1; git push`; add `--set-upstream
 origin <branch>` on a first push).
-Rejected → sync with the default branch first; no remote → merge locally only (main checkout)
-or stop, and say so.
+Rejected → sync with the default branch first; no remote → `merge` lands locally only (main
+checkout), `pr` stops; say so.
 
 ## Report
 
@@ -124,6 +131,6 @@ or stop, and say so.
 COMMIT
 <hash> <subject>        (one line per commit)
 branch   <branch> · <ahead n of origin | no upstream>
-pushed   <yes | no> · merged into <default | —>
+pushed   <yes | no> · <merged into <default> | PR <url> | —>
 left     <unstaged files, or —>
 ```
