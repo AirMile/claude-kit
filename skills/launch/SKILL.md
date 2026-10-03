@@ -90,11 +90,9 @@ In order, stopping on the first failure:
    (`## [X.Y.Z] - YYYY-MM-DD`), commit `chore(release): vX.Y.Z`.
 2. **Merge**. The user said Go live, so pushes use `KIT_PUSH_OK=1 git push` (PowerShell:
    `$env:KIT_PUSH_OK=1; git push`).
-   - Feature branch + `gh`: push the branch, PR (existing or `gh pr create`), then
-     `gh pr merge --squash --delete-branch` (or the desktop app's auto-merge if preferred).
-   - Feature branch, no `gh`: in the main checkout → `git switch <default>`, `git merge
-     --ff-only <branch>`, push. In a worktree → stop: "merge from the main checkout, or install
-     `gh`" (the default branch is checked out there).
+   - Feature branch (no PRs): it is synced already (step 0), so `git push origin
+HEAD:<default>`; in the main checkout also `git switch <default>` and `git merge --ff-only
+<branch>`.
    - Already on the default branch: push it.
 3. **Tag** the merged result, not your branch tip: `git fetch`, then tag `origin/<default>`.
    Versioned → `vX.Y.Z`; continuous → `release-YYYY-MM-DD` (`.2`, `.3` on the same day) as a
@@ -112,8 +110,8 @@ The range touched an `AGENTS.md`, `.claude/rules/` or a skill → suggest `/doct
 ## 6. Clean up (no orphan worktrees)
 
 - The merged branch: delete it locally when no worktree has it checked out (`git branch -d`).
-- This session runs in a desktop worktree → with *Auto-archive after PR merge or close* on, the
-  app archives it (and removes the worktree) once it finishes; otherwise offer to archive it.
+- This session runs in a desktop worktree → offer to archive it (no PR, so the app's
+  auto-archive doesn't fire).
 - Other worktrees (`git worktree list`) whose branch is now merged into `origin/<default>` and
   have no uncommitted changes → list them and offer to archive those sessions (the desktop app
   asks you per session) or, for worktrees the app doesn't know, `git worktree remove`.
@@ -122,7 +120,7 @@ The range touched an `AGENTS.md`, `.claude/rules/` or a skill → suggest `/doct
 
 ```
 LAUNCH · <version or release tag>
-live       <merged PR / pushed commit> · <url status or —>
+live       <merged / pushed commit> · <url status or —>
 notes      <n> lines · CHANGELOG <updated | —>
 todo       <migrations / env vars still to do, or —>
 cleanup    <branches deleted · sessions archived · or —>

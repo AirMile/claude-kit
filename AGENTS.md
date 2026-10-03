@@ -59,7 +59,7 @@ product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.m
 - Skill and agent files: English. Runtime output follows the user's language setting.
 - Lean on native Claude Code features (plan mode, subagents, `/simplify`, `/security-review`,
   AGENTS.md loading) instead of rebuilding them.
-- Never push without the user's explicit OK (enforced by `hooks/push-guard.cjs`).
+- Never push without the user's OK (`hooks/push-guard.cjs`), except `/build` merging into main.
 - Validate after edits: `claude plugin validate .` and `node hooks/push-guard.test.cjs`. At
   the root that validate only checks `marketplace.json`, never the mod: for hooks, copy
   `.claude-plugin/{plugin.json,types}`, `hooks`, `skills`, `agents` to a scratch dir and

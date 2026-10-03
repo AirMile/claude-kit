@@ -28,7 +28,7 @@ Run `node ${CLAUDE_SKILL_DIR}/scripts/staging-check.js` (from anywhere in the re
 nothing to handle. Exit 1 → act on each line:
 
 - `BLOCK <path>` (secret file) → never stage it; tell the user. Already in history (`git log -1
-  -- <path>` prints a commit) → also: rotate the secret and `git rm --cached` it.
+-- <path>` prints a commit) → also: rotate the secret and `git rm --cached` it.
 - `WARN <path>` (large, binary, critical file deleted) → AskUserQuestion per group before
   staging those paths.
 - `IGNORE <pattern>` (untracked files .gitignore should cover) → offer to add the patterns
@@ -100,19 +100,23 @@ session.
 
 ## 6. Push
 
-Never push unless the user asked for it in this request, or answers yes now. Ask after the last
-commit, depending on the branch:
+No PRs: finished work goes straight into the default branch. Otherwise never push unless the
+user asked for it in this request, or answers yes now.
 
-- **Feature branch**: Push + open PR (Recommended) / Push only / Not now. PR = `gh pr create`
-  with a title from the commit(s) and, in `feature=<slug>` mode, the spec's Goal and criteria as
-  the body. No `gh` → push only and say so.
-- **Default branch**: Not now / Push, no recommendation (the user decides). In `branches` mode (`AGENTS.md § Git`) warn
-  first that this skips review and, on hosts that deploy from it, goes live; suggest `/launch`.
+- **`feature=<slug>` mode on a feature branch** → merge into the default branch without asking
+  (the user's standing choice): `git fetch`; merge `origin/<default>` into the branch (conflicts:
+  roadmap/decisions/AGENTS.md keep both sides, others resolve or stop; it brought commits → run
+  the suite again); `KIT_PUSH_OK=1 git push origin HEAD:<default>`. In the main checkout also
+  `git switch <default>`, `git merge --ff-only <branch>`, `git branch -d <branch>`.
+- **Feature branch, plain `/commit`** (work in progress): Push branch / Not now.
+- **Default branch**: Not now / Push, no recommendation (the user decides). On a host that
+  deploys from it, say first that this goes live; suggest `/launch`.
 
 The push-guard hook blocks unconfirmed pushes; after the user confirms, run
 `KIT_PUSH_OK=1 git push` (PowerShell: `$env:KIT_PUSH_OK=1; git push`; add `--set-upstream
 origin <branch>` on a first push).
-Rejected → suggest syncing with the default branch first; no remote → say so and stop.
+Rejected → sync with the default branch first; no remote → merge locally only (main checkout)
+or stop, and say so.
 
 ## Report
 
@@ -120,6 +124,6 @@ Rejected → suggest syncing with the default branch first; no remote → say so
 COMMIT
 <hash> <subject>        (one line per commit)
 branch   <branch> · <ahead n of origin | no upstream>
-pushed   <yes | no> · PR <url | —>
+pushed   <yes | no> · merged into <default | —>
 left     <unstaged files, or —>
 ```

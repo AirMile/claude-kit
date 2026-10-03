@@ -194,12 +194,12 @@ your-project/
         └── <slug>.md      one per feature: criteria, status, verify result, later fixes
 ```
 
-| File                   | Written by          | Read by                       | Loaded into context                          |
-| ---------------------- | ------------------- | ----------------------------- | -------------------------------------------- |
-| `AGENTS.md` (root)     | `/setup`, `lessons` | every session                 | always, at session start                     |
-| `<dir>/AGENTS.md`      | `lessons`           | every session                 | lazily, when Claude reads a file in that dir |
-| `docs/product.md`         | `/product`             | `/build`, `/convert`, `/setup` | on demand                                    |
-| `docs/roadmap.md`      | `/product`, `/build`    | `/build`                       | on demand                                    |
+| File                   | Written by           | Read by                        | Loaded into context                          |
+| ---------------------- | -------------------- | ------------------------------ | -------------------------------------------- |
+| `AGENTS.md` (root)     | `/setup`, `lessons`  | every session                  | always, at session start                     |
+| `<dir>/AGENTS.md`      | `lessons`            | every session                  | lazily, when Claude reads a file in that dir |
+| `docs/product.md`      | `/product`           | `/build`, `/convert`, `/setup` | on demand                                    |
+| `docs/roadmap.md`      | `/product`, `/build` | `/build`                       | on demand                                    |
 | `docs/specs/<slug>.md` | `/build`             | `/build`, verifier             | on demand                                    |
 | `docs/decisions.md`    | `/build`, `/setup`   | `/build`                       | on demand                                    |
 
@@ -383,13 +383,13 @@ Make a project kit-ready. Idempotent: running it again only fills gaps.
 
 It detects one of five situations:
 
-| Situation                                                  | What happens                                                                                                    |
-| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Not in a project (home folder, or a folder of projects)    | **New folder**: asks the name, creates the folder + `git init`, moves the session there; send `/setup` again    |
-| Empty folder, no docs/product.md                           | **Product first**: runs the `/product` interview, then scaffolds                                                |
-| Empty folder, `docs/product.md` exists                     | **Scaffold**: runs the stack's official generator, adds a test runner, boots the dev server once, then onboards |
-| A v1 project (`.project/`, no `docs/roadmap.md` yet)       | **Migrate** (below)                                                                                             |
-| Any other existing code                                    | **Onboard**                                                                                                     |
+| Situation                                               | What happens                                                                                                    |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Not in a project (home folder, or a folder of projects) | **New folder**: asks the name, creates the folder + `git init`, moves the session there; send `/setup` again    |
+| Empty folder, no docs/product.md                        | **Product first**: runs the `/product` interview, then scaffolds                                                |
+| Empty folder, `docs/product.md` exists                  | **Scaffold**: runs the stack's official generator, adds a test runner, boots the dev server once, then onboards |
+| A v1 project (`.project/`, no `docs/roadmap.md` yet)    | **Migrate** (below)                                                                                             |
+| Any other existing code                                 | **Onboard**                                                                                                     |
 
 **Onboard** reads the manifest, scripts, test/lint config and recent git history, then:
 
@@ -407,7 +407,7 @@ you can delete it when satisfied:
 | ------------------------------------------------ | --------------------------------------------------------------------- |
 | Generated `CLAUDE.md`                            | real rules/runbooks/pitfalls → `AGENTS.md`; template sections dropped |
 | `AGENTS.md` symlinked to `CLAUDE.md`             | replaced by a real file                                               |
-| `.project/project-seed.md`                       | `docs/product.md`                                                        |
+| `.project/project-seed.md`                       | `docs/product.md`                                                     |
 | `.project/backlog.json` (unshipped, board order) | `docs/roadmap.md`                                                     |
 | `.project/project-context.json` learnings        | ≤ ~15 non-derivable ones → root or nested `AGENTS.md`                 |
 
@@ -634,8 +634,8 @@ The step from "done on my branch" to "live", for solo and team work.
 /launch minor         versioned projects: force the version bump
 ```
 
-1. **Detect** the release model. *Continuous* (a host such as Vercel or Netlify deploys the
-   default branch): going live = merging to the default branch. *Versioned* (`v*` tags, a
+1. **Detect** the release model. _Continuous_ (a host such as Vercel or Netlify deploys the
+   default branch): going live = merging to the default branch. _Versioned_ (`v*` tags, a
    `CHANGELOG.md`, a publishable package): version bump + changelog + tag. A release bot such as
    release-please present → kit does the checks and the merge, the bot does the versioning.
 2. **Checks**: build, tests, typecheck/lint, then a scan of what goes out: database migrations
@@ -647,15 +647,13 @@ The step from "done on my branch" to "live", for solo and team work.
    else patch).
 4. **Go / no-go** block: risk in plain language, what must happen before (migrations, env vars),
    and the rollback path. Nothing happens until you say Go live.
-5. **Go live**: changelog + version commit (versioned), PR + squash merge (or the desktop app's
-   auto-merge), push, and a tag on the merged commit: `vX.Y.Z`, or `release-YYYY-MM-DD` as a
-   rollback anchor for continuous deploys. Without `gh` it merges locally from the main checkout
-   (from a worktree it tells you to). No remote yet → it offers to create a private GitHub repo.
+5. **Go live**: changelog + version commit (versioned), a direct merge into the default branch
+   (no PRs), push, and a tag on the merged commit: `vX.Y.Z`, or `release-YYYY-MM-DD` as a
+   rollback anchor for continuous deploys. No remote yet → it offers to create a private GitHub repo.
    Never publishes to a package registry without a separate OK.
 6. **After**: checks that the production URL (from `AGENTS.md`) answers once the host deployed.
 7. **Clean up**: deletes the merged branch, and lists other worktrees whose branch is merged and
-   clean, offering to archive those sessions (the app asks you per session). With
-   *Auto-archive after PR merge or close* on, the current worktree session archives itself.
+   clean, offering to archive those sessions (the app asks you per session), this one too.
 
 ### /audit
 
@@ -690,7 +688,7 @@ Understand your own code. It never changes anything.
 
 It adapts to the **Explanation Level** in your `~/.claude/CLAUDE.md` (Novice: every term
 defined, small steps). The explanation follows one realistic case through the code in execution
-order (with `path:line` and *why* it's written that way), names 1-2 ways it could break, then
+order (with `path:line` and _why_ it's written that way), names 1-2 ways it could break, then
 asks 2-3 multiple-choice questions to check understanding, re-explaining a part when an answer
 is wrong.
 
@@ -811,17 +809,16 @@ Trunk mode or no matching spec → the context part shows nothing. To turn every
 
 ## Git, branches and parallel sessions
 
-**One workflow for solo and team: GitHub flow.** The default branch is always live (on Vercel
-and similar hosts, a push to it deploys). Every feature or fix gets its own branch; it reaches
-the default branch through a PR. Solo, you merge your own PR; in a team someone reviews it
-first. The flow is the same, only the review step differs.
+**Branches, no pull requests.** The default branch is always live (on Vercel and similar hosts,
+a push to it deploys). Every feature or fix gets its own branch; when `/build` finishes it, the
+branch is merged straight into the default branch and pushed, without a PR or a question.
 
 Set per project in `AGENTS.md § Git` (`/setup` asks):
 
-| Mode | When | What the skills do |
-| --- | --- | --- |
-| `branches` (default) | the host deploys from the default branch, or team work | `/build` creates `feat/<slug>` / `fix/<slug>` when you're on the default branch; `/commit` offers push + PR on a feature branch and warns before pushing the default branch; `/launch` merges |
-| `trunk` | solo, **one session at a time**, nothing deploys from the default branch (e.g. school projects) | commits straight to the default branch |
+| Mode                 | When                                                                                            | What the skills do                                                                                                                                                                            |
+| -------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `branches` (default) | parallel sessions, or the host deploys from the default branch                                  | `/build` creates `feat/<slug>` / `fix/<slug>` when you're on the default branch and merges it into the default branch when the feature is done; `/launch` tags and versions |
+| `trunk`              | solo, **one session at a time**, nothing deploys from the default branch (e.g. school projects) | commits straight to the default branch                                                                                                                                                        |
 
 **Parallel sessions: use the desktop app's worktrees.** Start each task in its own session with
 the **worktree** option next to the branch name. Every session then has its own copy of the
@@ -856,7 +853,7 @@ own worktree system; it makes itself safe for this:
   plan is approved (the plan says so), and fetches before checking claims.
 - **Worktrees are always the app's.** `/build` never creates one itself: a worktree made from
   inside a session works for git, but the desktop app doesn't know about it, so you'd lose the
-  PR panel, syncing with the base branch and auto-archive (tested).
+  syncing with the base branch and archiving (tested).
 
 How two parallel sessions play out:
 
@@ -866,52 +863,50 @@ Session A (+ New session, "worktree")        Session B (same)
  /build → installs deps → takes "reminders"   /build → skips "reminders" (claimed)
  plan → accept → spec commit = claim           → takes "streaks" → spec commit
  build → verifier on its own port             build → verifier on its own port
- → commit → push + PR                          → commit → push + PR
- app follows CI → merge (or /launch)           same; roadmap conflict → keep both lines
- → session auto-archives, worktree removed
+ → commit → merged into main + pushed          → commit → merged into main + pushed
+ → archive the session (worktree removed)      same; roadmap conflict → keep both lines
 ```
 
-**Recommended desktop settings** (Settings → Claude Code): a branch prefix to keep these
-branches together, and *Auto-archive after PR merge or close* so finished sessions clean
-themselves up. After `/commit` opens a PR, the app follows its CI and can auto-fix or
-auto-merge it.
+**Recommended desktop setting** (Settings → Claude Code): a branch prefix to keep these
+branches together. Without PRs the app's auto-archive doesn't fire: archive a finished worktree
+session yourself (`/launch` offers it).
 
 ### Plain chats (no skill)
 
 Small changes in a normal chat still get most of kit, because it lives in files and hooks rather
 than in skills:
 
-| Still applies | How |
-| --- | --- |
-| Project rules, dev-server and database rules, merge-conflict rule | root `AGENTS.md` (loads every session) |
-| Module pitfalls | nested `AGENTS.md`, when Claude reads files there |
-| Frontend habits | `rules/frontend.md`, when Claude reads a frontend file |
-| No unasked pushes, formatting | the push-guard and format-on-save hooks |
-| Branch first in `branches` mode | `/commit` offers a branch when you're on the default branch |
+| Still applies                                                     | How                                                         |
+| ----------------------------------------------------------------- | ----------------------------------------------------------- |
+| Project rules, dev-server and database rules, merge-conflict rule | root `AGENTS.md` (loads every session)                      |
+| Module pitfalls                                                   | nested `AGENTS.md`, when Claude reads files there           |
+| Frontend habits                                                   | `rules/frontend.md`, when Claude reads a frontend file      |
+| No unasked pushes, formatting                                     | the push-guard and format-on-save hooks                     |
+| Branch first in `branches` mode                                   | `/commit` offers a branch when you're on the default branch |
 
 What a plain chat skips on purpose: specs, claims and the independent verify. That's fine for
 small changes; use `/build` once it's a feature.
 
 ## Common flows, step by step
 
-| Situation                 | Flow                                                                     |
-| ------------------------- | ------------------------------------------------------------------------ |
-| New idea                  | `/setup <idea>` (folder, interview, scaffold) → `/build` → `/build` …         |
-| Existing repo, no kit yet | `/setup` → `/product` → `/build`                                             |
-| v1 project                | `/setup` (migrate) → check the roadmap → `/build`                         |
-| Interrupted work          | new chat → `/build` (or `/build <slug>`)                                   |
-| Bug in a finished feature | `/build "fix: …"` → logged in that spec's `## Fixes`                      |
-| Small tweak               | just ask in chat, then `/commit`                                         |
+| Situation                 | Flow                                                                              |
+| ------------------------- | --------------------------------------------------------------------------------- |
+| New idea                  | `/setup <idea>` (folder, interview, scaffold) → `/build` → `/build` …             |
+| Existing repo, no kit yet | `/setup` → `/product` → `/build`                                                  |
+| v1 project                | `/setup` (migrate) → check the roadmap → `/build`                                 |
+| Interrupted work          | new chat → `/build` (or `/build <slug>`)                                          |
+| Bug in a finished feature | `/build "fix: …"` → logged in that spec's `## Fixes`                              |
+| Small tweak               | just ask in chat, then `/commit`                                                  |
 | Several things at once    | one desktop session per task, each with the **worktree** option; `/build` in each |
-| Go live / release         | `/launch` (checks, notes, merge or version tag)                          |
-| Before delivering a site  | `/audit` → fix the small things → `/launch`                              |
-| Understand what was built | `/explain` (last change), `/explain <slug>` or `/explain <file>`          |
-| New idea mid-project      | `/product add <idea>`; verifier notes are also offered as roadmap items     |
-| Rethink the plan          | `/product critique`                                                         |
-| Design → code             | `/convert <source>`, or put the source in a spec's `Design:` and `/build` |
-| Visual foundation         | `/theme` before the first UI work, or `/theme from-code` to clean up |
-| A kit skill annoyed you   | `/improve <skill> "what happened"` |
-| Commit stray work         | `/commit`                                                                |
+| Go live / release         | `/launch` (checks, notes, merge or version tag)                                   |
+| Before delivering a site  | `/audit` → fix the small things → `/launch`                                       |
+| Understand what was built | `/explain` (last change), `/explain <slug>` or `/explain <file>`                  |
+| New idea mid-project      | `/product add <idea>`; verifier notes are also offered as roadmap items           |
+| Rethink the plan          | `/product critique`                                                               |
+| Design → code             | `/convert <source>`, or put the source in a spec's `Design:` and `/build`         |
+| Visual foundation         | `/theme` before the first UI work, or `/theme from-code` to clean up              |
+| A kit skill annoyed you   | `/improve <skill> "what happened"`                                                |
+| Commit stray work         | `/commit`                                                                         |
 
 **Example: building one feature**
 
@@ -942,8 +937,8 @@ kit   commit: feat(habit-crud): add create, rename and delete
 | Every session                   | `~/.claude/CLAUDE.md` and the project's root `AGENTS.md` | your files        |
 | Claude reads a file in `src/x/` | `src/x/AGENTS.md`                                        | only then         |
 | You run a skill                 | that skill's `SKILL.md` (~0.4k–1.6k tokens)              | only then         |
-| `/build` fix path / define       | `references/debug.md` / `references/spec-template.md`    | only on that path |
-| `/build` verify                  | the verifier runs in its own context                     | not in your chat  |
+| `/build` fix path / define      | `references/debug.md` / `references/spec-template.md`    | only on that path |
+| `/build` verify                 | the verifier runs in its own context                     | not in your chat  |
 | A skill needs project state     | the relevant `docs/` file                                | on demand         |
 
 Hooks run outside the model and add no tokens.
@@ -993,18 +988,18 @@ kit ships an eval suite (`evals/`) for `claude plugin eval`. Each case builds a 
 a fixture script, sends one prompt to a fresh, isolated `claude -p` session with only kit loaded,
 and grades what happened: files written, tools called, the order of calls, text in the reply.
 
-| Case | What it guards |
-| --- | --- |
-| `build-routes-small` | a one-line change takes the small path: no spec, no plan mode |
-| `build-routes-feature` | a roadmap feature goes through plan mode with happy/edge/error criteria, no code edits yet |
-| `build-routes-fix` | a bug is reproduced (tests run) before the code is edited, and actually fixed |
-| `build-resumes` | `/build` with no argument resumes the in-progress spec and starts the verifier |
-| `commit-blocks-env` | `staging-check.js` runs and a `.env` file never ends up in the commit |
-| `commit-no-push` | `/commit` commits but never pushes on its own |
-| `setup-migrates-v1` | the v1 migration keeps real items/lessons and drops v1-only ones (judged by a model) |
-| `setup-empty-folder` | an empty folder runs the `/product` interview instead of stopping; nothing is written or scaffolded before approval |
-| `setup-new-folder` | in a folder of projects, setup makes a new project folder and hands off, writes no docs there |
-| `lessons-nested` | a module-specific lesson lands in that module's `AGENTS.md` |
+| Case                   | What it guards                                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `build-routes-small`   | a one-line change takes the small path: no spec, no plan mode                                                       |
+| `build-routes-feature` | a roadmap feature goes through plan mode with happy/edge/error criteria, no code edits yet                          |
+| `build-routes-fix`     | a bug is reproduced (tests run) before the code is edited, and actually fixed                                       |
+| `build-resumes`        | `/build` with no argument resumes the in-progress spec and starts the verifier                                      |
+| `commit-blocks-env`    | `staging-check.js` runs and a `.env` file never ends up in the commit                                               |
+| `commit-no-push`       | `/commit` commits but never pushes on its own                                                                       |
+| `setup-migrates-v1`    | the v1 migration keeps real items/lessons and drops v1-only ones (judged by a model)                                |
+| `setup-empty-folder`   | an empty folder runs the `/product` interview instead of stopping; nothing is written or scaffolded before approval |
+| `setup-new-folder`     | in a folder of projects, setup makes a new project folder and hands off, writes no docs there                       |
+| `lessons-nested`       | a module-specific lesson lands in that module's `AGENTS.md`                                                         |
 
 Runs are non-interactive: nobody answers questions or approves plans. So the suite tests the
 **decisions and safety rules** of the skills, not complete interactive flows.
