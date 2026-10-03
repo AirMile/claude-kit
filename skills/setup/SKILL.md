@@ -18,13 +18,13 @@ Check, in one Bash call: `pwd`, `git rev-parse --is-inside-work-tree`, `AGENTS.m
 `.project/`, `git worktree list`, any source files / package manifest, `.gitignore`, and which
 subfolders hold a `.git` or a manifest.
 
-| Situation                                                              | Route                |
-| ---------------------------------------------------------------------- | -------------------- |
-| No git, no manifest, and cwd is `$HOME`, `/` or a folder of projects   | **N. New folder**    |
-| No source files, no `docs/product.md`                                  | **P. Product first** |
-| No source files, `docs/product.md` exists                              | **A. Scaffold**      |
-| `.project/` exists and no `docs/roadmap.md` yet                        | **C. Migrate v1**    |
-| Otherwise                                                              | **B. Onboard**       |
+| Situation                                                            | Route                |
+| -------------------------------------------------------------------- | -------------------- |
+| No git, no manifest, and cwd is `$HOME`, `/` or a folder of projects | **N. New folder**    |
+| No source files, no `docs/product.md`                                | **P. Product first** |
+| No source files, `docs/product.md` exists                            | **A. Scaffold**      |
+| `.project/` exists and no `docs/roadmap.md` yet                      | **C. Migrate v1**    |
+| Otherwise                                                            | **B. Onboard**       |
 
 ## N. New folder
 
@@ -67,14 +67,18 @@ Written → continue here with **A** (don't stop at its report).
    (below). Never overwrite existing content. `docs/specs/` is created by `/build` when needed.
 5. `.gitignore`: `AGENTS.md` and `docs/` must **not** be ignored; remove such lines (show them
    first). Add `.claude/worktrees/`.
-6. **Git mode** for `AGENTS.md § Git`: AskUserQuestion: Branches + PR (Recommended when the host
+6. **Less to read**: checked-in generated or vendored code (`vendor/`, `*.generated.*`, a
+   committed `dist/`) → `permissions.deny` `Read(./**/<dir>/**/*)` in `.claude/settings.json`
+   (gitignored paths are skipped already). Main language has an LSP plugin in
+   `claude-plugins-official` (e.g. `typescript-lsp`) → suggest it in the report; don't install.
+7. **Git mode** for `AGENTS.md § Git`: AskUserQuestion: Branches + PR (Recommended when the host
    deploys from the default branch, for team work, or for parallel sessions) / Trunk (solo, one
    session at a time, nothing deploys from the default branch).
-7. **Parallel sessions**: write `.worktreeinclude` with the gitignored files a fresh worktree
+8. **Parallel sessions**: write `.worktreeinclude` with the gitignored files a fresh worktree
    needs: `.env*` that exist and files the dev/build config loads (`git check-ignore`).
    `.claude/launch.json` exists → set `"autoPort": true` on the dev server (the desktop app then
    passes a free port as `PORT`). A local database → fill the database line in `AGENTS.md § Git`.
-8. Report.
+9. Report.
 
 ### docs/ format headers
 
@@ -109,7 +113,7 @@ Context`, the GENERATED marker, `{{…}}` placeholders, `.project/` rules, Front
 5. **Old worktrees** (`git worktree list` beyond the main checkout, v1 made them): per worktree
    show branch, uncommitted files, commits not on the default branch, last commit date. Ask per
    worktree: Keep / Remove (only offered when it has nothing unmerged or uncommitted that matters).
-6. Then run **B** steps 2-8 with this material. Leave `.project/` untouched; tell the user it
+6. Then run **B** steps 2-9 with this material. Leave `.project/` untouched; tell the user it
    can be deleted once they are happy.
 
 Show the proposed `AGENTS.md` and roadmap as a preview and get one confirmation before writing
@@ -123,6 +127,7 @@ AGENTS.md     <created | updated | unchanged> (<n> lines) · CLAUDE.md <removed 
 docs/         <files created>
 migrated      <n roadmap items, n lessons, worktrees kept/removed> (v1 only)
 git           <branches | trunk> · .worktreeinclude <files | —>
+context       deny <paths | —> · lsp <plugin to install | —>
 desktop       Settings → Claude Code: branch prefix, auto-archive after PR merge
 next          /product (no roadmap) · /build (roadmap ready)
 ```
