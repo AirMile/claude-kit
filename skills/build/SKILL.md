@@ -103,22 +103,34 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
 ### 4b. Build (inline)
 
 1. `Status: building`. Spec has `Design:` → follow the `convert` skill's procedure for that UI.
+   Run the full suite once before the first edit; its failures are the baseline.
 2. Per criterion: test first when testable (it must fail before the code exists; mock only
-   external boundaries: network, third-party APIs, time, file system), then the code. Follow
-   `AGENTS.md` conventions. Library API you're unsure of → context7, don't guess.
-3. Run the full test suite + typecheck/lint once at the end. Fix until green.
-4. Don't check criteria yet: verify does that.
-5. User chose Build, then stop → `Status: verifying` (Handoff: what verify should look at
+   external boundaries: network, third-party APIs, time, file system), then the code. Already
+   met by earlier code → its test may pass at once; say so. Follow `AGENTS.md` conventions.
+   Library API you're unsure of → context7, don't guess.
+3. A criterion, an Out-of-scope line or a file in Approach must change → stop, `EnterPlanMode`
+   with the revised Approach (keep built work that still fits); accept → update the spec, commit
+   it alone (`docs(<slug>): revise spec`) so a resume sees it, continue.
+4. Run the full test suite + typecheck/lint once at the end. Fix until green; change a test's
+   expectation only when this spec changes that behaviour. A failure already in the baseline is
+   pre-existing: list it under `## Verify` and in the report, don't fix it.
+5. Don't check criteria yet: verify does that.
+6. User chose Build, then stop → `Status: verifying` (Handoff: what verify should look at
    first), report, end the turn. Changes stay uncommitted: Finish makes the one commit.
 
 ## 5. Verify
 
 `Status: verifying`. Spawn the plugin's `verifier` agent (fresh context, it did not build this)
-with: the spec path, the dev server URL (rule below), and the list of changed files.
-It returns: per-criterion pass/fail with evidence, manual items, and at most 3 improvement notes.
+with: the spec path, the dev server URL (rule below), the list of changed files, and the
+pre-existing failures. It returns: per-criterion pass/fail/unclear with evidence, manual items,
+and at most 3 improvement notes.
 
-- Fails → fix them (inline), re-run the failing checks yourself. Max 2 rounds; still failing →
-  stop, write the state into `## Verify`, report what blocks, and leave `Status: verifying`.
+- Fails → fix each using `debug.md`'s tier table only (not its Finish: the feature gets one
+  commit); fails sharing a changed file → investigate together. Then re-run the failing checks
+  and the full suite. Max 2 rounds; still failing → stop, write the state into `## Verify`,
+  report what blocks, and leave `Status: verifying`.
+- `unclear` → show the verifier's reason, ask the user for a sharper criterion, update the spec,
+  re-check it yourself; it stays unchecked until then.
 - All automated criteria pass → check them `[x]` in the spec, record the result and the
   verifier's improvement notes under `## Verify`.
 
@@ -130,8 +142,10 @@ processes you started; never `pkill` by name.
 
 Only for items the verifier could not automate (real credentials, perception like "feels
 smooth", physical device, audio). `Status: manual`. For each: show steps + expected result, then
-AskUserQuestion: Pass / Fail (describe) / Skip. Fail → treat as a Fix (tier 2 of debug.md) within
-this feature, then re-ask that item. Record outcomes under `## Verify`.
+AskUserQuestion: Pass / Fail (describe) / Stuck / Skip. Stuck (a step doesn't match the screen) →
+find the real UI path in the code, correct the item's steps, re-ask. Fail → vague ("feels off")?
+one question first (which element, expected vs seen); then tier 2 of debug.md (not its Finish)
+within this feature, re-ask that item. Record outcomes under `## Verify`.
 
 ## 7. Finish
 
@@ -155,7 +169,7 @@ this feature, then re-ask that item. Record outcomes under `## Verify`.
 ```
 BUILD · <slug> · <small | fix | feature>
 criteria   <n>/<n> verified (<k> manual)
-tests      <pass count> · <suite command>
+tests      <pass count> · <suite command> (· <n> pre-existing failures)
 later      +<n> ideas added under ## Later (or —)
 commit     <hash> <subject>
 suggest    </simplify, /security-review, or —>

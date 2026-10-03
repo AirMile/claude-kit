@@ -107,8 +107,9 @@ the user asked for it in this request, or answers yes now.
   AskUserQuestion (Merge into <default> + push / Push + PR), then write `- Land: <merge | pr>`
   under `## Git` so the next run doesn't ask.
   - `merge`, feature branch: `git fetch`; merge `origin/<default>` into the branch (conflicts:
-    roadmap/decisions/AGENTS.md keep both sides, others resolve or stop; it brought commits →
-    run the suite again); `git push origin HEAD:<default>`. In the main checkout also
+    roadmap/decisions/AGENTS.md keep both sides, lockfiles/generated take `<default>`'s side
+    then reinstall/regenerate, others resolve or stop; it brought commits → install when a
+    lockfile changed, run the suite again); `git push origin HEAD:<default>`. In the main checkout also
     `git switch <default>`, `git merge --ff-only <branch>`, `git branch -d <branch>`.
   - `merge`, default branch (trunk): push it.
   - `pr`: push the branch, then `gh pr create` with a title from the commit(s) and the spec's
