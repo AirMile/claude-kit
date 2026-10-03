@@ -10,7 +10,7 @@ Criteria are checked [x] when built AND verified. -->
 # <slug>
 
 Status: defined
-Design: <path or Figma URL, or —>
+Design: <Figma URL (or exported frame PNG), or —>
 
 ## Goal
 

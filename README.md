@@ -154,7 +154,7 @@ that's where the spec, the independent verify and resuming in a new chat pay for
 **A design**
 
 ```
-/convert ~/Desktop/pricing.png app/pricing/page.tsx
+/convert https://figma.com/design/<file>/<name>?node-id=12-34 app/pricing/page.tsx
 ```
 
 ---
@@ -543,32 +543,35 @@ Safe staging and a clean message. Called by you, or by `/build` as `commit featu
 
 ### /convert
 
-Visual input → UI code in your stack, checked against the source in the browser.
+Figma frame → UI code in your stack, checked against the frame in the browser, and editable in
+your Payload CMS when the project has one.
 
 ```
-/convert <image | figma-url | site-url> [target file or route]
+/convert <figma-url | exported-frame.png> [target file or route]
 ```
 
-| Source                      | How it's read                                    |
-| --------------------------- | ------------------------------------------------ |
-| image / screenshot / sketch | read as an image                                 |
-| Figma URL                   | Figma MCP: design context, variables, screenshot |
-| live URL                    | browser screenshot + computed styles per section |
+The Figma MCP reads the frame per section (structure, design context, variables, screenshot),
+plus Code Connect mappings (reuse existing components), motion data and a mobile frame when
+there is one. Without the MCP an exported frame PNG works, but its values are estimates.
 
-**Modes** (picked from the source; asked only when ambiguous):
+**Fidelity**: 1:1, each value mapped to the nearest existing token. Motion only as Figma defines
+it (variants, prototype interactions), verified by computed values; extra animation is a
+separate `/build` item.
 
-- **Sketch → hi-fi**: layout from the sketch, all colours/spacing/type from your tokens.
-- **1:1 copy**: a finished design; exact values, each mapped to the nearest existing token.
-- **Inspiration**: borrow structure and feel; every visual value from your tokens.
+**Steps**: find tokens (none → `/theme` first, or a small set as CSS variables) → **plan mode**
+with sections, reused components, a figma → token mapping table, motion, assets, the mobile
+layout and (Payload) a CMS table → build (flex/grid, semantic HTML, real copy, exported assets)
+→ **verify loop** (max 3 rounds: screenshot vs frame, console errors, computed values, motion)
+→ check at 390 / 768 / 1440 px → you approve the final screenshot.
 
-**Steps**: find tokens (CSS variables, Tailwind config or theme file; none → derive a small set
-and add them as CSS variables) → **plan mode** with sections, reused components, a source → token
-mapping table, assets and the mobile layout → build (flex/grid, semantic HTML, real copy,
-exported assets) → **verify loop** (max 3 rounds: screenshot vs source, console errors, fix
-layout → spacing → details; for 1:1 copies also computed values) → mobile check at 375 px (no
-horizontal overflow) → you approve the final screenshot.
+**Payload projects** (`references/payload.md`): every text, image, link and list item becomes a
+field the editor can change; existing blocks with a new variant come first, design-only sections
+go in the project's own config, not a shared core. Follows the project's "add a section"
+recipe in `AGENTS.md`. Migrations and seeding are asked first and never overwrite a page that
+already lives in the CMS; where `AGENTS.md` forbids them (e.g. in a worktree) they become a
+manual step. You get a manual check: read the page in `/admin` with the client role.
 
-An existing target file is treated as a **patch**: everything the source doesn't show (data
+An existing target file is treated as a **patch**: everything the frame doesn't show (data
 fetching, props, handlers, real copy) is kept. Standalone it ends with `/commit`; inside `/build`
 it is just the build step.
 

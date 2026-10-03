@@ -81,6 +81,9 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
    `${CLAUDE_SKILL_DIR}/references/spec-template.md`: criteria per happy/edge/error,
    Approach with files, ASCII wireframe for UI, Tests mapping. More than 6 criteria → propose a
    split first. Also check: does this make another roadmap item obsolete? Say so in the plan.
+   `Design:` set → Approach lists the sections; on a Payload project also convert's CMS table
+   (`${CLAUDE_SKILL_DIR}/../convert/references/payload.md` § 3) and a criterion "every visible text, image and list
+   item is editable in the CMS".
 3. `ExitPlanMode`. Reject → revise. Accept →
    - write the plan text as `docs/specs/<slug>.md` (`Status: defined`); no slug yet → derive one
      and add a roadmap line (in the first phase that still has open items);
