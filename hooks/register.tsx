@@ -5,6 +5,7 @@ import type {
   SessionUsage,
 } from "claude-code";
 
+import { feedbackInbox, feedbackTool } from "./feedback-inbox";
 import { freshStart, freshTool } from "./fresh-start";
 import { roadmapOpen, roadmapTool } from "./roadmap-open";
 import {
@@ -22,6 +23,7 @@ import { themeTool, themeView } from "./theme-view";
 // - Context and plan limits as one line in the roadmap pane's dashboard (USAGE).
 // - The roadmap and theme panes: tools the skills call with data (roadmap-view, theme-view).
 // - fresh_start: /build's safe point clears the chat and resumes (fresh-start).
+// - feedback: the Skill Feedback inbox, and its status line in a kit checkout (feedback-inbox).
 
 type Spec = SpecState & { slug: string };
 type Figures = Pick<SessionUsage, "context" | "rateLimits">;
@@ -92,13 +94,14 @@ export const register: Register = (on) => {
   roadmapOpen(on);
   themeView(on);
   freshStart(on);
+  feedbackInbox(on);
 
   on("session.start", async ($, e, next) => {
     const started = await next(e);
     await $.tool.register(roadmapTool);
     await $.tool.register(themeTool);
     await $.tool.register(freshTool);
-    $.ui.status(undefined); // the line earlier versions drew; the dashboard has it now
+    await $.tool.register(feedbackTool);
     await refresh($);
     return started;
   });

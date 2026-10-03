@@ -17,10 +17,12 @@ is a better skill, not a bigger one: kit stays small only if every refinement pa
   `"name": "kit"`, e.g. a worktree of it); else `~/Projects/claude-kit`; else ask. The installed
   plugin loads from the main checkout, so edits there go live in every project's next session.
 - **Skill**: the first argument (`build`, `commit`, …, or `verifier` for the agent, `push-guard`
-  / `format-on-save` for a hook). Missing → ask which one.
-- **Observations**: the quoted argument, plus any Skill Feedback points raised earlier in this
-  conversation for that skill. None → scan this chat's run of it (skipped/improvised steps,
-  corrections, "Other" answers, avoidable questions, failed tool calls); still none → ask.
+  / `format-on-save` for a hook). Missing → the skill with the most open inbox points; none →
+  ask which one.
+- **Observations**: the quoted argument, any Skill Feedback points raised earlier in this
+  conversation for that skill, and its open inbox points (`mcp__kit__feedback` `list`). None →
+  scan this chat's run of it (skipped/improvised steps, corrections, "Other" answers, avoidable
+  questions, failed tool calls); still none → ask.
 
 ## 1. Read (only what this skill needs)
 
@@ -96,6 +98,7 @@ Fail → fix before reporting.
 In the repo: stage only the changed files and commit with `fix(<skill>): …` (behaviour that was
 wrong) or `refactor(<skill>): …` (clearer or shorter, same behaviour). English, ≤ 72 chars. No
 push unless the user asks.
+Then close every inbox point this run acted on or declined (`mcp__kit__feedback` `done`).
 
 ## Report
 

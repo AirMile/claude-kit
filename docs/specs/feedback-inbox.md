@@ -3,7 +3,7 @@ Criteria are checked [x] when built AND verified. -->
 
 # feedback-inbox
 
-Status: defined
+Status: done
 Design: —
 
 ## Goal
@@ -14,22 +14,22 @@ status line there shows that points are waiting.
 
 ## Acceptance criteria
 
-- [ ] Happy: `mcp__kit__feedback {action:"add", skill, text}` from any project stores the point
+- [x] Happy: `mcp__kit__feedback {action:"add", skill, text}` from any project stores the point
       (skill, text, project root, time) under its own `$.store` key, with no permission prompt,
       and answers `Recorded #<id> · <skill>: <n> open`.
-- [ ] Happy: `{action:"list"}` (optional `skill`) returns open points oldest first, one line
+- [x] Happy: `{action:"list"}` (optional `skill`) returns open points oldest first, one line
       each: `#<id> · <skill> · <project dir name> · <YYYY-MM-DD> · <text>`;
       `{action:"done", ids}` removes them and answers how many were closed.
-- [ ] Edge: adding a point whose skill + normalised text (trimmed, lower-case, whitespace
+- [x] Edge: adding a point whose skill + normalised text (trimmed, lower-case, whitespace
       collapsed) matches an open point stores nothing and names the existing id; `list` on an
       empty inbox answers `Inbox empty`; `done` with unknown ids closes none and names them.
-- [ ] Happy: in a kit checkout (root `.claude-plugin/plugin.json` with `"name": "kit"`) with
+- [x] Happy: in a kit checkout (root `.claude-plugin/plugin.json` with `"name": "kit"`) with
       open points, the status line reads `kit: <n> feedback points · /improve <skill with most>`;
       it updates after `add`/`done` and is cleared at zero or outside a kit checkout.
-- [ ] Error: unknown action, empty `skill`/`text`, `text` over 500 chars or `ids` not a string
+- [x] Error: unknown action, empty `skill`/`text`, `text` over 500 chars or `ids` not a string
       array → the result says what is wrong and nothing is stored; a failing `$.store` call →
       `kit: inbox unavailable (<reason>)`, never a thrown error.
-- [ ] Happy: `improve` reads the skill's open points in step 0 (no skill argument → the skill
+- [x] Happy: `improve` reads the skill's open points in step 0 (no skill argument → the skill
       with the most open points, instead of asking) and marks every point it acted on or
       declined `done` after its commit; the Skill Feedback rule in `~/.claude/CLAUDE.md`
       records each raised point with the tool.
@@ -77,5 +77,16 @@ status line there shows that points are waiting.
 —
 
 ## Verify
+
+Auto (verifier, 2026-10-03): 24/24 tests (`claude plugin test .`), tsc clean except the
+pre-existing roadmap-dashboard.tsx:61, scratch-dir validate passed, budgets ok. Criteria 1-3,
+5, 6 pass; 4 passes in tests (status text, clear outside kit), prefix needs a live session.
+Verifier notes applied: tool.check + failing store.set tests added; status refresh after a
+write no longer reports a done write as failed.
+Manual 1 · live round-trip: `claude --plugin-dir .` in this repo → add/list/done via the
+tool → expect `Recorded #… · build: 1 open`, no prompt, status line
+`kit: 1 feedback point · /improve build`, gone after done; absent in another folder.
+Outcome 1 · pass (2026-10-03): `Recorded #mus5sfg3c4t · build: 1 open`, no prompt, status
+line `⚠ kit: 1 feedback point · /improve build` under the prompt.
 
 ## Fixes

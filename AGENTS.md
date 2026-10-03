@@ -9,13 +9,14 @@ Claude Code plugin (`.claude-plugin/plugin.json`, name `kit`). Successor to `cla
 - `agents/verifier.md`: fresh-context verify subagent used by `build`
 - `hooks/hooks.json`: push-guard (PreToolUse) + format-on-save (PostToolUse);
   `hooks/push-guard.test.cjs` is its regression test. Its `modules` names `hooks/register.tsx`,
-  the kit mod (Claude Code 2.1.287+): compaction note, usage figures, and
-  the tools `mcp__kit__roadmap_view` / `mcp__kit__theme_view` (`hooks/roadmap-open.ts`,
-  `hooks/theme-view.tsx`) that `/product` and `/theme` call to open their panes (the
-  roadmap pane draws through the pure `roadmap-{dashboard,phase,card,later}.tsx` on the
-  shapes in `roadmap-parts.tsx`), plus `mcp__kit__fresh_start`
-  (`hooks/fresh-start.ts`), which `/build`'s safe point calls to clear and resume. Only `register.tsx` registers events; `$`
-  never crosses an import (the validator refuses it), so `hooks/spec.ts` stays pure
+  the kit mod (Claude Code 2.1.287+): compaction note, usage figures, and the tools
+  `mcp__kit__roadmap_view` / `mcp__kit__theme_view` (`hooks/roadmap-open.ts`,
+  `hooks/theme-view.tsx`) that `/product` and `/theme` call to open their panes (the roadmap
+  pane draws through the pure `roadmap-{dashboard,phase,card,later}.tsx` on `roadmap-parts.tsx`),
+  `mcp__kit__fresh_start` (`hooks/fresh-start.ts`), which `/build`'s safe point calls to clear
+  and resume, and `mcp__kit__feedback` (`hooks/feedback-inbox.ts` over the pure `feedback.ts`),
+  the Skill Feedback inbox `/improve` reads. Only `register.tsx` registers events; `$` never
+  crosses an import (the validator refuses it), so `hooks/spec.ts` stays pure
 - `skills/<name>/scripts/`: deterministic helpers (commit: `staging-check.js`, setup:
   `migrate-v1.js`), called via `${CLAUDE_SKILL_DIR}` and allowed in the skill's `allowed-tools`
 - `rules/frontend.md`: path-scoped user rule; plugins can't ship rules, so it is symlinked to
@@ -46,11 +47,10 @@ product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.m
 - Hooks and scripts must work on Windows too (e.g. `npx` is `npx.cmd` there)
 - The mod (`hooks/*.ts*`) costs no context (it runs as code), so no total line budget: one
   purpose per file, ≤ ~300 lines each (larger → split). It reads only specs (`Status` +
-  criteria), `docs/roadmap.md` and read-only git state (status, branch, commits not on
-  `origin/HEAD`, spec commits on other branches), and writes only through `roadmap-file.ts`
-  (plus `$.store`'s "sent to worktree" marks, outside the project). Change a view
-  tool's schema or the roadmap format → update `roadmap-file.ts` and the skill that writes it.
-  Tests: `claude plugin test .`
+  criteria), `docs/roadmap.md`, `.claude-plugin/plugin.json` (a kit checkout?) and read-only
+  git state (status, branch, commits not on `origin/HEAD`, spec commits on other branches);
+  it writes only through `roadmap-file.ts` and `$.store` (worktree marks, `feedback:*` inbox).
+  Schema or roadmap format change → update `roadmap-file.ts` + its skill. `claude plugin test .`
 - A rule that needs a second paragraph of exceptions is a sign to cut it, not to extend it
 - Check: `wc -l skills/*/SKILL.md`
 
