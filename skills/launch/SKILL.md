@@ -106,6 +106,8 @@ In order, stopping on the first failure:
 Production URL known (`AGENTS.md`) → check it answers 200 once the host reports the deploy (`gh
 pr checks` / the host's status), and look at the console of the home page. Problems → show the
 rollback line again.
+The range touched an `AGENTS.md`, `.claude/rules/` or a skill → suggest `/doctor prompt-audit`
+(stale or contradicting instructions) in the report.
 
 ## 6. Clean up (no orphan worktrees)
 
@@ -124,4 +126,5 @@ live       <merged PR / pushed commit> · <url status or —>
 notes      <n> lines · CHANGELOG <updated | —>
 todo       <migrations / env vars still to do, or —>
 cleanup    <branches deleted · sessions archived · or —>
+suggest    </doctor prompt-audit, or —>
 ```
