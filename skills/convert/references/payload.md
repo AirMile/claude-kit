@@ -52,11 +52,11 @@ Migrations, seed and writing documents change a database other people may use.
   the credentials) and exactly what gets written. Production → never.
 - Migration: the project's flow from `AGENTS.md` (create, read the SQL, migrate, generate types,
   commit migration + types together).
-- Content: an empty database → the seed. A new page → seed only that page, as draft (give the
-  seed `--only <slug>` / `--draft` if it lacks them). A page that already exists → never the
-  seed (it overwrites editor changes); add only the new block, as a draft, with a local-API script.
-  A page that was never published stays 404 on its live route as a draft: say so in the ask,
-  and in the report when a nav link now points to it (production links to a 404 until then).
+- Content: an empty database → the seed. A new page → seed only that page (give the seed
+  `--only <slug>` / `--draft` if it lacks them). A page that already exists → never the seed (it
+  overwrites editor changes); add only the new block with a local-API script. The ask offers
+  Draft / Publish; a never-published page stays 404 on its live route as a draft: say so in the
+  ask, and in the report when a nav link now points to it (production links to a 404 until then).
 - A local-API script lives as a temp file inside the project (from the scratchpad imports and
   module type don't resolve); delete it afterwards.
 - This step only reaches the database of `DATABASE_URL`; every other environment (production)
@@ -72,7 +72,8 @@ Migrations, seed and writing documents change a database other people may use.
 - Visual verify runs on a temporary dev-only route that renders the site's block components with
   the content-defaults data; delete the route before the commit.
 - `generate:types` + typecheck; a fixture case for the new block/variant in the mapping test.
-- Robustness render: optional fields empty, a heading twice as long, one item, the most items.
+- Robustness: the temporary route also renders the block with optional fields empty, a heading
+  twice as long, one item and the most items; one screenshot; overflow or a crash is a finding.
 - Grep the component files for distinctive copy from the frame; every hit is a finding (the
   content defaults may hold it, components may not).
 - No schema change intended → the migration create command with `--skip-empty` writes no file.

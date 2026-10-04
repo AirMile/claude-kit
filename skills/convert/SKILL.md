@@ -35,7 +35,8 @@ patch: fill the existing props/CMS defaults, skip steps 2, 3 and 5; verify that 
 ## 2. Fidelity and motion
 
 - **1:1**: match the frame's values; map each to the nearest existing token, and only use an
-  arbitrary value when no token matches.
+  arbitrary value when no token matches. A site-wide layout token (container max, gutter,
+  breakpoint) beats a conflicting frame value: keep the token, note the gap in the mapping table.
 - **Motion**: only what Figma defines (variants, prototype interactions, motion context). One row
   per effect: element · trigger (hover, press, focus, scroll-into-view) · effect · timing, with the
   computed value to expect. Always honour `prefers-reduced-motion`. Motion the frame doesn't define
