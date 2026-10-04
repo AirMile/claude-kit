@@ -88,7 +88,8 @@ write the mapping, motion and asset tables below in the chat, then build. Standa
 ## 7. Verify (max 3 rounds)
 
 Dev server: only a server this session started (default port taken → a free one; see
-`AGENTS.md § Git`). Stop only what you started.
+`AGENTS.md § Git`). Stop only what you started. A second dev server is refused (Next 16+,
+one per dir) → AskUserQuestion: use the running one read-only (Recommended) / stop it first.
 
 Each round:
 
@@ -126,7 +127,7 @@ CONVERT · <figma | png (estimated)> · <frame name>
 target   <file(s)>
 tokens   <reused n · added n>
 motion   <n rows verified | none>
-cms      <reused n · variants n · new n (core|project) · db done|handed off|none>
+cms      <reused n · variants n · new n (core|project) · db done|handed off|none · prod pending|n/a>
 rounds   <n> · remaining: <issues or none>
 widths   <ok | issues at 390, 768, 1440>
 ```

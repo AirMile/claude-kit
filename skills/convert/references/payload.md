@@ -55,6 +55,11 @@ Migrations, seed and writing documents change a database other people may use.
 - Content: an empty database → the seed. A new page → seed only that page, as draft (give the
   seed `--only <slug>` / `--draft` if it lacks them). A page that already exists → never the
   seed (it overwrites editor changes); add only the new block, as a draft, with a local-API script.
+  A page that was never published stays 404 on its live route as a draft: say so in the ask.
+- A local-API script lives as a temp file inside the project (from the scratchpad imports and
+  module type don't resolve); delete it afterwards.
+- This step only reaches the database of `DATABASE_URL`; every other environment (production)
+  becomes a manual item with the exact command, so it can't drift silently.
 - What the CMS already holds beats the frame: report copy differences, don't overwrite them.
 
 ## 6. Checks (no database needed)
