@@ -22,6 +22,8 @@ The source is a Figma URL with a `node-id` (ask once if none was given). Read it
 - Other frames of the same page exist (check the frame names on its Figma page; a large
   `get_metadata` result is saved to a file → regex the top-level frames) → read them too: a
   mobile frame decides the collapse, a state frame (another tab, year, step) gives its content.
+  State frames that only change content → one read-only `use_figma` dump of text + fills
+  across all of them (load `/figma-use` first), not `get_design_context` per frame.
 
 Figma MCP missing → AskUserQuestion: Reconnect via `/mcp` (Recommended) / an exported frame PNG
 (`Read` it; every value from it is `estimated` in the report).
@@ -72,7 +74,8 @@ write the mapping, motion and asset tables below in the chat, then build. Standa
 - **Assets**: which images/icons come from the frame (exported files, never redrawn), which stay
   props/data. Asset URLs from the MCP are temporary → download them in this run
   (`download_assets` for any the design context didn't give). SVGs stay files: never inline,
-  redraw or swap for a library icon.
+  redraw or swap for a library icon, unless the layer names an icon of the library the project
+  already uses (e.g. `lucide/arrow-right`): then use that library's component.
 - **Responsive**: the mobile frame's layout, or how the layout collapses when there is none.
 - **CMS table** when `payload.md` applies.
 
