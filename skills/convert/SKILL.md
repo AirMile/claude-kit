@@ -29,6 +29,8 @@ Figma MCP missing → AskUserQuestion: Reconnect via `/mcp` (Recommended) / an e
 Then the target: which page/route or component file. Existing file → this is a **patch**: keep
 everything the frame does not show (data fetching, props, handlers, copy that's real). A
 component shared by several pages → name those pages in the plan; they change too.
+A frame that only adds content to a converted section (another tab, state or item) → content
+patch: fill the existing props/CMS defaults, skip steps 2, 3 and 5; verify that section only.
 
 ## 2. Fidelity and motion
 
@@ -96,9 +98,10 @@ Each round:
 3. List discrepancies, fix in order: layout/structure → spacing/sizing → colors/details.
 4. Compare computed values of key elements against the Figma values from step 1; any mismatch
    is a finding (skip for a PNG source).
-5. Motion rows: trigger the state in a headless browser (Playwright; a hidden pane freezes
-   transitions), then compare computed `transform`/`opacity`/`transition` (or
-   `element.getAnimations()`) against the expected value; a screenshot doesn't prove motion.
+5. Motion rows: trigger the state headless (a hidden pane freezes transitions): Playwright MCP;
+   "Browser is already in use" → a scratch Node script on the project's `playwright` package.
+   Compare computed `transform`/`opacity`/`transition` (or `element.getAnimations()`) against
+   the expected value; a screenshot doesn't prove motion.
 
 After the loop: check 390 / 768 / 1440px: no horizontal overflow (`scrollWidth ===
 clientWidth`), readable text, breakpoint switches visible.

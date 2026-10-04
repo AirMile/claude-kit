@@ -66,7 +66,9 @@ Migrations, seed and writing documents change a database other people may use.
 - Grep the component files for distinctive copy from the frame; every hit is a finding (the
   content defaults may hold it, components may not).
 - No schema change intended → the migration create command with `--skip-empty` writes no file.
-- After the database step (if done): one render of the real page through the CMS.
+- After the database step (if done): one render of the real page through the CMS. A draft page
+  (preview needs a login) → render it in the temporary dev route via the local API
+  (`payload.find({ …, draft: true })` → the block mapping), never through `/admin`.
 - Manual item for the user: read the page in `/admin` with the client role (tabs, labels, which
   fields show per layout). Never log in or edit in `/admin` yourself: autosave writes to the
   shared database and a second login can end the user's session.
