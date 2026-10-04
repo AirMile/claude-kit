@@ -30,7 +30,8 @@ nothing to handle. Exit 1 → act on each line:
 - `BLOCK <path>` (secret file) → never stage it; tell the user. Already in history (`git log -1
 -- <path>` prints a commit) → also: rotate the secret and `git rm --cached` it.
 - `WARN <path>` (large, binary, critical file deleted) → AskUserQuestion per group before
-  staging those paths.
+  staging those paths, unless the user already approved exactly those paths this session
+  (e.g. assets in `/convert`'s plan): then stage them and name them in the report.
 - `IGNORE <pattern>` (untracked files .gitignore should cover) → offer to add the patterns
   (Add all (Recommended) / Skip); added → stage `.gitignore` with this commit.
 
@@ -54,9 +55,10 @@ Group changed paths by concern (directory + kind of change). Don't read diffs fo
 `feature=<slug>` mode: one commit with the code, the spec and the roadmap line; skip the split
 question.
 
-Staging when the user invoked plainly and nothing is staged: stage the group(s) directly; the
-user asked to commit. Something already staged → commit only what's staged, and say what was
-left out.
+Staging when nothing is staged: stage the group(s) directly; the user asked to commit. This
+session wrote some changes and other changed paths it never touched (a peer session, the
+user's editor) → stage only its own paths and list the rest under `left`. Something already
+staged → commit only what's staged, and say what was left out.
 
 ## 4. Message
 
