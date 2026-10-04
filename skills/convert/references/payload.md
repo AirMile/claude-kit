@@ -59,12 +59,12 @@ Migrations, seed and writing documents change a database other people may use.
   ask, and in the report when a nav link now points to it (production links to a 404 until then).
 - A local-API script lives as a temp file inside the project (from the scratchpad imports and
   module type don't resolve); delete it afterwards.
-- This step only reaches the database of `DATABASE_URL`; every other environment (production)
-  becomes a manual item with the exact command, so it can't drift silently. That command loads
-  the env file explicitly (`tsx --env-file=<file> <script>`; seed scripts often pin
-  `.env.local`); `vercel env pull` writes secrets as `[SENSITIVE]`, so `DATABASE_URL` comes from
-  the dashboard; delete the file after. The item ends with a live check: route 200 (cached 404 →
-  redeploy or re-save in `/admin`) and every image URL loads (prod storage may not be dev's).
+- Production: the deploy should create missing pages (build runs the seed with `--missing`:
+  create absent pages, never touch existing ones), so a new page ships with its push. No such
+  sync → propose it (seed flag + build command + an `AGENTS.md` line; prod secrets stay in the
+  host, nobody copies them). After the push, wait for the deploy, then check the live route
+  (200) and every image URL. A new block on an existing page stays a manual item: a local-API
+  script run with an explicit prod env file (`tsx --env-file=<file>`), deleted after.
 - What the CMS already holds beats the frame: report copy differences, don't overwrite them.
 
 ## 6. Checks (no database needed)

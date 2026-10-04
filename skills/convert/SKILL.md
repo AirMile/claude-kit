@@ -19,9 +19,9 @@ The source is a Figma URL with a `node-id` (ask once if none was given). Read it
   multi-section frame. The returned code is a reference to adapt, not code to paste.
 - `get_code_connect_map` → sections already mapped to a component: reuse that component.
 - `get_motion_context` (recursive) when the frame has prototype interactions or animated variants.
-- A mobile frame of the same page exists (check the frame names on its Figma page; a large
-  `get_metadata` result is saved to a file → regex the top-level frames) → read it too; it
-  decides the collapse, not you.
+- Other frames of the same page exist (check the frame names on its Figma page; a large
+  `get_metadata` result is saved to a file → regex the top-level frames) → read them too: a
+  mobile frame decides the collapse, a state frame (another tab, year, step) gives its content.
 
 Figma MCP missing → AskUserQuestion: Reconnect via `/mcp` (Recommended) / an exported frame PNG
 (`Read` it; every value from it is `estimated` in the report).
