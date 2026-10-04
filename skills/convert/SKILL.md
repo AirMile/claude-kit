@@ -31,7 +31,8 @@ Figma MCP missing → AskUserQuestion: Reconnect via `/mcp` (Recommended) / an e
 (`Read` it; every value from it is `estimated` in the report).
 
 Then the target: which page/route or component file. Existing file → this is a **patch**: keep
-everything the frame does not show (data fetching, props, handlers, copy that's real). A
+everything the frame does not show (data fetching, props, handlers, copy that's real). A page
+that renders already → screenshot its route first; the plan lists only what the frame changes. A
 component shared by several pages → name those pages in the plan; they change too.
 A frame that only adds content to a converted section (another tab, state or item) → content
 patch: fill the existing props/CMS defaults, skip steps 2, 3 and 5; verify that section only.

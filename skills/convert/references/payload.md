@@ -61,7 +61,8 @@ Migrations, seed and writing documents change a database other people may use.
   a draft: say so in the ask, and in the report when a nav link now points to it (production
   links to a 404 until then).
 - A local-API script lives as a temp file inside the project (from the scratchpad imports and
-  module type don't resolve); delete it afterwards.
+  module type don't resolve); delete it afterwards. Writes pass the seed's revalidate opt-out
+  (e.g. `context: { disableRevalidate: true }`): revalidate hooks throw outside Next.
 - Production: the deploy should create missing pages (build runs the seed with `--missing`:
   create absent pages, never touch existing ones), so a new page ships with its push. No such
   sync → propose it (seed flag + build command + an `AGENTS.md` line; prod secrets stay in the
