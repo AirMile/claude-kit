@@ -113,8 +113,9 @@ Stop when no significant discrepancies remain or after round 3 (list what's left
 
 Open the page in the browser pane when the session has one (`preview_start` the dev server,
 `navigate` to the route; Payload: the temporary dev route, kept until approval) so the user can
-scroll and click; else show the final screenshot. AskUserQuestion: Looks right (Recommended) /
-Adjust (describe).
+scroll and click. No pane, or it can't reach the server (e.g. the read-only one) → send the
+final screenshot and the frame's with `SendUserFile`. AskUserQuestion: Looks right
+(Recommended) / Adjust (describe).
 Adjust → targeted edit + re-screenshot, repeat.
 
 Standalone → `lessons` if a non-obvious convention surfaced, then `commit`. Inside `/build` →
