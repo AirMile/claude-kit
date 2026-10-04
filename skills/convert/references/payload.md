@@ -53,10 +53,12 @@ Migrations, seed and writing documents change a database other people may use.
 - Migration: the project's flow from `AGENTS.md` (create, read the SQL, migrate, generate types,
   commit migration + types together).
 - Content: an empty database → the seed. A new page → seed only that page (give the seed
-  `--only <slug>` / `--draft` if it lacks them). A page that already exists → never the seed (it
-  overwrites editor changes); add only the new block with a local-API script. The ask offers
-  Draft / Publish; a never-published page stays 404 on its live route as a draft: say so in the
-  ask, and in the report when a nav link now points to it (production links to a 404 until then).
+  `--only <slug>` / `--draft` if it lacks them); exit 0 proves nothing: query the slug via the
+  local API right after, missing → read why the seed skipped it. A page that already exists →
+  never the seed (it overwrites editor changes); add only the new block with a local-API
+  script. The ask offers Draft / Publish; a never-published page stays 404 on its live route as
+  a draft: say so in the ask, and in the report when a nav link now points to it (production
+  links to a 404 until then).
 - A local-API script lives as a temp file inside the project (from the scratchpad imports and
   module type don't resolve); delete it afterwards.
 - Production: the deploy should create missing pages (build runs the seed with `--missing`:

@@ -23,7 +23,9 @@ The source is a Figma URL with a `node-id` (ask once if none was given). Read it
   `get_metadata` result is saved to a file → regex the top-level frames) → read them too: a
   mobile frame decides the collapse, a state frame (another tab, year, step) gives its content.
   State frames that only change content → one read-only `use_figma` dump of text + fills
-  across all of them (load `/figma-use` first), not `get_design_context` per frame.
+  across all of them (load `/figma-use` first), not `get_design_context` per frame. Map a
+  state frame to its item by position, not by its text (duplicated frames keep stale names
+  and copy); flag a copy mismatch in the report.
 
 Figma MCP missing → AskUserQuestion: Reconnect via `/mcp` (Recommended) / an exported frame PNG
 (`Read` it; every value from it is `estimated` in the report).
