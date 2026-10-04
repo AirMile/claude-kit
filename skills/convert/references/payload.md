@@ -53,7 +53,8 @@ Migrations, seed and writing documents change a database other people may use.
 - Migration: the project's flow from `AGENTS.md` (create, read the SQL, migrate, generate types,
   commit migration + types together).
 - Content: an empty database → the seed. A new page → seed only that page (give the seed
-  `--only <slug>` / `--draft` if it lacks them); exit 0 proves nothing: query the slug via the
+  `--only <slug>` / `--draft` if it lacks them); a confirm prompt → its flag (e.g. `--yes`),
+  never piped input; output to a file you `Read`. Exit 0 proves nothing: query the slug via the
   local API right after, missing → read why the seed skipped it. A page that already exists →
   never the seed (it overwrites editor changes); add only the new block with a local-API
   script. The ask offers Draft / Publish; a never-published page stays 404 on its live route as
