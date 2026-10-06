@@ -698,11 +698,11 @@ Measures how findable a live site is. It never fixes or plans anything.
 A script (`scripts/seo-facts.js`) collects the technique: robots.txt, every sitemap, and per
 page the status, title, description, noindex, canonical, h1 and JSON-LD types. Then search data
 (a Search Console export or a connected SEO tool; never an estimate), the Google Business
-Profile (you look it up, the skill asks), and an AI check: three prompts a customer would type,
-which you paste into ChatGPT and Perplexity, and whether the business was named. A prospect gets
-`seo-scan-<domain>-<date>.md`: what works, the three biggest opportunities (what is missing, not
-how to fix it), and what a plan would deliver. A measurement is compared with the previous one;
-up to two points go on the roadmap.
+Profile (looked up in Google Maps, address included), and an AI check: three prompts a customer
+would type, run in Perplexity in the browser (ChatGPT by hand, it needs a login), and whether the
+business was named. A prospect gets `seo-scan-<domain>-<date>.md`: what works, the three
+biggest opportunities (what is missing, not how to fix it), and what a plan would deliver. A
+measurement is compared with the previous one; up to two points go on the roadmap.
 
 ### /intake
 

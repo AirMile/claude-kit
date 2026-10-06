@@ -14,7 +14,8 @@ monthly scan never repeats them). Same steps every time, so measurements compare
 ## 0. Mode
 
 - **Prospect**: cwd is not a kit project (no `AGENTS.md` and `docs/`) → URL required. Output is a
-  one-page report for someone who is not a client yet.
+  one-page report for someone who is not a client yet. A sibling folder (`../<name>`) is a kit
+  project whose code or `AGENTS.md` names that domain → it is a client: measure there instead.
 - **Measure**: kit project → URL = arg, else the production URL from `AGENTS.md`, else ask. Output
   goes into `docs/seo.md` § Measurements. File missing → create it with the header and the empty
   sections from `${CLAUDE_PLUGIN_ROOT}/skills/seo/SKILL.md` § Format.
@@ -47,18 +48,21 @@ Speed only if `npx lighthouse` works: home performance score + LCP/CLS.
 
 ## 3. Local listing
 
-A business with an address or a service area (not a webshop or online-only) → one
-AskUserQuestion: is there a Google Business Profile, how many reviews, what score (search the
-company name in Google Maps). Skip otherwise.
+A business with an address or a service area (not a webshop or online-only) → look it up in
+Google Maps in the browser (name + place; decline non-essential cookies): profile or not,
+reviews, score, newest review, and its address against the site's. No browser or a bot check →
+one AskUserQuestion for the same. Skip otherwise.
 
 ## 4. AI answers
 
 Derive 3 prompts in the site's language from what it sells and where: service × region, a
-comparison, a problem a customer has (e.g. "Welke bedrijven in <regio> doen <dienst>?"). The
-default is manual: give the user the 3 prompts to paste into ChatGPT and Perplexity, then ask
-per prompt whether the business was named, and which competitors were. A browser attempt only
-without a login; stop at any bot check or CAPTCHA, never solve one. Measure mode reuses the
-prompts of the previous measurement, so the answers compare.
+comparison, a problem a customer has (e.g. "Welke bedrijven in <regio> doen <dienst>?").
+Default: run each in Perplexity in the browser, without a login
+(`perplexity.ai/search?q=<prompt>`, decline non-essential cookies, wait for the full answer),
+and note whether the business was named and which competitors were. ChatGPT needs a login:
+offer the prompts to the user, each in its own code block to copy whole, and ask only after
+they ran them. Stop at any bot check or CAPTCHA, never solve one; fall back to the manual way.
+Measure mode reuses the prompts of the previous measurement, so the answers compare.
 
 ## 5. Write
 
@@ -83,7 +87,7 @@ SCAN · <prospect | measure> · <url>
 technique  high <n> · medium <n> · low <n>
 search     <clicks · impressions · avg position | not available>
 local      <reviews · score | none | n/a>
-ai         named <n>/3 · instead: <competitors>
+ai         named <n>/3 (<engine>) · instead: <competitors>
 written    <file>
 next       <send the report | /intake | /seo | /build <slug>>
 ```
