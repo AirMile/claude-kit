@@ -24,8 +24,14 @@ plan decides which pages and URLs get built.
 ## 1. Candidate terms
 
 From the intake (services × the customers' own words × region, the questions they hear on the
-phone), the site's copy, and the titles and h1s of the intake's competitors (WebFetch). Write
+phone), the site's copy, and the titles and h1s of the competitors below (WebFetch). Write
 them as people type them, in the site's language. 20-60 terms; a customer question is a term.
+
+**Who ranks**: search the 3-5 main terms in the browser on Google (the site's country, e.g.
+google.nl) and Bing (`cc=<country>`), one search at a time, declining non-essential cookies.
+Stop at any bot check or CAPTCHA, never solve one; no browser → WebSearch. Domains that recur
+in the top 10 are the search competitors (they may differ from the intake's); note per term
+which page type wins (service page, guide, directory, Maps pack).
 
 ## 2. Volumes
 
@@ -43,6 +49,8 @@ the plan then ranks by intent and the client's priorities, and the report says s
 
 - Group terms by intent: hire/buy, compare, learn, local. One group → one page with one main
   term; supporting terms go on that page, never a page per synonym.
+- Build the page type that wins the term in `## Competitors`; a term only directories or the
+  Maps pack win → the listing (`/scan`), not a new page.
 - An existing page that is about it gets the term; a new page only when none fits.
 - No page per place name unless the business really has a location or works there and the page
   has content of its own: city pages that funnel to one page are doorway abuse in Google's spam
@@ -53,7 +61,7 @@ the plan then ranks by intent and the client's priorities, and the report says s
 
 ## 4. Write
 
-1. `docs/seo.md` (format below): replace `## Keywords` and `## Pages` entirely, leave
+1. `docs/seo.md` (format below): replace `## Competitors`, `## Keywords` and `## Pages` entirely, leave
    `## Intake` and `## Measurements` as they are. Write it without asking: the plan is the file.
 2. Roadmap: one item per new page (`- [ ] **<slug>** · SEO page for "<main term>"`) and per
    existing page that needs rework (`· rework for "<term>"`), in the first phase with open
@@ -72,8 +80,8 @@ terms with volume but no page. Keep slugs stable; a page whose main term changes
 it):
 
 ```markdown
-<!-- format: seo. Each skill edits only its own section: Intake (/intake), Keywords and Pages
-(/seo), Measurements (/scan, newest first). Volumes come from a tool or a CSV, never an
+<!-- format: seo. Each skill edits only its own section: Intake (/intake), Competitors, Keywords
+and Pages (/seo), Measurements (/scan, newest first). Volumes come from a tool or a CSV, never an
 estimate: no source → unknown. -->
 
 # SEO · <site>
@@ -85,6 +93,12 @@ Asked: <date> · Answered: <date | —>
 ### Goal
 
 - <question> → <answer | open>
+
+## Competitors
+
+Searched: <date> · <engines>
+
+- <main term> → <top domains in order> · wins: <page type>
 
 ## Keywords
 
@@ -105,6 +119,7 @@ Asked: <date> · Answered: <date | —>
 ```
 SEO · <first plan | rerun>
 terms      <n> · with volume <n> (<source>) · unknown <n>
+competitors <recurring domains | —>
 pages      <n> existing · <n> new · <n> rework
 roadmap    <n> items added · next: /build <slug>
 assumed    <open intake answers used as assumptions | —>
