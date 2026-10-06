@@ -76,7 +76,9 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
    the code the feature touches. Ask only what you can't answer from those: one question at a
    time, or one AskUserQuestion with concrete options for a real design fork (recommended first).
    Usually 0-3 questions. An unknown the running app can answer (a timing, a count, a log
-   line) → measure it or ask for that reading now; don't guess.
+   line) → measure it or ask for that reading now; don't guess. `docs/seo.md` § Pages has this
+   slug → its main term in title and h1, a first paragraph that answers it directly, its
+   questions as H2s each with a direct answer, its schema types and links become criteria.
 2. Draft the spec in the plan file using
    `${CLAUDE_SKILL_DIR}/references/spec-template.md`: criteria per happy/edge/error,
    Approach with files, ASCII wireframe for UI, Tests mapping. More than 6 criteria → propose a

@@ -106,6 +106,12 @@ In order, stopping on the first failure:
 Production URL known (`AGENTS.md`) → check it answers 200 once the host reports the deploy (`gh
 pr checks` / the host's status), and look at the console of the home page. Problems → show the
 rollback line again.
+First launch of a site with `docs/seo.md` or an indexing switch (a flag or env var like
+`SITE_INDEXABLE`) → the switch is on in production, `robots.txt` allows, and `sitemap.xml`
+answers with status 200. Search Console: a URL-prefix property verified with the HTML tag
+through the framework's metadata API (a code change: before the merge, or as a follow-up).
+Verifying, submitting the sitemap, adding the client as owner and adding the site to Bing
+Webmaster Tools are account steps: list them under `todo`. Then `/scan` records the baseline.
 The range touched an `AGENTS.md`, `.claude/rules/` or a skill → suggest `/doctor prompt-audit`
 (stale or contradicting instructions) in the report.
 

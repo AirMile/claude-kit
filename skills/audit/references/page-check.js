@@ -32,6 +32,28 @@
     })
     .map((el) => el.name || el.id || el.outerHTML.slice(0, 80));
 
+  // Every @type in the page's JSON-LD (including @graph), and how many blocks don't parse.
+  const jsonLd = () => {
+    const types = new Set();
+    let errors = 0;
+    const collect = (node) => {
+      if (Array.isArray(node)) return node.forEach(collect);
+      if (!node || typeof node !== "object") return;
+      for (const t of [].concat(node["@type"] || [])) types.add(String(t));
+      if (node["@graph"]) collect(node["@graph"]);
+    };
+    for (const s of document.querySelectorAll(
+      'script[type="application/ld+json"]',
+    )) {
+      try {
+        collect(JSON.parse(s.textContent));
+      } catch {
+        errors++;
+      }
+    }
+    return { jsonLdTypes: [...types], jsonLdErrors: errors };
+  };
+
   const links = [...document.querySelectorAll("a[href]")]
     .map((a) => abs(a.getAttribute("href")))
     .filter((u) => u && u.origin === location.origin)
@@ -43,8 +65,13 @@
     description: meta('meta[name="description"]'),
     ogImage: meta('meta[property="og:image"]'),
     canonical: document.querySelector('link[rel="canonical"]')?.href || null,
+    robots: meta('meta[name="robots"]'),
     lang: document.documentElement.lang || null,
     h1Count: document.querySelectorAll("h1").length,
+    h1Text:
+      document.querySelector("h1")?.textContent.replace(/\s+/g, " ").trim() ||
+      null,
+    ...jsonLd(),
     imagesWithoutAlt: images.filter((i) => i.alt === null).map((i) => i.src),
     // natural width more than 2x the rendered width: downloaded far bigger than shown
     oversizedImages: images

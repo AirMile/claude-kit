@@ -12,7 +12,7 @@ Code already has a native feature (plan mode, subagents, `AGENTS.md` loading, `/
 `/security-review`) kit uses it instead of rebuilding it.
 
 ```
-11 skills · 1 agent · 2 hooks + 1 mod (2 panes) · 2 scripts · ~1100 lines of skills · ~330 tokens always-on
+14 skills · 1 agent · 2 hooks + 1 mod (2 panes) · 3 scripts · ~1550 lines of skills · ~420 tokens always-on
 ```
 
 ---
@@ -33,6 +33,9 @@ Code already has a native feature (plan mode, subagents, `AGENTS.md` loading, `/
   - [/improve](#improve)
   - [/launch](#launch)
   - [/audit](#audit)
+  - [/scan](#scan)
+  - [/intake](#intake)
+  - [/seo](#seo)
   - [/explain](#explain)
   - [lessons](#lessons-claude-only)
 - [The verifier agent](#the-verifier-agent)
@@ -73,7 +76,7 @@ The install is a copy in `~/.claude/plugins/cache/airmile/kit/<version>/`: edits
 take effect only after a version bump + update (see [Update](#update--uninstall)); `/commit`
 pushes them to GitHub.
 
-Check with `claude plugin details kit`: it should list 11 skills, 1 agent and 2 hooks. Skills
+Check with `claude plugin details kit`: it should list 14 skills, 1 agent and 2 hooks. Skills
 are available in **new** sessions; in a running session use `/reload-plugins`.
 
 Skills are namespaced as `/kit:<skill>` (e.g. `/kit:build`). The bare name (`/build`) also works as
@@ -190,18 +193,20 @@ your-project/
     ├── product.md            what, for whom, why, non-goals, stack
     ├── roadmap.md         ordered features = the backlog
     ├── decisions.md       decisions + the alternative that was rejected
+    ├── seo.md             intake answers, search terms, page plan, measurements (SEO work)
     └── specs/
         └── <slug>.md      one per feature: criteria, status, verify result, later fixes
 ```
 
-| File                   | Written by           | Read by                        | Loaded into context                          |
-| ---------------------- | -------------------- | ------------------------------ | -------------------------------------------- |
-| `AGENTS.md` (root)     | `/setup`, `lessons`  | every session                  | always, at session start                     |
-| `<dir>/AGENTS.md`      | `lessons`            | every session                  | lazily, when Claude reads a file in that dir |
-| `docs/product.md`      | `/product`           | `/build`, `/convert`, `/setup` | on demand                                    |
-| `docs/roadmap.md`      | `/product`, `/build` | `/build`                       | on demand                                    |
-| `docs/specs/<slug>.md` | `/build`             | `/build`, verifier             | on demand                                    |
-| `docs/decisions.md`    | `/build`, `/setup`   | `/build`                       | on demand                                    |
+| File                   | Written by                 | Read by                               | Loaded into context                          |
+| ---------------------- | -------------------------- | ------------------------------------- | -------------------------------------------- |
+| `AGENTS.md` (root)     | `/setup`, `lessons`        | every session                         | always, at session start                     |
+| `<dir>/AGENTS.md`      | `lessons`                  | every session                         | lazily, when Claude reads a file in that dir |
+| `docs/product.md`      | `/product`                 | `/build`, `/convert`, `/setup`        | on demand                                    |
+| `docs/roadmap.md`      | `/product`, `/build`       | `/build`                              | on demand                                    |
+| `docs/specs/<slug>.md` | `/build`                   | `/build`, verifier                    | on demand                                    |
+| `docs/decisions.md`    | `/build`, `/setup`         | `/build`                              | on demand                                    |
+| `docs/seo.md`          | `/scan`, `/intake`, `/seo` | `/seo`, `/build`, `/audit`, `/launch` | on demand                                    |
 
 ### AGENTS.md
 
@@ -678,7 +683,45 @@ images without alt or far larger than shown, unlabeled inputs, and (when Lightho
 available) speed. Findings are grouped across pages as blocker / should fix / nice. You pick
 which groups to fix now (the small safe ones are recommended); the rest goes under `## Later` in
 the roadmap. The report can be saved as `docs/audits/<date>.md` to show a client what was
-checked.
+checked. With a `docs/seo.md` it also checks each planned SEO page: its main term in title or
+h1, the page in the sitemap, its schema types.
+
+### /scan
+
+Measures how findable a live site is. It never fixes or plans anything.
+
+```
+/scan https://prospect.nl   outside a kit project: a free one-page check for a prospect
+/scan                       in a kit project: this month's measurement in docs/seo.md
+```
+
+A script (`scripts/seo-facts.js`) collects the technique: robots.txt, every sitemap, and per
+page the status, title, description, noindex, canonical, h1 and JSON-LD types. Then search data
+(a Search Console export or a connected SEO tool; never an estimate), the Google Business
+Profile (you look it up, the skill asks), and an AI check: three prompts a customer would type,
+which you paste into ChatGPT and Perplexity, and whether the business was named. A prospect gets
+`seo-scan-<domain>-<date>.md`: what works, the three biggest opportunities (what is missing, not
+how to fix it), and what a plan would deliver. A measurement is compared with the previous one;
+up to two points go on the roadmap.
+
+### /intake
+
+The questions only the client can answer, asked once: what earns money, who buys, which words
+they use, what they hear on the phone, which proof they have, and access to Search Console,
+Analytics and the Business Profile. It reads the site and 2-3 competitors first, so every
+question is specific and none asks what is already known (max 12). You get a ready-to-send
+message; `/intake` again with the answers records them in `docs/seo.md`. A monthly `/scan` or a
+new `/seo` run never repeats it.
+
+### /seo
+
+Turns the intake into a page plan. Candidate terms come from the intake, the site and the
+competitors; volumes from a connected SEO tool or a CSV you export (Keyword Planner or Search
+Console), otherwise `unknown`: it never makes up a number. Terms are grouped by intent into one
+page each (no page per place name without real work there), each with the questions it answers,
+its schema types and its links. `docs/seo.md` gets the keyword table and the page plan; new
+pages and rework go on the roadmap after one confirmation, for `/build`. Rerun it quarterly: it
+starts from the pages closest to page one.
 
 ### /explain
 
@@ -908,6 +951,9 @@ small changes; use `/build` once it's a feature.
 | Several things at once    | one desktop session per task, each with the **worktree** option; `/build` in each |
 | Go live / release         | `/launch` (checks, notes, merge or version tag)                                   |
 | Before delivering a site  | `/audit` → fix the small things → `/launch`                                       |
+| Free check for a prospect | `/scan <url>` outside a project → send the one-page report                        |
+| SEO for a client          | `/scan` → `/intake` (once) → `/seo` → `/build` per page → `/audit` → `/launch`    |
+| Monthly SEO               | `/scan` → `/build` the points it adds; `/seo` again each quarter                  |
 | Understand what was built | `/explain` (last change), `/explain <slug>` or `/explain <file>`                  |
 | New idea mid-project      | `/product add <idea>`; verifier notes are also offered as roadmap items           |
 | Rethink the plan          | `/product critique`                                                               |
@@ -996,18 +1042,21 @@ kit ships an eval suite (`evals/`) for `claude plugin eval`. Each case builds a 
 a fixture script, sends one prompt to a fresh, isolated `claude -p` session with only kit loaded,
 and grades what happened: files written, tools called, the order of calls, text in the reply.
 
-| Case                   | What it guards                                                                                                      |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `build-routes-small`   | a one-line change takes the small path: no spec, no plan mode                                                       |
-| `build-routes-feature` | a roadmap feature goes through plan mode with happy/edge/error criteria, no code edits yet                          |
-| `build-routes-fix`     | a bug is reproduced (tests run) before the code is edited, and actually fixed                                       |
-| `build-resumes`        | `/build` with no argument resumes the in-progress spec and starts the verifier                                      |
-| `commit-blocks-env`    | `staging-check.js` runs and a `.env` file never ends up in the commit                                               |
-| `commit-no-push`       | `/commit` commits but never pushes on its own                                                                       |
-| `setup-migrates-v1`    | the v1 migration keeps real items/lessons and drops v1-only ones (judged by a model)                                |
-| `setup-empty-folder`   | an empty folder runs the `/product` interview instead of stopping; nothing is written or scaffolded before approval |
-| `setup-new-folder`     | in a folder of projects, setup makes a new project folder and hands off, writes no docs there                       |
-| `lessons-nested`       | a module-specific lesson lands in that module's `AGENTS.md`                                                         |
+| Case                      | What it guards                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `build-routes-small`      | a one-line change takes the small path: no spec, no plan mode                                                       |
+| `build-routes-feature`    | a roadmap feature goes through plan mode with happy/edge/error criteria, no code edits yet                          |
+| `build-routes-fix`        | a bug is reproduced (tests run) before the code is edited, and actually fixed                                       |
+| `build-resumes`           | `/build` with no argument resumes the in-progress spec and starts the verifier                                      |
+| `commit-blocks-env`       | `staging-check.js` runs and a `.env` file never ends up in the commit                                               |
+| `commit-no-push`          | `/commit` commits but never pushes on its own                                                                       |
+| `setup-migrates-v1`       | the v1 migration keeps real items/lessons and drops v1-only ones (judged by a model)                                |
+| `setup-empty-folder`      | an empty folder runs the `/product` interview instead of stopping; nothing is written or scaffolded before approval |
+| `setup-new-folder`        | in a folder of projects, setup makes a new project folder and hands off, writes no docs there                       |
+| `lessons-nested`          | a module-specific lesson lands in that module's `AGENTS.md`                                                         |
+| `seo-no-invented-volumes` | without a tool or CSV every volume stays `unknown`; no number is made up                                            |
+| `intake-already-done`     | an answered intake is never asked again; it points to `/seo`                                                        |
+| `scan-prospect-report`    | outside a project, `/scan <url>` writes the one-page report with strengths and opportunities                        |
 
 Runs are non-interactive: nobody answers questions or approves plans. So the suite tests the
 **decisions and safety rules** of the skills, not complete interactive flows.
@@ -1042,6 +1091,7 @@ skills/<name>/SKILL.md            one workflow per skill
 skills/build/references/           debug.md, spec-template.md (loaded on demand)
 skills/commit/scripts/            staging-check.js
 skills/setup/scripts/             migrate-v1.js
+skills/scan/scripts/              seo-facts.js, seo-facts.test.cjs
 agents/verifier.md
 hooks/hooks.json, push-guard.cjs, push-guard.test.cjs, format-on-save.cjs
 rules/frontend.md                 user rule, symlinked into ~/.claude/rules/

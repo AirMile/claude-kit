@@ -18,7 +18,8 @@ Claude Code plugin (`.claude-plugin/plugin.json`, name `kit`). Successor to `cla
   the Skill Feedback inbox `/improve` reads. Only `register.tsx` registers events; `$` never
   crosses an import (the validator refuses it), so `hooks/spec.ts` stays pure
 - `skills/<name>/scripts/`: deterministic helpers (commit: `staging-check.js`, setup:
-  `migrate-v1.js`), called via `${CLAUDE_SKILL_DIR}` and allowed in the skill's `allowed-tools`
+  `migrate-v1.js`, scan: `seo-facts.js`), called via `${CLAUDE_SKILL_DIR}` and allowed in the
+  skill's `allowed-tools`
 - `rules/frontend.md`: path-scoped user rule; plugins can't ship rules, so it is symlinked to
   `~/.claude/rules/frontend.md` (see README)
 
@@ -30,9 +31,12 @@ each file carries its own format in a `<!-- format: … -->` header:
 - `AGENTS.md` (root + nested per module): instructions and non-derivable lessons
 - no `CLAUDE.md`: its presence would stop Claude Code from reading `AGENTS.md`
 - `docs/product.md`, `docs/roadmap.md`, `docs/specs/<slug>.md`, `docs/decisions.md`
+- `docs/seo.md`: intake, keywords, page plan, measurements (`scan`, `intake`, `seo` write it;
+  `build`, `audit`, `launch` read it)
 
 Change a format → update the header template in the skill that writes it (`product` for
-product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.md` for specs).
+product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.md` for specs,
+`seo` for seo.md).
 
 ## Budgets (hard)
 

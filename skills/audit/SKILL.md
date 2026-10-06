@@ -26,9 +26,9 @@ Say the page count and target in one line before starting.
 
 Open each page in the browser at 1280px, scroll to the bottom once (scroll-triggered content),
 then evaluate `${CLAUDE_SKILL_DIR}/references/page-check.js` in the page (it returns JSON: title,
-description, h1 count, lang, canonical, og:image, images without alt or oversized, inputs without
-label, horizontal overflow, link list). Also collect console errors (minus extension, HMR and
-favicon noise) and failed requests (4xx/5xx).
+description, robots meta, h1 count and text, lang, canonical, og:image, JSON-LD types, images
+without alt or oversized, inputs without label, horizontal overflow, link list). Also collect
+console errors (minus extension, HMR and favicon noise) and failed requests (4xx/5xx).
 
 Then, per page:
 
@@ -45,17 +45,20 @@ Once for the whole site:
   the heaviest page.
 - **404**: a non-existent route → the app's own 404 page with a link home.
 - **Raw HTML**: `curl` the home + one content page → the h1 text is in the served HTML.
-- **Crawl basics**: `robots.txt` reachable; JSON-LD present on the home page.
+- **Crawl basics**: `robots.txt` reachable. Per page from the script: `robots` noindex (one
+  page while the rest is indexable → finding; the whole site → one line "indexing off", which
+  `/launch` switches on), `jsonLdTypes` and `jsonLdErrors`. `docs/seo.md` exists → each
+  § Pages entry: its main term in title or `h1Text`, the page in the sitemap, its schema types.
 - **Dark mode / reduced motion** (only when the browser tool can emulate media): identical
   screenshots, or animations still running → finding.
 
 ## 2. Findings
 
-| Severity   | Examples                                                                                                                                             |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Blocker    | console errors, broken links, failed requests, critical axe violations, mobile overflow                                                              |
-| Should fix | missing title/description, missing alt, unlabeled inputs, serious axe violations, images > 300 KB, no og:image, no own 404, h1 missing from raw HTML |
-| Nice       | duplicate titles, h1 count ≠ 1, missing canonical, speed below 80, no robots.txt/JSON-LD, dark mode/reduced motion ignored                           |
+| Severity   | Examples                                                                                                                                                                                                                              |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Blocker    | console errors, broken links, failed requests, critical axe violations, mobile overflow, noindex on one page of an indexable site                                                                                                     |
+| Should fix | missing title/description, missing alt, unlabeled inputs, serious axe violations, images > 300 KB, no og:image, no own 404, h1 missing from raw HTML, JSON-LD parse error, SEO page without its main term or missing from the sitemap |
+| Nice       | duplicate titles, h1 count ≠ 1, missing canonical, speed below 80, no robots.txt/JSON-LD, an SEO page without its schema types, dark mode/reduced motion ignored                                                                      |
 
 Group identical findings across pages (one line, page count), don't list them per page.
 
