@@ -1056,7 +1056,6 @@ and grades what happened: files written, tools called, the order of calls, text 
 | `lessons-nested`          | a module-specific lesson lands in that module's `AGENTS.md`                                                         |
 | `seo-no-invented-volumes` | without a tool or CSV every volume stays `unknown`; no number is made up                                            |
 | `intake-already-done`     | an answered intake is never asked again; it points to `/seo`                                                        |
-| `scan-prospect-report`    | outside a project, `/scan <url>` writes the one-page report with strengths and opportunities                        |
 
 Runs are non-interactive: nobody answers questions or approves plans. So the suite tests the
 **decisions and safety rules** of the skills, not complete interactive flows.
