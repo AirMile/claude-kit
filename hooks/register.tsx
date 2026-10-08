@@ -21,7 +21,8 @@ import { themeTool, themeView } from "./theme-view";
 // kit's context mod. Reads the active spec (slug from the feat/ or fix/ branch); never writes.
 // - After a compaction: appends the spec's state, so the next turn re-reads it from disk.
 // - Context and plan limits as one line in the roadmap pane's dashboard (USAGE).
-// - The roadmap and theme panes: tools the skills call with data (roadmap-view, theme-view).
+// - The roadmap and theme panes: tools the skills call with data (roadmap-view, theme-view);
+//   the roadmap pane also opens itself in a project with docs/roadmap.md (roadmap-open).
 // - fresh_start: /build's safe point clears the chat and resumes (fresh-start).
 // - feedback: the Skill Feedback inbox, and its status line in a kit checkout (feedback-inbox).
 

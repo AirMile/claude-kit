@@ -824,7 +824,7 @@ versions skip it. It never writes files.
 **Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
 columns, above the prompt otherwise):
 
-- **Roadmap**: `/product` (no argument) opens a project dashboard, titled with the product's name. On top, in its own block:
+- **Roadmap**: a project dashboard, titled with the product's name. It opens by itself when a session starts (or resumes) in a project with `docs/roadmap.md`, and `/product` opens it too. If the terminal is under 144 columns at start it waits, and your first prompt seats it (not after `/clear`: a pane you closed stays closed). On top, in its own block:
   context and plan usage (a value turns amber from 60%, red from 85%) with **Compact** and **Clear**; git state (branch,
   changed files, commits not on `origin/HEAD`) with **Diff** (`/diff`, where it exists) and
   **Commit** when files changed and **Launch** when commits aren't live; then kit's skills:

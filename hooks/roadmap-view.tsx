@@ -7,7 +7,8 @@ import type { Card, Git, Usage } from "./roadmap-parts";
 import * as wt from "./roadmap-worktree";
 import { inRoot, parseSpec, type SpecState } from "./spec";
 
-// The roadmap pane, opened by /product: a project dashboard. Live: reads docs/roadmap.md, the
+// The roadmap pane, opened by /product and, in a project with docs/roadmap.md, at session start
+// (roadmap-open.ts): a project dashboard. Live: reads docs/roadmap.md, the
 // open features' specs and git state, and edits open items in place (roadmap-file.ts keeps
 // every other line as is); its buttons run kit's skills in the chat. Draft: /product in plan
 // mode passes items as data, read-only. Drawing: roadmap-dashboard.tsx + roadmap-parts.tsx; done and in-progress
@@ -37,7 +38,7 @@ let sent = 0; // when a button last ran a command: presses right after it are a 
 // Phases the user folded or unfolded against the default (a finished phase starts folded).
 const toggled = new Set<string>();
 
-// Called when /product opens the pane: a draft (plan mode), or null for the live roadmap.
+// Called when the pane opens (/product or session start): a draft (plan mode), or null for the live roadmap.
 export function roadmapOpened(next: Draft | null, name: string): void {
   [draft, product, needsLoad, note] = [next, name, true, ""];
   [specs, away] = [{}, {}]; // a draft's cards must not show the live pane's specs
