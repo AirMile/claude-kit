@@ -1,0 +1,32 @@
+{
+  "name": "kit",
+  "version": "0.8.1",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex-hooks.cjs\"",
+            "commandWindows": "node \"$env:PLUGIN_ROOT\\hooks\\codex-hooks.cjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "apply_patch|Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex-hooks.cjs\"",
+            "commandWindows": "node \"$env:PLUGIN_ROOT\\hooks\\codex-hooks.cjs\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
