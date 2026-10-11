@@ -1,6 +1,5 @@
 {
-  "name": "kit",
-  "version": "0.8.1",
+  "description": "Codex-compatible push guard and format-on-save hooks",
   "hooks": {
     "PreToolUse": [
       {
