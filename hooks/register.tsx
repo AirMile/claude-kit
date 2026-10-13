@@ -7,7 +7,7 @@ import type {
 
 import { feedbackInbox, feedbackTool } from "./feedback-inbox";
 import { freshStart, freshTool } from "./fresh-start";
-import { roadmapOpen, roadmapTool } from "./roadmap-open";
+import { panelCommand, roadmapOpen, roadmapTool } from "./roadmap-open";
 import {
   roadmapEdited,
   roadmapStale,
@@ -22,7 +22,8 @@ import { themeTool, themeView } from "./theme-view";
 // - After a compaction: appends the spec's state, so the next turn re-reads it from disk.
 // - Context and plan limits as one line in the roadmap pane's dashboard (USAGE).
 // - The roadmap and theme panes: tools the skills call with data (roadmap-view, theme-view);
-//   the roadmap pane also opens itself in a project with docs/roadmap.md (roadmap-open).
+//   the roadmap pane also opens itself in a project with docs/roadmap.md, and on /panel
+//   (roadmap-open).
 // - fresh_start: /build's safe point clears the chat and resumes (fresh-start).
 // - feedback: the Skill Feedback inbox, and its status line in a kit checkout (feedback-inbox).
 
@@ -103,6 +104,7 @@ export const register: Register = (on) => {
     await $.tool.register(themeTool);
     await $.tool.register(freshTool);
     await $.tool.register(feedbackTool);
+    await $.command.register(panelCommand);
     await refresh($);
     return started;
   });

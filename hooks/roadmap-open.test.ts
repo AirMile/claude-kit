@@ -53,3 +53,18 @@ test("a pane that waited undrawn is opened again by the first prompt only", asyn
   await $.prompt.submit({ text: "two" });
   expect(opens).toEqual(["kit-roadmap", "kit-roadmap"]);
 });
+
+test("/panel opens the pane by hand, also without a roadmap", async ($, on) => {
+  const opens = world(on, [], true);
+  const ran = await $.command.run({ command: "panel" });
+  expect(opens).toEqual(["kit-roadmap"]);
+  expect(ran.text).toBe("Roadmap pane opened.");
+});
+
+test("/panel takes over a pane that waited, so the prompt does not reopen it", async ($, on) => {
+  const opens = world(on, ROADMAP, false);
+  await start($);
+  await $.command.run({ command: "panel" });
+  await $.prompt.submit({ text: "hi" });
+  expect(opens).toEqual(["kit-roadmap", "kit-roadmap"]);
+});

@@ -1,4 +1,4 @@
-import type { EngineInterface, On, ToolSpec } from "claude-code";
+import type { CommandSpec, EngineInterface, On, ToolSpec } from "claude-code";
 
 import type { Card } from "./roadmap-parts";
 import { PANE, roadmapOpened } from "./roadmap-view";
@@ -9,6 +9,7 @@ import { list } from "./theme-view";
 // a read-only draft (plan mode) or none for docs/roadmap.md live. The live pane also opens on
 // its own in a project with docs/roadmap.md: at session start, and at the first prompt when the
 // start could not seat it (unasked, a terminal needs 144 columns; a prompt counts as asked).
+// /panel opens it by hand, anywhere (without docs/roadmap.md the pane says to run /product).
 
 export const roadmapTool: ToolSpec = {
   name: "roadmap_view",
@@ -29,6 +30,12 @@ export const roadmapTool: ToolSpec = {
       later: { type: "array", items: { type: "string" } },
     },
   },
+};
+
+export const panelCommand: CommandSpec = {
+  name: "panel",
+  description: "Open kit's roadmap pane (project dashboard)",
+  immediate: true,
 };
 
 // docs/product.md's `# <name>`, or "Roadmap" without one.
@@ -87,6 +94,16 @@ export function roadmapOpen(on: On) {
       await show($, null).catch(() => {});
     }
     return next(e);
+  });
+
+  on("command.run", { command: "panel" }, async ($) => {
+    waiting = false;
+    const opened = await show($, null);
+    return {
+      text: opened.isPlaced
+        ? "Roadmap pane opened."
+        : `Roadmap pane not shown (${opened.reason}).`,
+    };
   });
 
   on("tool.check", { tool: "mcp__kit__roadmap_view" }, () => ({

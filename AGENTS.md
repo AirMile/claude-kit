@@ -11,7 +11,7 @@ Claude Code plugin (`.claude-plugin/plugin.json`, name `kit`). Successor to `cla
   `hooks/push-guard.test.cjs` is its regression test. Its `modules` names `hooks/register.tsx`,
   the kit mod (Claude Code 2.1.287+): compaction note, usage figures, and the tools
   `mcp__kit__roadmap_view` / `mcp__kit__theme_view` (`hooks/roadmap-open.ts`,
-  `hooks/theme-view.tsx`) that `/product` and `/theme` call to open their panes (the roadmap
+  `hooks/theme-view.tsx`) that `/product` and `/theme` call to open their panes (plus the `/panel` command) (the roadmap
   pane draws through the pure `roadmap-{dashboard,phase,card,later}.tsx` on `roadmap-parts.tsx`),
   `mcp__kit__fresh_start` (`hooks/fresh-start.ts`), which `/build`'s safe point calls to clear
   and resume, and `mcp__kit__feedback` (`hooks/feedback-inbox.ts` over the pure `feedback.ts`),

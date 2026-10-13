@@ -357,7 +357,8 @@ Turn an idea into `docs/product.md` + `docs/roadmap.md`, or update them later.
 ```
 /product <idea>          new project (when docs/product.md doesn't exist)
 /product add <item>      update: add, reorder, remove or reword roadmap items
-/product critique        stress-test product.md and the roadmap without changing it
+/product critique        stress-test product.md and the roadmap, then offer edits
+/product brainstorm      find new features, then pick which go on the roadmap
 ```
 
 **New**
@@ -378,9 +379,13 @@ with a `scaffold` item; 5–15 items for an MVP, the rest under `## Later`.
 (conflict → asks whether the non-goal changes or the item is dropped), never touches done or
 in-progress items, and shows a diff before writing.
 
-**Critique** applies three lenses (max 3 findings each): the least-proven assumption, how the MVP
-disappoints its first real user, and the smallest roadmap that still tests the core idea. It then
-offers to apply the changes through Update.
+**Critique** and **Brainstorm** run one technique at a time as a dialogue. You pick a technique
+from 2-3 ranked for this product (critique: pre-mortem, assumption test, smaller version,
+audience, core loop, ...; brainstorm: what if, reversal, SCAMPER, role play, journey gaps, ...).
+Each round asks 4-6 questions anchored in your product.md and roadmap, plus concrete starting
+points; a summary follows, then another technique or the finish. Critique ends with edits to
+product.md and the roadmap, Brainstorm with a pick list of new items (phase or `## Later`); both
+apply through Update, so nothing changes without your OK.
 
 ### /setup
 
@@ -824,11 +829,11 @@ versions skip it. It never writes files.
 **Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
 columns, above the prompt otherwise):
 
-- **Roadmap**: a project dashboard, titled with the product's name. It opens by itself when a session starts (or resumes) in a project with `docs/roadmap.md`, and `/product` opens it too. If the terminal is under 144 columns at start it waits, and your first prompt seats it (not after `/clear`: a pane you closed stays closed). On top, in its own block:
+- **Roadmap**: a project dashboard, titled with the product's name. It opens by itself when a session starts (or resumes) in a project with `docs/roadmap.md`, and `/product` opens it too; `/panel` opens it by hand, in any project. If the terminal is under 144 columns at start it waits, and your first prompt seats it (not after `/clear`: a pane you closed stays closed). On top, in its own block:
   context and plan usage (a value turns amber from 60%, red from 85%) with **Compact** and **Clear**; git state (branch,
   changed files, commits not on `origin/HEAD`) with **Diff** (`/diff`, where it exists) and
   **Commit** when files changed and **Launch** when commits aren't live; then kit's skills:
-  **Setup** (only when `AGENTS.md` is missing), **Ideas**, **Critique**, **Theme** and
+  **Setup** (only when `AGENTS.md` is missing), **Brainstorm**, **Critique**, **Theme** and
   **Audit**. One click on a button runs its command at once (a second click within 2 seconds
   counts as a double click and is ignored; if running fails, the command lands in your prompt box); a done
   feature's **Explain** runs `/explain <slug>`. On the desktop app a click also counts when

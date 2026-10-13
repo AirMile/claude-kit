@@ -67,20 +67,15 @@ user can also add, reword, move or shelve open items. Tool missing → skip.
 
 ## Critique
 
-Stress-test product.md and the roadmap without editing them. Three lenses, max 3 findings each:
-
-1. **Assumptions**: what must be true for this to work, and which one is least proven?
-2. **Failure modes**: how does the MVP disappoint its first real user?
-3. **Smaller version**: what is the smallest roadmap that still tests the core idea?
-
-Then offer: apply suggested product/roadmap edits (via Update) or leave as is.
+Stress-test product.md and the roadmap through techniques (pre-mortem, assumption test, smaller
+version, ...) applied one at a time in dialogue, then turn the findings into edits via
+**Update**. Follow `references/critique.md`.
 
 ## Brainstorm
 
-Read product.md and the roadmap, then propose 3-5 new features that serve **For whom** and
-**Core experience**, respect **Non-goals**, and aren't on the roadmap or under `## Later` yet:
-one line each with why. AskUserQuestion (multiSelect) which to add; each chosen one goes to the
-fitting phase (or `## Later`) via **Update** step 2-4.
+Find new features through techniques (what if, reversal, role play, ...) applied one at a time
+in dialogue, then pick which land on the roadmap via **Update**. Follow
+`references/brainstorm.md`.
 
 ## Formats
 
@@ -140,7 +135,7 @@ fitting phase (or `## Later`) via **Update** step 2-4.
 ## Report
 
 ```
-PRODUCT · <new | update | critique>
+PRODUCT · <new | update | critique | brainstorm>
 product.md  <created | updated | unchanged>
 roadmap     <n open> · next: <first open slug>
 next        /setup (no code yet) · /build <slug>
