@@ -1,7 +1,7 @@
 # kit
 
-Claude Code plugin (`.claude-plugin/plugin.json`, name `kit`), also installed in Codex (root
-`plugin.json`, same version). Successor to `claude-config` (v1), built to stay small. Skills run
+Claude Code plugin (`.claude-plugin/plugin.json`, name `kit`), also installed in Codex
+(`.codex-plugin/plugin.json`, same version). Successor to `claude-config` (v1), built to stay small. Skills run
 as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
 
 ## Layout
@@ -17,7 +17,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   and `mcp__kit__fresh_start` (`hooks/fresh-start.ts`), which `/build`'s safe point calls to
   clear and resume. Only `register.tsx` registers events; `$` never crosses an import (the
   validator refuses it), so `hooks/spec.ts` stays pure
-- `hooks/codex-hooks.json` (declared in the root `plugin.json`) → `hooks/codex-hooks.cjs`: push
+- `hooks/codex-hooks.json` (declared in `.codex-plugin/plugin.json`) → `hooks/codex-hooks.cjs`: push
   guard, format-on-save (also `apply_patch`) and, at session start, `hooks/codex-context.md`:
   how Codex reads the skills' Claude terms (AskUserQuestion, plan mode, `${CLAUDE_SKILL_DIR}`,
   the verifier, `mcp__*` tools). Skills stay worded for Claude; a new Claude-only term in a

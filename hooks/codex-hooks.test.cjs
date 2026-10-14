@@ -81,7 +81,7 @@ const cases = [
   ],
   [
     "manifest versions match",
-    () => version("plugin.json"),
+    () => version(".codex-plugin/plugin.json"),
     version(".claude-plugin/plugin.json"),
   ],
 ];

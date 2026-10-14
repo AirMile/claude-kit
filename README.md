@@ -112,7 +112,7 @@ On Windows, copy the file instead (symlinks need admin rights there).
 
 ### Codex
 
-Codex reads the same marketplace (`.claude-plugin/marketplace.json`) and the root `plugin.json`,
+Codex reads the same marketplace (`.claude-plugin/marketplace.json`) and `.codex-plugin/plugin.json`,
 so one repo serves both tools at one version.
 
 ```bash
