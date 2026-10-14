@@ -1,7 +1,8 @@
 # kit
 
-Claude Code plugin (`.claude-plugin/plugin.json`, name `kit`). Successor to `claude-config`
-(v1), built to stay small. Skills run as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
+Claude Code plugin (`.claude-plugin/plugin.json`, name `kit`), also installed in Codex (root
+`plugin.json`, same version). Successor to `claude-config` (v1), built to stay small. Skills run
+as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
 
 ## Layout
 
@@ -13,10 +14,16 @@ Claude Code plugin (`.claude-plugin/plugin.json`, name `kit`). Successor to `cla
   `mcp__kit__roadmap_view` / `mcp__kit__theme_view` (`hooks/roadmap-open.ts`,
   `hooks/theme-view.tsx`) that `/product` and `/theme` call to open their panes (plus the `/panel` command) (the roadmap
   pane draws through the pure `roadmap-{dashboard,phase,card,later}.tsx` on `roadmap-parts.tsx`),
-  `mcp__kit__fresh_start` (`hooks/fresh-start.ts`), which `/build`'s safe point calls to clear
-  and resume, and `mcp__kit__feedback` (`hooks/feedback-inbox.ts` over the pure `feedback.ts`),
-  the Skill Feedback inbox `/improve` reads. Only `register.tsx` registers events; `$` never
-  crosses an import (the validator refuses it), so `hooks/spec.ts` stays pure
+  and `mcp__kit__fresh_start` (`hooks/fresh-start.ts`), which `/build`'s safe point calls to
+  clear and resume. Only `register.tsx` registers events; `$` never crosses an import (the
+  validator refuses it), so `hooks/spec.ts` stays pure
+- `hooks/codex-hooks.json` (declared in the root `plugin.json`) → `hooks/codex-hooks.cjs`: push
+  guard, format-on-save (also `apply_patch`) and, at session start, `hooks/codex-context.md`:
+  how Codex reads the skills' Claude terms (AskUserQuestion, plan mode, `${CLAUDE_SKILL_DIR}`,
+  the verifier, `mcp__*` tools). Skills stay worded for Claude; a new Claude-only term in a
+  skill → map it there. `hooks/codex-hooks.test.cjs` also checks both manifests' versions
+- Skill Feedback inbox: `~/.agents/kit/feedback.md`, one Markdown line per point (format in its
+  header), written by the model in any project and read by `/improve`. No script
 - `skills/<name>/scripts/`: deterministic helpers (commit: `staging-check.js`, setup:
   `migrate-v1.js`, scan: `seo-facts.js`), called via `${CLAUDE_SKILL_DIR}` and allowed in the
   skill's `allowed-tools`
@@ -51,9 +58,9 @@ product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.m
 - Hooks and scripts must work on Windows too (e.g. `npx` is `npx.cmd` there)
 - The mod (`hooks/*.ts*`) costs no context (it runs as code), so no total line budget: one
   purpose per file, ≤ ~300 lines each (larger → split). It reads only specs (`Status` +
-  criteria), `docs/roadmap.md`, `.claude-plugin/plugin.json` (a kit checkout?) and read-only
-  git state (status, branch, commits not on `origin/HEAD`, spec commits on other branches);
-  it writes only through `roadmap-file.ts` and `$.store` (worktree marks, `feedback:*` inbox).
+  criteria), `docs/roadmap.md` and read-only git state (status, branch, commits not on
+  `origin/HEAD`, spec commits on other branches); it writes only through `roadmap-file.ts` and
+  `$.store` (worktree marks).
   Schema or roadmap format change → update `roadmap-file.ts` + its skill. `claude plugin test .`
 - A rule that needs a second paragraph of exceptions is a sign to cut it, not to extend it
 - Check: `wc -l skills/*/SKILL.md`
@@ -64,10 +71,11 @@ product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.m
 - Lean on native Claude Code features (plan mode, subagents, `/simplify`, `/security-review`,
   AGENTS.md loading) instead of rebuilding them.
 - Never push without the user's OK (`hooks/push-guard.cjs`), except `/build` landing per `Land:`.
-- Validate after edits: `claude plugin validate .` and `node hooks/push-guard.test.cjs`. At
-  the root that validate only checks `marketplace.json`, never the mod: for hooks, copy
-  `.claude-plugin/{plugin.json,types}`, `hooks`, `skills`, `agents` to a scratch dir and
-  validate there. The install is a cached copy per version: to use edits, bump `version` in `plugin.json`, then
+- Validate after edits: `claude plugin validate .`, `node hooks/push-guard.test.cjs` and
+  `node hooks/codex-hooks.test.cjs`. At the root that validate only checks `marketplace.json`,
+  never the mod: for hooks, copy `.claude-plugin/{plugin.json,types}`, `hooks`, `skills`,
+  `agents` to a scratch dir and validate there. The install is a cached copy per version: to
+  use edits, bump `version` in both `plugin.json` files, then
   `claude plugin marketplace update airmile && claude plugin update kit@airmile` (or test with
   `claude --plugin-dir .`).
 

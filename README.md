@@ -110,6 +110,40 @@ On Windows, copy the file instead (symlinks need admin rights there).
 - Try edits without installing: `claude --plugin-dir ~/Projects/claude-kit`.
 - Remove: `claude plugin marketplace remove airmile` (also uninstalls the plugin).
 
+### Codex
+
+Codex reads the same marketplace (`.claude-plugin/marketplace.json`) and the root `plugin.json`,
+so one repo serves both tools at one version.
+
+```bash
+codex plugin marketplace add ~/Projects/claude-kit
+codex plugin add kit@airmile
+```
+
+- **Trust the hooks once** (and again after they change): Codex skips plugin hooks until you
+  review them (docs: Hooks › Review and trust hooks). Until then push-guard is off in Codex.
+- **What differs**: the skills are worded for Claude Code. At session start a hook adds
+  `hooks/codex-context.md`, which maps the Claude terms: questions become numbered options in
+  chat, plan-mode approval becomes "plan shown, wait for your OK", the verifier runs as a
+  subagent reading `agents/verifier.md`. No panes: `/product` prints the roadmap, `/theme`
+  shows its table, Fresh start means `/new` then the build skill with the slug. The frontend
+  rule is read from `rules/frontend.md` on UI work.
+- **Projects are shared**: `AGENTS.md` and `docs/` are the same for both tools, so a spec
+  started in Claude Code resumes in Codex and the other way around.
+- **Update**: bump `version` in both `plugin.json` files, then `codex plugin add kit@airmile`
+  and start a new session.
+
+### Skill Feedback inbox
+
+Friction points raised after a kit skill run (see `/improve`) go to `~/.agents/kit/feedback.md`,
+one line per point, from both tools. Both need write access there once:
+
+- Codex (`~/.codex/config.toml`): `writable_roots = ["/Users/<you>/.agents/kit"]` (absolute) under
+  `[sandbox_workspace_write]`.
+- Claude Code (`~/.claude/settings.json`): allow `Edit(~/.agents/kit/**)`.
+
+No access → the point is shown in chat with a note that it wasn't saved.
+
 ---
 
 ## Quick start
@@ -635,8 +669,9 @@ appear in Claude's skill list, so it costs no context).
    run of a touched script.
 5. **Commit** in the kit repo as `fix(<skill>)` or `refactor(<skill>)`; to use it, bump `version` in `.claude-plugin/plugin.json`, then `claude plugin marketplace update airmile && claude plugin update kit@airmile` and start a new session.
 
-Together with the Skill Feedback rule in `~/.claude/CLAUDE.md` this is the loop: friction is
-noticed during a run → raised after the report → you approve → `/improve` applies it.
+Together with the Skill Feedback rule in your global instructions this is the loop: friction
+is noticed during a run → raised after the report and saved in `~/.agents/kit/feedback.md` →
+you approve → `/improve` applies it and ticks the line off.
 
 ### /launch
 

@@ -63,7 +63,8 @@ Turns an idea into two files every later step reads: `docs/product.md` (what and
 pass the product name, the items in order (`state`: `done` for `[x]`, `progress` for a linked
 unchecked line, else `open`; `phase`: its heading without `## `) and the `## Later` ideas.
 After writing: call it without items; the pane then shows `docs/roadmap.md` live, where the
-user can also add, reword, move or shelve open items. Tool missing → skip.
+user can also add, reword, move or shelve open items. Tool missing → print it as a list:
+per phase its heading and items (done, in progress, open), then `## Later`.
 
 ## Critique
 

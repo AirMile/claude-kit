@@ -1,6 +1,19 @@
 {
-  "description": "Codex-compatible push guard and format-on-save hooks",
+  "description": "kit for Codex: skill context at session start, push guard, format-on-save",
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex-hooks.cjs\"",
+            "commandWindows": "node \"$env:PLUGIN_ROOT\\hooks\\codex-hooks.cjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash",

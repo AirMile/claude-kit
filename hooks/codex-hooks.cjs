@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Codex-compatible push guard and format-on-save hooks. */
+/** Codex hooks: kit context at session start, push guard, format-on-save. */
 
 const { execFileSync } = require("child_process");
 const fs = require("fs");
@@ -57,7 +57,9 @@ function filesFrom(input) {
   }
 
   const patch = String(input.command ?? "");
-  for (const match of patch.matchAll(/^\*\*\* (?:Update|Add) File: (.+)$/gm)) {
+  for (const match of patch.matchAll(
+    /^\*\*\* (?:(?:Update|Add) File|Move to): (.+)$/gm,
+  )) {
     files.add(match[1].trim());
   }
 
@@ -100,6 +102,19 @@ function formatFiles(input, data) {
   }
 }
 
+// Codex runs kit's Claude-worded skills: hooks/codex-context.md maps their terms.
+function sessionContext() {
+  const text = fs.readFileSync(path.join(__dirname, "codex-context.md"), "utf8");
+  process.stdout.write(
+    JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: "SessionStart",
+        additionalContext: text,
+      },
+    }),
+  );
+}
+
 async function main() {
   let raw = "";
   for await (const chunk of process.stdin) raw += chunk;
@@ -108,6 +123,11 @@ async function main() {
   try {
     data = JSON.parse(raw);
   } catch {
+    return;
+  }
+
+  if (data.hook_event_name === "SessionStart") {
+    sessionContext();
     return;
   }
 
@@ -120,4 +140,6 @@ async function main() {
   formatFiles(input, data);
 }
 
-main();
+if (require.main === module) main();
+
+module.exports = { filesFrom };
