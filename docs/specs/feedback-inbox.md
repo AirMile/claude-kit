@@ -74,7 +74,9 @@ status line there shows that points are waiting.
 
 ## Handoff
 
-—
+Superseded in 0.10.0: the inbox moved from `$.store` to `~/.agents/kit/feedback.md` (one
+Markdown line per point, edited by the model) so Codex shares it; the mod tool and status
+line were removed.
 
 ## Verify
 

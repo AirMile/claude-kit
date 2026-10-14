@@ -67,8 +67,7 @@ let waiting = false;
 export function roadmapOpen(on: On) {
   // Show the live roadmap without a /product call, in a project with docs/roadmap.md only (a
   // user plugin runs everywhere; a pane elsewhere is noise). Not after /clear or a compaction,
-  // so a pane the user closed by hand stays closed. (feedback-inbox.ts owns the matcher-less
-  // classic.SessionStart; register.tsx owns session.start.)
+  // so a pane the user closed by hand stays closed. (register.tsx owns session.start.)
   on(
     "classic.SessionStart",
     { source: /^(startup|resume)$/ },

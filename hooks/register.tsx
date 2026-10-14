@@ -5,7 +5,6 @@ import type {
   SessionUsage,
 } from "claude-code";
 
-import { feedbackInbox, feedbackTool } from "./feedback-inbox";
 import { freshStart, freshTool } from "./fresh-start";
 import { panelCommand, roadmapOpen, roadmapTool } from "./roadmap-open";
 import {
@@ -25,7 +24,6 @@ import { themeTool, themeView } from "./theme-view";
 //   the roadmap pane also opens itself in a project with docs/roadmap.md, and on /panel
 //   (roadmap-open).
 // - fresh_start: /build's safe point clears the chat and resumes (fresh-start).
-// - feedback: the Skill Feedback inbox, and its status line in a kit checkout (feedback-inbox).
 
 type Spec = SpecState & { slug: string };
 type Figures = Pick<SessionUsage, "context" | "rateLimits">;
@@ -96,14 +94,12 @@ export const register: Register = (on) => {
   roadmapOpen(on);
   themeView(on);
   freshStart(on);
-  feedbackInbox(on);
 
   on("session.start", async ($, e, next) => {
     const started = await next(e);
     await $.tool.register(roadmapTool);
     await $.tool.register(themeTool);
     await $.tool.register(freshTool);
-    await $.tool.register(feedbackTool);
     await $.command.register(panelCommand);
     await refresh($);
     return started;
