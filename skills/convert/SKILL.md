@@ -19,13 +19,11 @@ The source is a Figma URL with a `node-id` (ask once if none was given). Read it
   multi-section frame. The returned code is a reference to adapt, not code to paste.
 - `get_code_connect_map` → sections already mapped to a component: reuse that component.
 - `get_motion_context` (recursive) when the frame has prototype interactions or animated variants.
-- Other frames of the same page exist (check the frame names on its Figma page; a large
-  `get_metadata` result is saved to a file → regex the top-level frames) → read them too: a
-  mobile frame decides the collapse, a state frame (another tab, year, step) gives its content.
-  State frames that only change content → one read-only `use_figma` dump of text + fills
-  across all of them (load `/figma-use` first), not `get_design_context` per frame. Map a
-  state frame to its item by position, not by its text (duplicated frames keep stale names
-  and copy); flag a copy mismatch in the report.
+- Other frames of the same page (names on its Figma page; a large `get_metadata` result is saved
+  to a file → regex top-level frames) → read them: a mobile frame decides the collapse (step 5),
+  a state frame (other tab, year, step) gives content. Content-only state frames → one read-only
+  `use_figma` dump of text + fills across all (load `/figma-use` first), not `get_design_context`
+  each; map by position, not text (copies keep stale names and copy); report copy mismatches.
 
 Figma MCP missing → AskUserQuestion: Reconnect via `/mcp` (Recommended) / an exported frame PNG
 (`Read` it; every value from it is `estimated` in the report).
@@ -45,9 +43,8 @@ patch: fill the existing props/CMS defaults, skip steps 2, 3 and 5; verify that 
 - **Motion**: only what Figma defines (variants, prototype interactions, motion context). One row
   per effect: element · trigger (hover, press, focus, scroll-into-view) · effect · timing, with the
   computed value to expect. Always honour `prefers-reduced-motion`. Motion the frame doesn't define
-  is a separate `/build` item, not part of the convert.
-  Cursor and static hover/focus feedback are baseline usability: reuse site patterns even when
-  Figma omits states; do not invent new motion.
+  is a separate `/build` item. Cursor and static hover/focus feedback are baseline usability:
+  reuse site patterns even when Figma omits states; do not invent new motion.
 
 ## 3. Tokens
 
@@ -66,22 +63,24 @@ copy comes from the frame or `docs/product.md`.
 ## 5. Plan (plan mode)
 
 Inside `/build` the spec's Approach already holds the sections and the CMS table: no plan mode;
-write the mapping, motion and asset tables below in the chat, then build. Standalone:
-`EnterPlanMode`, then write a short plan:
+write the mapping, motion, responsive and asset tables below in the chat, then build.
+Standalone: `EnterPlanMode`, then write a short plan:
 
 - **Sections**: the page split top to bottom, with the component per section (reuse existing
   components first; grep before creating).
 - **Mapping table** per category: `figma value → token` (one row per section for spacing; per
-  color segment of a heading also weight/italic; one line-count row per heading; overlaps, fixed
-  heights and aspect ratios exact). An accent font on one word of a heading is usually emphasis
-  → reuse the codebase's accent pattern before adding a font.
+  color segment of a heading also weight/italic; one line-count row per heading; overlaps exact;
+  fixed heights and aspect ratios exact at desktop widths). An accent font on one word of a
+  heading is usually emphasis → reuse the codebase's accent pattern before adding a font.
 - **Motion table** from step 2 (or "none").
 - **Assets**: which images/icons come from the frame (exported files, never redrawn), which stay
   props/data. Asset URLs from the MCP are temporary → download them in this run
   (`download_assets` for any the design context didn't give). SVGs stay files: never inline,
   redraw or swap for a library icon, unless the layer names an icon of the library the project
   already uses (e.g. `lucide/arrow-right`): then use that library's component.
-- **Responsive**: the mobile frame's layout, or how the layout collapses when there is none.
+- **Responsive**: one row per section at 390 / 768 / ≥1024 (layout, columns, height rule). A
+  mobile frame decides the collapse; none → read `${CLAUDE_SKILL_DIR}/references/responsive.md`
+  and reuse the site's existing collapse pattern (its carousel, tabs, breakpoints) first.
 - **CMS table** when `payload.md` applies.
 
 `ExitPlanMode`. Reject → adjust.
@@ -119,8 +118,9 @@ Each round:
    dialogs): hover (computed cursor and visual change), keyboard focus, disabled and
    reduced-motion states. Group missing feedback as findings.
 
-After the loop: check 390 / 768 / 1440px: no horizontal overflow (`scrollWidth ===
-clientWidth`), readable text, breakpoint switches visible.
+After the loop: `Read` full-page screenshots at 390, 768 and 1024px against the Responsive rows,
+and at those and 1440 check no horizontal overflow (`scrollWidth === clientWidth`), no fixed box
+clipping text, no stack of equal cards over ~1.5 screens.
 
 Stop when no significant discrepancies remain or after round 3 (list what's left).
 
@@ -145,6 +145,6 @@ tokens   <reused n · added n>
 motion   <n rows verified | none>
 cms      <reused n · variants n · new n (core|project) · db done|handed off|none · prod pending|n/a>
 rounds   <n> · remaining: <issues or none>
-widths   <ok | issues at 390, 768, 1440>
+widths   <ok | issues at 390, 768, 1024, 1440>
 controls <cursor, hover, focus, disabled verified | findings>
 ```
