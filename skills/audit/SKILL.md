@@ -27,8 +27,10 @@ Say the page count and target in one line before starting.
 Open each page in the browser at 1280px, scroll to the bottom once (scroll-triggered content),
 then evaluate `${CLAUDE_SKILL_DIR}/references/page-check.js` in the page (it returns JSON: title,
 description, robots meta, h1 count and text, lang, canonical, og:image, JSON-LD types, images
-without alt or oversized, inputs without label, horizontal overflow, link list). Also collect
-console errors (minus extension, HMR and favicon noise) and failed requests (4xx/5xx).
+without alt or oversized, inputs without label, horizontal overflow, links with their `#fragment`,
+page ids, same-page anchors without a target). Also collect console errors (minus extension,
+HMR and favicon noise) and failed requests (4xx/5xx). A `test:interactions` script in the
+project → run it once and add its findings.
 
 Then, per page:
 
@@ -40,7 +42,8 @@ Then, per page:
 
 Once for the whole site:
 
-- **Links**: `curl -s -o /dev/null -w "%{http_code}"` every unique internal link → list non-2xx.
+- **Links**: `curl -s -o /dev/null -w "%{http_code}"` every unique internal link (fragment
+  stripped) → list non-2xx; a `/path#id` whose page has no `id` in its `ids` → missing anchor.
 - **Speed** (only if `npx lighthouse` works): performance score + LCP/CLS for the home page and
   the heaviest page.
 - **404**: a non-existent route → the app's own 404 page with a link home.
@@ -56,7 +59,7 @@ Once for the whole site:
 
 | Severity   | Examples                                                                                                                                                                                                                              |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Blocker    | console errors, broken links, failed requests, critical axe violations, mobile overflow, noindex on one page of an indexable site                                                                                                     |
+| Blocker    | console errors, broken links, missing anchor targets, failed requests, critical axe violations, mobile overflow, noindex on one page of an indexable site                                                                                                     |
 | Should fix | missing title/description, missing alt, unlabeled inputs, serious axe violations, images > 300 KB, no og:image, no own 404, h1 missing from raw HTML, JSON-LD parse error, SEO page without its main term or missing from the sitemap |
 | Nice       | duplicate titles, h1 count ≠ 1, missing canonical, speed below 80, no robots.txt/JSON-LD, an SEO page without its schema types, dark mode/reduced motion ignored                                                                      |
 

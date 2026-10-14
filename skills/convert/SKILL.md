@@ -114,9 +114,10 @@ Each round:
    "Browser is already in use" → a scratch Node script on the project's `playwright` package.
    Compare computed `transform`/`opacity`/`transition` (or `element.getAnimations()`) against
    the expected value; a screenshot doesn't prove motion.
-6. Sweep links, buttons, tabs, accordions, carousel controls and form steps, including menus
-   and dialogs. Hover enabled actions, check computed cursor and visual state changes; test
-   keyboard focus, disabled and reduced-motion states. Group missing feedback as findings.
+6. Controls: the project has a `test:interactions` script → run it and fix its findings. Then,
+   for controls it doesn't cover (links, buttons, tabs, accordions, carousels, form steps, menus,
+   dialogs): hover (computed cursor and visual change), keyboard focus, disabled and
+   reduced-motion states. Group missing feedback as findings.
 
 After the loop: check 390 / 768 / 1440px: no horizontal overflow (`scrollWidth ===
 clientWidth`), readable text, breakpoint switches visible.

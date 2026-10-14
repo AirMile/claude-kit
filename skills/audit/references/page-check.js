@@ -54,10 +54,18 @@
     return { jsonLdTypes: [...types], jsonLdErrors: errors };
   };
 
+  // Fragments stay: "/contact#form" must land on an element with that id.
   const links = [...document.querySelectorAll("a[href]")]
     .map((a) => abs(a.getAttribute("href")))
     .filter((u) => u && u.origin === location.origin)
-    .map((u) => u.pathname + u.search);
+    .map((u) => u.pathname + u.search + u.hash);
+  const ids = [...document.querySelectorAll("[id]")].map((el) => el.id);
+  // "#" and "#top" scroll to the top without a matching id.
+  const missingAnchors = links
+    .map((l) => abs(l))
+    .filter((u) => u.pathname === location.pathname && u.hash.length > 1)
+    .map((u) => decodeURIComponent(u.hash.slice(1)))
+    .filter((id) => id !== "top" && !document.getElementById(id));
 
   return {
     url: location.pathname,
@@ -89,5 +97,7 @@
         : document.documentElement.scrollWidth >
           document.documentElement.clientWidth,
     internalLinks: [...new Set(links)],
+    ids,
+    missingAnchors: [...new Set(missingAnchors)],
   };
 })();
