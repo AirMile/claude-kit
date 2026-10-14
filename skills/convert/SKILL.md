@@ -46,6 +46,8 @@ patch: fill the existing props/CMS defaults, skip steps 2, 3 and 5; verify that 
   per effect: element · trigger (hover, press, focus, scroll-into-view) · effect · timing, with the
   computed value to expect. Always honour `prefers-reduced-motion`. Motion the frame doesn't define
   is a separate `/build` item, not part of the convert.
+  Cursor and static hover/focus feedback are baseline usability: reuse site patterns even when
+  Figma omits states; do not invent new motion.
 
 ## 3. Tokens
 
@@ -89,6 +91,8 @@ write the mapping, motion and asset tables below in the chat, then build. Standa
 - Layout with flex/grid + gap; never absolute positioning copied from Figma coordinates, except
   for real overlap (badge on a card, layered media).
 - Semantic HTML, alt text, labelled controls, visible focus states.
+- Enabled actions need an appropriate cursor and visible hover/focus feedback; reuse shared
+  control styles. Disabled controls must not look actionable; text fields keep a text cursor.
 - Copy: real text from the frame; never lorem ipsum.
 - Assets go in the slot the plan names, as exported files with their own aspect ratio.
 
@@ -110,6 +114,9 @@ Each round:
    "Browser is already in use" → a scratch Node script on the project's `playwright` package.
    Compare computed `transform`/`opacity`/`transition` (or `element.getAnimations()`) against
    the expected value; a screenshot doesn't prove motion.
+6. Sweep links, buttons, tabs, accordions, carousel controls and form steps, including menus
+   and dialogs. Hover enabled actions, check computed cursor and visual state changes; test
+   keyboard focus, disabled and reduced-motion states. Group missing feedback as findings.
 
 After the loop: check 390 / 768 / 1440px: no horizontal overflow (`scrollWidth ===
 clientWidth`), readable text, breakpoint switches visible.
@@ -138,4 +145,5 @@ motion   <n rows verified | none>
 cms      <reused n · variants n · new n (core|project) · db done|handed off|none · prod pending|n/a>
 rounds   <n> · remaining: <issues or none>
 widths   <ok | issues at 390, 768, 1440>
+controls <cursor, hover, focus, disabled verified | findings>
 ```
