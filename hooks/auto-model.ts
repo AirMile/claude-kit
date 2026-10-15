@@ -12,6 +12,7 @@ import {
   type Kind,
   kindOfLabel,
   LABELS,
+  MODELS,
   type Mode,
   pick,
   runLine,
@@ -103,18 +104,25 @@ async function decideModel($: EngineInterface, kind: Kind, now: Mode) {
   const want = pick(now, kind).model;
   const have = await $.session.model();
   if (family(want) === family(have)) return;
-  const go = `Switch to ${displayName(want)}`;
+  // All models, the suggested one on top; the session's own reads "Stay on".
+  const ordered = [want, ...MODELS.filter((m) => m !== want)];
+  const labels = new Map(
+    ordered.map((m) => [
+      family(m) === family(have)
+        ? `Stay on ${displayName(have)}`
+        : `Switch to ${displayName(m)}`,
+      m,
+    ]),
+  );
   const answer = await $.ui
     .ask(
       `This task fits ${displayName(want)}. Switch model for this session?`,
-      {
-        header: "Model",
-        options: [go, `Stay on ${displayName(have)}`],
-      },
+      { header: "Model", options: [...labels.keys()] },
     )
     .catch(() => undefined);
-  if (answer === go) {
-    chosen = want;
+  const picked = answer === undefined ? undefined : labels.get(answer);
+  if (picked && family(picked) !== family(have)) {
+    chosen = picked;
     base = have;
   }
 }

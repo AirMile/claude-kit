@@ -16,6 +16,9 @@ const SONNET = "claude-sonnet-5-5";
 const OPUS = "claude-opus-5-5";
 const FABLE = "claude-fable-5-1";
 
+// Every model the engine can switch to, cheapest first.
+export const MODELS: readonly string[] = [HAIKU, SONNET, OPUS, FABLE];
+
 const TABLE: Record<Profile, Record<Kind, Pick>> = {
   lean: {
     question: { model: HAIKU, effort: "low" },
