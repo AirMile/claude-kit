@@ -22,7 +22,7 @@ import { PANE } from "./roadmap-view";
 // plan usage (register.tsx measures it after each turn) with what acts on the chat at its right:
 // compact (⇲) and clear (⌫), run at once. Below, in three groups:
 // the model main requests go to and its effort (▪ when locked), each opening only its own
-// menu (the model's holds the profile from auto-model.ts and the models, then keep the context,
+// menu (the profile from auto-model.ts; the models, then keep the context,
 // compact or clear; the effort's the levels, a pick locks it, Auto unlocks); /commit (✓) with the dashboard pane (▤);
 // orchestrate (⑂, orchestrate.ts) with keep cache (♨, keep-warm.ts). The plan-limit pause with
 // Resume now (limit-guard.ts) follows on its own line. Each icon carries a short word.
@@ -35,7 +35,7 @@ export const bandCommand: CommandSpec = {
   immediate: true,
 };
 
-type Menu = "model" | "effort" | "way";
+type Menu = "profile" | "model" | "effort" | "way";
 
 let menu: Menu | null = null; // the unfolded menu row
 let usage: Usage[] = []; // context and plan limits, from register.tsx
@@ -93,7 +93,7 @@ export function kitBand(on: On) {
     );
 
     let body = null;
-    if (menu === "model") {
+    if (menu === "profile") {
       const modes: Mode[] = [...PROFILES, "off"];
       body = (
         <Box flexDirection="column" flexGrow={1}>
@@ -110,6 +110,11 @@ export function kitBand(on: On) {
               />
             )),
           )}
+        </Box>
+      );
+    } else if (menu === "model") {
+      body = (
+        <Box flexDirection="column" flexGrow={1}>
           {line(
             "Model",
             MODELS.map((m) => (
@@ -215,6 +220,11 @@ export function kitBand(on: On) {
               key="kit-model"
               label={displayName(run.model)}
               onPress={() => unfold($, "model")}
+            />
+            <Button
+              key="kit-profile"
+              label={profileName(now)}
+              onPress={() => unfold($, "profile")}
             />
             <Button
               key="kit-effort"
