@@ -9,6 +9,10 @@ export type Mode = Profile | "off";
 export type Pick = { model: string; effort: Effort };
 
 export const PROFILES: readonly Profile[] = ["lean", "balanced", "quality"];
+// Effort levels, lowest first; the engine lowers one the running model lacks.
+export const EFFORTS: readonly Effort[] = ["low", "medium", "high", "xhigh", "max"];
+export const isEffort = (v: unknown): v is Effort =>
+  EFFORTS.includes(v as Effort);
 export const DEFAULT_MODE: Profile = "balanced";
 
 const HAIKU = "claude-haiku-5-5";
@@ -89,6 +93,64 @@ export const agentKind = (type: string): Kind | undefined => AGENTS[type];
 // The family a model id or alias belongs to: `claude-opus-5-5[1m]` and `opus` are both opus.
 export function family(model: string): string | undefined {
   return /(haiku|sonnet|opus|fable|mythos)/i.exec(model)?.[1]?.toLowerCase();
+}
+
+// Model tiers, weakest first: how far the model a prompt needs is above the one running.
+const TIERS = ["haiku", "sonnet", "opus", "fable"];
+
+// Below this share of the context window a switch costs little: the new model reads the whole
+// conversation again without the cache, so a fuller chat is offered a clear or compact first.
+export const SWITCH_NOW_BELOW = 30;
+
+export type Escalation =
+  | { step: "none" }
+  | { step: "effort"; effort: Effort }
+  | { step: "ask"; want: string; switchNow: boolean };
+
+// What a prompt that needs `want` does on `running`: nothing at or above it, the top effort one
+// tier short (the engine lowers a level the model lacks), further short a question.
+export function escalation(
+  running: string,
+  want: string,
+  contextPercent: number | undefined,
+): Escalation {
+  const have = TIERS.indexOf(family(running) ?? "");
+  const need = TIERS.indexOf(family(want) ?? "");
+  if (have < 0 || need <= have) return { step: "none" };
+  if (need - have === 1) return { step: "effort", effort: "max" };
+  const switchNow =
+    contextPercent !== undefined && contextPercent < SWITCH_NOW_BELOW;
+  return { step: "ask", want, switchNow };
+}
+
+// A model switch, kept in $.store per session id so a mod reload or restart keeps it.
+export type Switch = { chosen: string; base: string };
+const MAX_SWITCHES = 20;
+
+function switches(stored: unknown): Record<string, Switch> {
+  const out: Record<string, Switch> = {};
+  if (!stored || typeof stored !== "object") return out;
+  for (const [id, v] of Object.entries(stored)) {
+    const s = v as Partial<Switch> | null;
+    if (typeof s?.chosen === "string" && typeof s.base === "string")
+      out[id] = { chosen: s.chosen, base: s.base };
+  }
+  return out;
+}
+
+export const switchOf = (stored: unknown, id: string): Switch | undefined =>
+  switches(stored)[id];
+
+// The stored map with this session's switch set (or dropped), the newest MAX_SWITCHES kept.
+export function withSwitch(
+  stored: unknown,
+  id: string,
+  s: Switch | undefined,
+): Record<string, Switch> {
+  const all = switches(stored);
+  delete all[id];
+  if (s) all[id] = s;
+  return Object.fromEntries(Object.entries(all).slice(-MAX_SWITCHES));
 }
 
 // What the status line and the question call a model: `claude-opus-5-5` → `Opus 5.5`.

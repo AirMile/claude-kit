@@ -4,12 +4,15 @@ import {
   agentKind,
   commandKind,
   displayName,
+  escalation,
   family,
   isMode,
   kindOfLabel,
   LABELS,
   pick,
   runLine,
+  switchOf,
+  withSwitch,
 } from "./model-policy";
 
 test("each profile maps a kind of work to a model and an effort", async () => {
@@ -67,4 +70,39 @@ test("only the three profiles and off are modes", async () => {
 test("the band's run line names the model and the effort once known", async () => {
   expect(runLine("claude-opus-5-5[1m]", "medium")).toBe("Opus 5.5 · medium");
   expect(runLine("claude-haiku-5-5", undefined)).toBe("Haiku 5.5");
+});
+
+const HAIKU = "claude-haiku-5-5";
+const SONNET = "claude-sonnet-5-5";
+const OPUS = "claude-opus-5-5";
+
+test("a prompt one tier above the running model gets the top effort", async () => {
+  expect(escalation(SONNET, OPUS, 80)).toEqual({ step: "effort", effort: "max" });
+  expect(escalation(HAIKU, SONNET, 5)).toEqual({ step: "effort", effort: "max" });
+});
+
+test("two tiers short asks; switch now only with a light context", async () => {
+  expect(escalation(HAIKU, OPUS, 10)).toEqual({ step: "ask", want: OPUS, switchNow: true });
+  expect(escalation(HAIKU, OPUS, 30)).toEqual({ step: "ask", want: OPUS, switchNow: false });
+  expect(escalation(HAIKU, OPUS, undefined)).toEqual({ step: "ask", want: OPUS, switchNow: false });
+});
+
+test("no escalation at or above the model a prompt needs, or for an unknown model", async () => {
+  expect(escalation(OPUS, OPUS, 50)).toEqual({ step: "none" });
+  expect(escalation(OPUS, HAIKU, 50)).toEqual({ step: "none" });
+  expect(escalation("claude-mythos-1", OPUS, 50)).toEqual({ step: "none" });
+  expect(escalation(`${OPUS}[1m]`, "claude-fable-5-1", 50).step).toBe("effort");
+});
+
+test("a switch is stored per session, junk ignored, the newest twenty kept", async () => {
+  const one = withSwitch({ junk: 1, old: { chosen: 3 } }, "s1", { chosen: OPUS, base: HAIKU });
+  expect(one).toEqual({ s1: { chosen: OPUS, base: HAIKU } });
+  expect(switchOf(one, "s1")).toEqual({ chosen: OPUS, base: HAIKU });
+  expect(switchOf(one, "s2")).toBe(undefined);
+  expect(withSwitch(one, "s1", undefined)).toEqual({});
+  let many: unknown = {};
+  for (let i = 0; i < 25; i++) many = withSwitch(many, `s${i}`, { chosen: OPUS, base: HAIKU });
+  expect(Object.keys(many as object).length).toBe(20);
+  expect(switchOf(many, "s24")).toEqual({ chosen: OPUS, base: HAIKU });
+  expect(switchOf(many, "s0")).toBe(undefined);
 });

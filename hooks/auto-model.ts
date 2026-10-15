@@ -7,6 +7,7 @@ import {
   DEFAULT_MODE,
   displayName,
   type Effort,
+  escalation,
   family,
   isMode,
   type Kind,
@@ -15,18 +16,30 @@ import {
   MODELS,
   type Mode,
   pick,
-  runLine,
   profileName,
   PROFILES,
 } from "./model-policy";
+import {
+  dropSwitch,
+  effortLock,
+  override,
+  reset,
+  restoreSwitch,
+  running,
+  switchTo,
+} from "./model-switch";
 
 // Picks model and effort before the model runs (it cannot change its own turn's effort):
 // - the first prompt of a chat (a new session or after /clear) picks a model from the profile,
 //   before the prompt is sent; when it differs from the session's, the user is asked to
 //   switch or stay, and a switch rewrites every main request;
-// - every prompt picks the effort;
+// - every prompt picks the effort; a later prompt that needs a stronger model than the one
+//   running escalates (model-policy.ts `escalation`): one tier short it runs at the top effort,
+//   further short the user picks: switch now (light context only), compact or clear and then
+//   switch and send it again, or stay at the top effort (not asked again this chat);
 // - a subagent the engine defines gets its own model and effort for its task.
-// The profile (lean, balanced, quality, or off) is kept in $.store across sessions.
+// The profile (lean, balanced, quality, or off) is kept in $.store across sessions, a switch
+// per session id, so a mod reload or restart keeps it.
 
 export const modeCommand: CommandSpec = {
   name: "mode",
@@ -41,8 +54,7 @@ const CLASSIFY_CHARS = 4000;
 
 let mode: Mode | undefined; // read from $.store on first use
 let decided = false; // the session's model question was settled
-let chosen: string | undefined; // the model main requests are rewritten to
-let base: string | undefined; // the session's model when `chosen` was picked
+let stayed = false; // the user chose to stay on a weaker model: no more asking this chat
 let effort: Effort | undefined; // the effort for the current prompt's requests
 const agentEffort = new Map<string, Effort>(); // subagent id → its effort
 
@@ -58,7 +70,7 @@ export async function setMode($: EngineInterface, next: Mode) {
   mode = next;
   await $.store.set(STORE_KEY, next).catch(() => {});
   if (next === "off") {
-    chosen = undefined;
+    dropSwitch(false);
     effort = undefined;
   }
   await showStatus($);
@@ -79,17 +91,28 @@ async function kindOf(
   return kindOfLabel(label);
 }
 
-// True while main requests go to `chosen`: off once the user picked another model by hand.
-async function overriding($: EngineInterface): Promise<boolean> {
-  return !!chosen && (await $.session.model()) === base;
+// What the band shows: the model main requests really go to (the picker keeps the
+// session's), and the effort they run at, `locked` when set from the band.
+export async function runState($: EngineInterface) {
+  const locked = await effortLock($);
+  const off = (await getMode($)) === "off";
+  return {
+    model: await running($),
+    effort: locked ?? (off ? undefined : effort),
+    locked: !!locked,
+  };
 }
 
-// What the band shows beside the profiles: the model main requests really go to (the
-// picker keeps the session's) and the current effort; empty while off.
-export async function runInfo($: EngineInterface): Promise<string> {
-  if ((await getMode($)) === "off") return "";
-  const model = (await overriding($)) ? chosen! : await $.session.model();
-  return runLine(model, effort);
+// The band's model switch: keep the context, or compact or clear it first.
+export async function switchModel(
+  $: EngineInterface,
+  model: string,
+  way: "keep" | "compact" | "clear",
+) {
+  if (way !== "keep" && !(await reset($, way))) return;
+  decided = true; // picked by hand: a new chat asks nothing about it
+  await switchTo($, model);
+  await showStatus($);
 }
 
 async function showStatus($: EngineInterface) {
@@ -97,13 +120,17 @@ async function showStatus($: EngineInterface) {
 }
 
 // The first prompt's model question. A session that already has turns (a resume, a mod
-// reload) keeps its model without asking.
-async function decideModel($: EngineInterface, kind: Kind, now: Mode) {
+// reload) keeps its model without asking. True when it asked.
+async function decideModel(
+  $: EngineInterface,
+  kind: Kind,
+  now: Mode,
+): Promise<boolean> {
   decided = true;
-  if (now === "off" || (await $.session.turns()) > 1) return;
+  if (now === "off" || (await $.session.turns()) > 1) return false;
   const want = pick(now, kind).model;
   const have = await $.session.model();
-  if (family(want) === family(have)) return;
+  if (family(want) === family(have)) return false;
   // All models, the suggested one on top; the session's own reads "Stay on".
   const ordered = [want, ...MODELS.filter((m) => m !== want)];
   const labels = new Map(
@@ -121,10 +148,79 @@ async function decideModel($: EngineInterface, kind: Kind, now: Mode) {
     )
     .catch(() => undefined);
   const picked = answer === undefined ? undefined : labels.get(answer);
-  if (picked && family(picked) !== family(have)) {
-    chosen = picked;
-    base = have;
+  if (picked && family(picked) !== family(have)) await switchTo($, picked);
+  return true;
+}
+
+type Way = "now" | "compact" | "clear" | "stay";
+
+// A later prompt that needs `want`, above the model running. One tier short, or after the user
+// chose to stay, it runs at the top effort; further short the user picks how to go on. Returns
+// why the prompt is held when a clear or compact runs first and sends it again.
+async function escalate(
+  $: EngineInterface,
+  text: string,
+  want: string,
+  mayAsk: boolean,
+): Promise<string | undefined> {
+  const have = await running($);
+  const usage = await $.session.usage().catch(() => undefined);
+  const step = escalation(have, want, usage?.context?.percent);
+  if (step.step === "none") return undefined;
+  if (step.step === "effort" || stayed || !mayAsk) {
+    effort = "max";
+    return undefined;
   }
+  const to = displayName(step.want);
+  const from = displayName(have);
+  const ways = new Map<string, Way>();
+  if (step.switchNow) ways.set(`Switch to ${to} now`, "now");
+  ways.set(`Compact, then ${to}`, "compact");
+  ways.set(`Clear, then ${to}`, "clear");
+  ways.set(`Stay on ${from} at max effort`, "stay");
+  const answer = await $.ui
+    .ask(`This prompt needs ${to}; ${from} is running. How to go on?`, {
+      header: "Model",
+      options: [...ways.keys()],
+    })
+    .catch(() => undefined);
+  const way = (answer !== undefined && ways.get(answer)) || "stay";
+  if (way === "now") {
+    await switchTo($, step.want);
+    return undefined;
+  }
+  if (way === "stay") {
+    stayed = true;
+    effort = "max";
+    return undefined;
+  }
+  const level = effort;
+  // Outside the hook: a clear or compact rejects inside the hook the prompt waits on.
+  $.clock.after(300, () => resend($, way, step.want, text, level));
+  return `kit: ${way === "clear" ? "clearing" : "compacting"}, then ${to} runs your prompt`;
+}
+
+// Clears or compacts, switches to `want` and sends the held prompt again. On a failure the
+// prompt goes back into the input box, so nothing typed is lost.
+async function resend(
+  $: EngineInterface,
+  way: "compact" | "clear",
+  want: string,
+  text: string,
+  level: Effort | undefined,
+) {
+  if (!(await reset($, way))) {
+    await $.prompt.fill({ text }).catch(() => {}); // the prompt is back in the input box
+    return;
+  }
+  decided = true;
+  await switchTo($, want);
+  effort = level;
+  await showStatus($);
+  await $.prompt.submit({ text, asUser: true }).catch(async (err) => {
+    $.ui.toast(`kit: could not send your prompt (${String(err)})`);
+    await $.prompt.fill({ text }).catch(() => {});
+  });
 }
 
 export function autoModel(on: On) {
@@ -136,8 +232,8 @@ export function autoModel(on: On) {
       const started = await next(e);
       if (e.agent_type) return started;
       decided = false;
-      chosen = undefined;
-      base = undefined;
+      stayed = false;
+      dropSwitch(true); // a new chat: nothing stored to pick up
       effort = undefined;
       agentEffort.clear();
       await showStatus($);
@@ -155,9 +251,17 @@ export function autoModel(on: On) {
     const typed = e.origin.kind === "composer" || e.origin.kind === "bridge";
     if (now !== "off" && typed) {
       const kind = (await kindOf($, e.text)) ?? "routine";
-      if (!decided) await decideModel($, kind, now);
-      effort = pick(now, kind).effort;
+      const p = pick(now, kind);
+      if (await restoreSwitch($)) decided = true; // a reload kept the switch
+      const asked = !decided && (await decideModel($, kind, now));
+      effort = p.effort;
+      // The first prompt's question just settled the model: no second one for it.
+      const parked = await escalate($, e.text, p.model, !asked);
       await showStatus($);
+      if (parked) {
+        $.ui.toast(parked, { timeoutMs: 10_000 });
+        return { drop: parked };
+      }
     }
     return next(e);
   });
@@ -167,15 +271,16 @@ export function autoModel(on: On) {
     const stopped = await limitStep($, e); // the plan limit is nearly used up
     if (stopped) return stopped;
     let step = e;
-    if ((await getMode($)) !== "off") {
-      if (e.agentId) {
-        const own = agentEffort.get(e.agentId);
-        if (own && e.effort !== undefined) step = { ...e, effort: own };
-      } else {
-        const model = (await overriding($)) ? chosen! : e.model;
-        const level = effort && e.effort !== undefined ? effort : e.effort;
-        step = { ...e, model, effort: level };
-      }
+    const isOn = (await getMode($)) !== "off";
+    if (e.agentId) {
+      const own = agentEffort.get(e.agentId);
+      if (isOn && own && e.effort !== undefined) step = { ...e, effort: own };
+    } else {
+      // An effort locked from the band holds even with the profile off.
+      const model = isOn ? ((await override($)) ?? e.model) : e.model;
+      const want = (await effortLock($)) ?? (isOn ? effort : undefined);
+      const level = want && e.effort !== undefined ? want : e.effort;
+      step = { ...e, model, effort: level };
     }
     return yield* next(step);
   });

@@ -858,9 +858,15 @@ versions skip it. It never writes files.
   disk, not from the summary, so it is always right.
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
-- **Model and effort**: the band above the prompt has **Lean**, **Balanced** and **Quality**
-  (or `/mode lean|balanced|quality|off`; pressing the active one turns it off). The choice is
-  kept across sessions. Each prompt is sorted (kit's own skills by name, the rest by a Haiku
+- **The band** above the prompt is one row of icons: `◇ Balanced` (profile), `◆ Opus 5.5`
+  (model), `◐ medium` (effort, `▪` when locked), `⇲` compact, `⌫` clear, `♨` keep warm and, at
+  the right end, `▤` the roadmap pane (`▤ ×` closes it). A press on ◇ ◆ ◐ ⇲ ⌫ unfolds a second
+  row: the profiles; the models, then **Keep context**, **Compact** or **Clear** before the
+  switch; the effort levels of the running model (a pick locks it until **Auto**, over new
+  chats and restarts; the engine lowers a level the model lacks); or a confirm for compact
+  and clear, which can't be undone.
+- **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (◇ in the band,
+  or `/mode lean|balanced|quality|off`). The choice is kept across sessions. Each prompt is sorted (kit's own skills by name, the rest by a Haiku
   classifier) into question, routine, planning or heavy work, and the profile maps that to a
   model and effort:
 
@@ -875,7 +881,12 @@ versions skip it. It never writes files.
   The first prompt of a chat (a new session or after `/clear`, not a resume) picks the model
   before it is sent: when it differs from the session's, you are asked to switch or stay (a switch sends every request to that model; the model picker keeps
   showing the old one, the band shows the real one with the effort, e.g. `Opus 5.5 · medium`; picking another
-  model with `/model` ends the switch). Every prompt sets the effort. Subagents get their
+  model with `/model` ends the switch; a switch is kept per session over a restart). Every
+  prompt sets the effort, unless one is locked. A later prompt that needs a stronger model
+  than the one running escalates: one tier short (Sonnet for Opus work) it runs at the top
+  effort; two or more short you pick: switch now (offered only below 30% context, since a
+  switch reads the whole chat again without the cache), compact or clear and then switch
+  (the prompt is sent again), or stay at the top effort (not asked again in that chat). Subagents get their
   own: `Explore` as question work, `kit:verifier` as routine (effort only, its model is its
   own), other built-in agents classified on their task. An explicit `model` on the Agent call
   is kept.
@@ -886,7 +897,7 @@ versions skip it. It never writes files.
   band shows `paused until 14:05`, and **Resume now** ends the pause by hand. The prompt
   cache is kept warm meanwhile (see Keep warm), only when the reset is under 5 hours away:
   further out, a cold start is cheaper. At the reset a cut-off turn continues by itself.
-- **Keep warm**: the band's **Keep warm** button (or `/warm`, `/warm on|off`) keeps a long
+- **Keep warm**: the band's `♨` button (or `/warm`, `/warm on|off`) keeps a long
   chat's prompt cache alive while you are away. After 50 idle minutes (the cache lives an
   hour) a tiny request, a fork of the chat that replies "ok", reads the cached context again
   and so renews it. Not free: each ping costs a cache read of the whole context, far less
