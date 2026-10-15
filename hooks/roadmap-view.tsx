@@ -163,7 +163,8 @@ export function roadmapView(on: On) {
         }
       });
     };
-    // Raises the desktop's worktree chip (ccd_session's spawn_task) for /kit:build <slug>,
+    // Starts a linked session in its own worktree (ccd_session's start_session; the chip of
+    // spawn_task when refused) for /kit:build <slug>,
     // marked first so the card asks "Again?" at once. Failing: the old mark comes back.
     const toWorktree = async (slug: string) => {
       const now = await $.clock.now();
@@ -178,14 +179,18 @@ export function roadmapView(on: On) {
       await $.store.set(wt.STORE_KEY, mark).catch(() => {});
       away = { ...away, [slug]: away[slug] ?? "sent to worktree" };
       redraw();
-      const why = await $.mcp
-        .call("ccd_session", "spawn_task", wt.chip(slug))
-        .then(wt.failure, (err) => String(err));
+      const call = (tool: string, args: Record<string, unknown>) =>
+        $.mcp
+          .call("ccd_session", tool, args)
+          .then(wt.failure, (err) => String(err));
+      // A linked session in its own worktree first; the chip when the app refuses it.
+      let why = await call("start_session", wt.session(slug));
+      if (why !== null) why = await call("spawn_task", wt.chip(slug));
       if (why !== null) {
         if (before === undefined) delete mine[slug];
         const back = { ...all, [root]: mine };
         await $.store.set(wt.STORE_KEY, back).catch(() => {});
-        $.ui.toast(`kit: worktree chip failed (${why})`);
+        $.ui.toast(`kit: could not start a worktree session (${why})`);
       }
       needsLoad = true;
       redraw();

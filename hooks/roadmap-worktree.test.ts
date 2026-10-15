@@ -1,6 +1,6 @@
 import { expect, test } from "claude-code/testing";
 
-import { away, claims, failure, SENT_TTL, worktrees } from "./roadmap-worktree";
+import { away, claims, failure, SENT_TTL, session, worktrees } from "./roadmap-worktree";
 
 const LOG = [
   "refs/heads/claude/great-hypatia",
@@ -73,7 +73,7 @@ test("away points a claim checked out here at its worktree's spec", async () => 
   });
 });
 
-test("failure reads why spawn_task refused, or null when it raised the chip", async () => {
+test("failure reads why a call was refused, or null when it went through", async () => {
   expect(failure({ isError: false, content: [] })).toBe(null);
   expect(
     failure({
@@ -82,6 +82,15 @@ test("failure reads why spawn_task refused, or null when it raised the chip", as
     }),
   ).toBe("no server");
   expect(failure({ isError: true, content: [{ type: "image" }] })).toBe(
-    "spawn_task refused",
+    "refused",
   );
+});
+
+test("session starts /kit:build in a linked worktree session with a valid name", async () => {
+  const s = session("a-very-long-feature-slug-for-tests");
+  expect(s.use_worktree).toBe(true);
+  expect(s.initiation).toBe("user_asked");
+  expect(s.prompt).toBe("/kit:build a-very-long-feature-slug-for-tests");
+  expect(/^[a-z0-9-]{1,24}$/.test(s.name) && !s.name.endsWith("-")).toBe(true);
+  expect(s.background.length >= 80).toBe(true);
 });

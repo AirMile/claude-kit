@@ -83,14 +83,30 @@ export function away(
   return { lines, specs, keep };
 }
 
-// spawn_task's arguments: a chip that, clicked, starts /kit:build <slug> in a new worktree.
+// start_session's arguments: a session linked to this chat, in its own worktree, that runs
+// /kit:build <slug> at once and reports back here when it ends a turn.
+export const session = (slug: string) => ({
+  initiation: "user_asked",
+  context: "fresh",
+  use_worktree: true,
+  title: `Build ${slug}`,
+  name: slug.slice(0, 24).replace(/-+$/, ""),
+  branch_name: slug,
+  prompt: `/kit:build ${slug}`,
+  background:
+    `Started from the kit roadmap pane by the user: build the roadmap feature ${slug} end to ` +
+    `end with /kit:build in this session's own worktree (its spec: docs/specs/${slug}.md).`,
+});
+
+// spawn_task's arguments (the fallback when start_session is refused): a chip that, clicked,
+// starts /kit:build <slug> in a new worktree.
 export const chip = (slug: string) => ({
   title: `Build ${slug}`,
   tldr: `Started from the roadmap pane: builds ${slug} in its own worktree with /kit:build.`,
   prompt: `/kit:build ${slug}`,
 });
 
-// An MCP result → why it failed, or null when it raised the chip.
+// An MCP result → why it failed, or null when it started the session or raised the chip.
 export function failure(r: {
   isError: boolean;
   content: readonly { type: string; text?: string }[];
@@ -100,5 +116,5 @@ export function failure(r: {
     .map((c) => c.text ?? "")
     .join(" ")
     .trim();
-  return text || "spawn_task refused";
+  return text || "refused";
 }
