@@ -46,6 +46,7 @@ export type Parts = {
   cards: Card[];
   later: string[];
   draft: boolean;
+  hasRoadmap: boolean; // false: no docs/roadmap.md, the pane is the dashboard alone
   specs: Record<string, SpecState | null>;
   away: Record<string, string>; // open features running elsewhere: "runs on <branch>", …
   canWorktree: boolean; // the desktop app, which has the worktree chip (ccd_session)

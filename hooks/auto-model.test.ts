@@ -32,6 +32,7 @@ function world(
     return { value: undefined };
   });
   on("prompt.submit", async (_$, e) => ({ text: e.text }));
+  on("classic.SessionStart", async () => ({ value: {} }));
   return { asked, status, store };
 }
 const TYPED = { kind: "composer" } as const;
@@ -66,4 +67,19 @@ test("/mode off stores the choice and leaves prompts alone", async ($, on) => {
   expect(w.store.mode).toBe("off");
   await $.prompt.submit({ text: "what does this do?", origin: TYPED });
   expect(w.asked).toEqual([]);
+});
+
+test("a new chat after /clear asks again; a resume does not", async ($, on) => {
+  const w = world(on, {
+    model: "claude-opus-5-5",
+    label: QUESTION,
+    answer: "Stay on Opus 5.5",
+  });
+  await $.prompt.submit({ text: "what is this?", origin: TYPED });
+  await $.classic.SessionStart({ source: "resume" });
+  await $.prompt.submit({ text: "and that?", origin: TYPED });
+  expect(w.asked.length).toBe(1);
+  await $.classic.SessionStart({ source: "clear" });
+  await $.prompt.submit({ text: "what is this file?", origin: TYPED });
+  expect(w.asked.length).toBe(2);
 });

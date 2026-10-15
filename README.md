@@ -872,8 +872,8 @@ versions skip it. It never writes files.
   heavy     Opus   · high    Opus   · xhigh    Fable  · xhigh
   ```
 
-  The first prompt of a session picks the model: when it differs from the session's, you are
-  asked to switch or stay (a switch sends every request to that model; the model picker keeps
+  The first prompt of a chat (a new session or after `/clear`, not a resume) picks the model
+  before it is sent: when it differs from the session's, you are asked to switch or stay (a switch sends every request to that model; the model picker keeps
   showing the old one, the status line under the prompt shows the real one; picking another
   model with `/model` ends the switch). Every prompt sets the effort. Subagents get their
   own: `Explore` as question work, `kit:verifier` as routine (effort only, its model is its
@@ -885,7 +885,7 @@ versions skip it. It never writes files.
 **Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
 columns, above the prompt otherwise):
 
-- **Roadmap**: a project dashboard, titled with the product's name. It never opens by itself: the **Roadmap** button above the prompt opens it (in a project with `docs/roadmap.md`, while the pane is closed), `/product` opens it too, and `/panel` opens it by hand, in any project. On top, in its own block:
+- **Roadmap**: a project dashboard, titled with the product's name. It never opens by itself: the **Roadmap** button above the prompt opens it (in any project, while the pane is closed), `/product` opens it too, and so does `/panel`. Without `docs/roadmap.md` it shows the dashboard alone, as an action pad, with **Make a roadmap** (`/product`). On top, in its own block:
   context and plan usage (a value turns amber from 60%, red from 85%) with **Compact** and **Clear**; git state (branch,
   changed files, commits not on `origin/HEAD`) with **Diff** (`/diff`, where it exists) and
   **Commit** when files changed and **Launch** when commits aren't live; then kit's skills:

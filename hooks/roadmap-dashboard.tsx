@@ -11,8 +11,21 @@ export function body(p: Parts) {
     <Box flexDirection="column" gap={1} paddingX={1} paddingY={1}>
       {p.draft ? null : dashboard(p)}
       {p.note ? <Text color="#818cf8">{p.note}</Text> : null}
-      {phases(p, phaseNames(p))}
-      {p.later.length || !p.draft ? later(p) : null}
+      {p.hasRoadmap ? (
+        <Box flexDirection="column" gap={1}>
+          {phases(p, phaseNames(p))}
+          {p.later.length || !p.draft ? later(p) : null}
+        </Box>
+      ) : (
+        <Box gap={1}>
+          <Text dimColor>No docs/roadmap.md here.</Text>
+          <p.el.Button
+            key="make-roadmap"
+            label="Make a roadmap"
+            onPress={() => p.act.run("kit:product")}
+          />
+        </Box>
+      )}
     </Box>
   );
 }

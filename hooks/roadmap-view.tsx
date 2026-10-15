@@ -7,8 +7,8 @@ import type { Card, Git, Usage } from "./roadmap-parts";
 import * as wt from "./roadmap-worktree";
 import { inRoot, parseSpec, type SpecState } from "./spec";
 
-// The roadmap pane, opened by /product and, in a project with docs/roadmap.md, at session start
-// (roadmap-open.ts): a project dashboard. Live: reads docs/roadmap.md, the
+// The roadmap pane, opened by /product, /panel and the band's button (roadmap-open.ts): a
+// project dashboard, also where there is no docs/roadmap.md (then the dashboard alone). Live: reads docs/roadmap.md, the
 // open features' specs and git state, and edits open items in place (roadmap-file.ts keeps
 // every other line as is); its buttons run kit's skills in the chat. Draft: /product in plan
 // mode passes items as data, read-only. Drawing: roadmap-dashboard.tsx + roadmap-parts.tsx; done and in-progress
@@ -155,14 +155,13 @@ export function roadmapView(on: On) {
         (c) => c.name === "diff",
       );
     }
-    const view =
-      draft ?? (live && { product, cards: cards(live), later: live.later });
-    if (!view)
-      return (
-        <el.Text dimColor>
-          No docs/roadmap.md here: run /product to make one.
-        </el.Text>
-      );
+    // No docs/roadmap.md: the dashboard alone, as an action pad.
+    const view = draft ??
+      (live && { product, cards: cards(live), later: live.later }) ?? {
+        product,
+        cards: [],
+        later: [],
+      };
 
     const redraw = (message?: string) => {
       if (message !== undefined) note = message;
@@ -242,6 +241,7 @@ export function roadmapView(on: On) {
           : null,
       ...view,
       draft: !!draft,
+      hasRoadmap: !!draft || !!live,
       specs,
       away,
       canWorktree: e.surface === "desktop",

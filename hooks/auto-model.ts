@@ -18,8 +18,9 @@ import {
 } from "./model-policy";
 
 // Picks model and effort before the model runs (it cannot change its own turn's effort):
-// - the first prompt of a session picks a model from the profile; when it differs from the
-//   session's, the user is asked to switch or stay, and a switch rewrites every main request;
+// - the first prompt of a chat (a new session or after /clear) picks a model from the profile,
+//   before the prompt is sent; when it differs from the session's, the user is asked to
+//   switch or stay, and a switch rewrites every main request;
 // - every prompt picks the effort;
 // - a subagent the engine defines gets its own model and effort for its task.
 // The profile (lean, balanced, quality, or off) is kept in $.store across sessions.
@@ -113,6 +114,23 @@ async function decideModel($: EngineInterface, kind: Kind, now: Mode) {
 }
 
 export function autoModel(on: On) {
+  // A new chat (startup or /clear) asks again; a resume keeps the model it ran on.
+  on(
+    "classic.SessionStart",
+    { source: /^(startup|clear)$/ },
+    async ($, e, next) => {
+      const started = await next(e);
+      if (e.agent_type) return started;
+      decided = false;
+      chosen = undefined;
+      base = undefined;
+      effort = undefined;
+      agentEffort.clear();
+      await showStatus($);
+      return started;
+    },
+  );
+
   on("prompt.submit", async ($, e, next) => {
     const now = await getMode($);
     const typed = e.origin.kind === "composer" || e.origin.kind === "bridge";
