@@ -106,10 +106,9 @@ export async function reset(
 ): Promise<boolean> {
   try {
     if (way === "clear") await $.command.run({ command: "clear" });
-    else {
-      const done = await $.session.compact();
-      if ("skip" in done && done.skip) throw new Error(done.skip);
-    }
+    // As the person's own /compact: $.session.compact is missing in a headless session (the
+    // desktop app) and refused during a turn, while a plugin's prompt runs once idle.
+    else await $.prompt.submit({ text: "/compact", asUser: true });
     return true;
   } catch (err) {
     // A turn is running: queue it as the person's own /compact or /clear, which the engine
