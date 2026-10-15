@@ -21,7 +21,7 @@ const PATH = "docs/roadmap.md";
 
 export type Draft = { product: string; cards: Card[]; later: string[] };
 let draft: Draft | null = null;
-let product = "Roadmap"; // docs/product.md's name, read when the pane opens (roadmap-open.ts)
+let product = "Dashboard"; // docs/product.md's name, read when the pane opens (roadmap-open.ts)
 let live: file.Roadmap | null = null;
 let specs: Record<string, SpecState | null> = {};
 let away: Record<string, string> = {}; // open features running elsewhere (roadmap-worktree.ts)

@@ -59,7 +59,7 @@ function roadmap(p: Parts) {
   );
 }
 
-// The pad: one row per stage, its name on the left and its skills on the right. Setup leads
+// The pad: one row per stage, its name in a narrow column and its skills right beside it. Setup leads
 // while the project isn't set up. Git state, Diff and Launch are in the Changes tab.
 function pad(p: Parts) {
   const { Box, Text, Button } = p.el;
@@ -82,12 +82,12 @@ function pad(p: Parts) {
     note: RenderChildren,
     skills: RenderChildren[],
   ) => (
-    <Box key={`pad-${name}`} justifyContent="space-between" gap={2} flexWrap="wrap">
-      <Text wrap="wrap">
-        <Text dimColor>{name.padEnd(6)}</Text>
+    <Box key={`pad-${name}`} gap={1} alignItems="center">
+      <Box width={6} flexShrink={0}>
+        <Text dimColor>{name}</Text>
         {note}
-      </Text>
-      <Box gap={1} flexWrap="wrap">
+      </Box>
+      <Box gap={1} flexWrap="wrap" flexGrow={1}>
         {skills}
       </Box>
     </Box>

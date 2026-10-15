@@ -18,14 +18,14 @@ import { openRoadmap } from "./roadmap-open";
 import type { Usage } from "./roadmap-parts";
 import { PANE } from "./roadmap-view";
 
-// The band above the prompt, top to bottom: an open menu (a bordered block), context and plan
-// usage (register.tsx measures it after each turn), then the buttons. Left, the settings:
-// profile (◇, auto-model.ts), the model main requests go to (◆) and their effort (◐, ▪ when
-// locked), /commit (✓), orchestrate (⑂, orchestrate.ts), keep cache (♨, keep-warm.ts), the plan-limit pause with Resume now
-// (limit-guard.ts). Right, what acts on the chat: compact (⇲) and clear (⌫), run at once, and
-// the dashboard pane (▤). Each icon carries a short word: an icon alone is too small to hit.
-// ◇ ◆ ◐ open their menu: the profiles, the models (then keep the context, compact or clear),
-// the effort levels (a pick locks it, Auto unlocks).
+// The band above the prompt, top to bottom: an open menu (a bordered block), then context and
+// plan usage (register.tsx measures it after each turn) with what acts on the chat at its right:
+// compact (⇲) and clear (⌫), run at once, and the dashboard pane (▤). Below, the run and the
+// switches: ◆ the model main requests go to with their effort (▪ when locked), whose menu
+// holds the profile (auto-model.ts), the models (then keep the context, compact or clear) and
+// the effort levels (a pick locks it, Auto unlocks); /commit (✓); orchestrate (⑂,
+// orchestrate.ts); keep cache (♨, keep-warm.ts); the plan-limit pause with Resume now
+// (limit-guard.ts). Each icon carries a short word: an icon alone is too small to hit.
 // It yields to a survey. /band draws it again; /warm toggles keep warm.
 
 export const bandCommand: CommandSpec = {
@@ -35,7 +35,7 @@ export const bandCommand: CommandSpec = {
   immediate: true,
 };
 
-type Menu = "profile" | "model" | "way" | "effort";
+type Menu = "run" | "way";
 
 let menu: Menu | null = null; // the unfolded menu row
 let usage: Usage[] = []; // context and plan limits, from register.tsx
@@ -80,89 +80,107 @@ export function kitBand(on: On) {
       <Button key="kit-menu-close" label="×" dimColor onPress={done} />
     );
 
-    let row = null;
-    if (menu === "profile") {
+    // A line of the run menu: its name in a narrow column, its choices beside it.
+    const line = (name: string, items: unknown[]) => (
+      <Box key={`kit-line-${name}`} gap={1}>
+        <Box width={8} flexShrink={0}>
+          <Text dimColor>{name}</Text>
+        </Box>
+        <Box gap={1} flexWrap="wrap">
+          {items as never}
+        </Box>
+      </Box>
+    );
+
+    let body = null;
+    if (menu === "run") {
       const modes: Mode[] = [...PROFILES, "off"];
-      row = modes.map((m) => (
-        <Button
-          key={`kit-mode-${m}`}
-          label={profileName(m)}
-          dimColor={now !== m}
-          onPress={() => {
-            void setMode($, m).then(done);
-          }}
-        />
-      ));
-    } else if (menu === "model") {
-      row = MODELS.map((m) => (
-        <Button
-          key={`kit-model-${m}`}
-          label={displayName(m)}
-          dimColor={family(m) !== family(run.model)}
-          onPress={() => {
-            if (family(m) === family(run.model)) return done();
-            target = m;
-            unfold($, "way");
-          }}
-        />
-      ));
+      const levels = ["auto", ...EFFORTS] as const;
+      body = (
+        <Box flexDirection="column" flexGrow={1}>
+          {line(
+            "Profile",
+            modes.map((m) => (
+              <Button
+                key={`kit-mode-${m}`}
+                label={profileName(m)}
+                dimColor={now !== m}
+                onPress={() => {
+                  void setMode($, m).then(done);
+                }}
+              />
+            )),
+          )}
+          {line(
+            "Model",
+            MODELS.map((m) => (
+              <Button
+                key={`kit-model-${m}`}
+                label={displayName(m)}
+                dimColor={family(m) !== family(run.model)}
+                onPress={() => {
+                  if (family(m) === family(run.model)) return done();
+                  target = m;
+                  unfold($, "way");
+                }}
+              />
+            )),
+          )}
+          {line(
+            "Effort",
+            levels.map((l) => (
+              <Button
+                key={`kit-effort-${l}`}
+                label={l === "auto" ? "Auto" : l}
+                dimColor={run.locked ? run.effort !== l : l !== "auto"}
+                onPress={() => {
+                  void setEffortLock($, l === "auto" ? undefined : l).then(done);
+                }}
+              />
+            )),
+          )}
+        </Box>
+      );
     } else if (menu === "way") {
       const ways = [
         ["keep", "Keep context"],
         ["compact", "Compact"],
         ["clear", "Clear"],
       ] as const;
-      row = [
-        <Text key="kit-way-to" dimColor>{`→ ${displayName(target)}:`}</Text>,
-        ...ways.map(([way, label]) => (
-          <Button
-            key={`kit-way-${way}`}
-            label={label}
-            onPress={() => {
-              done();
-              soon($, () => switchModel($, target, way));
-            }}
-          />
-        )),
-      ];
-    } else if (menu === "effort") {
-      const levels = ["auto", ...EFFORTS] as const;
-      row = [
-        <Text
-          key="kit-effort-for"
-          dimColor
-        >{`${displayName(run.model)}:`}</Text>,
-        ...levels.map((l) => (
-          <Button
-            key={`kit-effort-${l}`}
-            label={l === "auto" ? "Auto" : l}
-            dimColor={run.locked ? run.effort !== l : l !== "auto"}
-            onPress={() => {
-              void setEffortLock($, l === "auto" ? undefined : l).then(done);
-            }}
-          />
-        )),
-      ];
+      body = (
+        <Box gap={1} flexWrap="wrap" flexGrow={1}>
+          <Text dimColor>{`→ ${displayName(target)}:`}</Text>
+          {ways.map(([way, label]) => (
+            <Button
+              key={`kit-way-${way}`}
+              label={label}
+              onPress={() => {
+                done();
+                soon($, () => switchModel($, target, way));
+              }}
+            />
+          ))}
+        </Box>
+      );
     }
 
     return (
       <Box flexDirection="column">
-        {row ? (
+        {body ? (
           <Box
             key="kit-menu"
             gap={1}
-            flexWrap="wrap"
             borderStyle="round"
             borderColor="#334155"
             paddingX={1}
             marginBottom={1}
           >
-            {row}
+            {body}
             {close}
           </Box>
         ) : null}
-        {usage.length ? (
-          <Box key="kit-usage" gap={3} flexWrap="wrap" marginBottom={1}>
+        <Box justifyContent="space-between" gap={2} flexWrap="wrap" marginBottom={1}>
+          <Box key="kit-usage" gap={3} flexWrap="wrap">
             {usage.map((u) => (
               <Text key={`kit-usage-${u.label}`}>
                 <Text dimColor>{`${u.label} `}</Text>
@@ -172,65 +190,6 @@ export function kitBand(on: On) {
                 {u.note ? <Text dimColor>{` · ${u.note}`}</Text> : null}
               </Text>
             ))}
-          </Box>
-        ) : null}
-        <Box justifyContent="space-between" gap={2} flexWrap="wrap">
-          <Box gap={1} flexWrap="wrap">
-            <Button
-              key="kit-profile"
-              label={`◇ ${profileName(now)}`}
-              onPress={() => unfold($, "profile")}
-            />
-            <Button
-              key="kit-model"
-              label={`◆ ${displayName(run.model)}`}
-              onPress={() => unfold($, "model")}
-            />
-            <Button
-              key="kit-effort"
-              label={`◐ ${run.effort ?? "auto"}${run.locked ? " ▪" : ""}`}
-              onPress={() => unfold($, "effort")}
-            />
-            <Button
-              key="kit-commit"
-              label="✓ Commit"
-              onPress={() => {
-                void $.command
-                  .run({ command: "kit:commit" })
-                  .catch((err) =>
-                    $.ui.toast(`kit: could not start /commit: ${String(err)}`),
-                  );
-              }}
-            />
-            <Button
-              key="kit-orchestrate"
-              label="⑂ Orchestrate"
-              dimColor={!orch}
-              onPress={() => {
-                void setOrchestrating($, !orch).then(() =>
-                  $.ui.invalidate("ui.render"),
-                );
-              }}
-            />
-            <Button
-              key="kit-warm"
-              label="♨ Keep cache"
-              dimColor={!warm}
-              onPress={() => {
-                void setWarm($, !warm);
-              }}
-            />
-            {warmed ? <Text dimColor>{warmed}</Text> : null}
-            {pause ? <Text color="#f59e0b">{pause}</Text> : null}
-            {pause ? (
-              <Button
-                key="kit-resume"
-                label="Resume now"
-                onPress={() => {
-                  void resumeNow($);
-                }}
-              />
-            ) : null}
           </Box>
           <Box gap={1} flexWrap="wrap">
             <Button
@@ -244,14 +203,61 @@ export function kitBand(on: On) {
               onPress={() => soon($, () => reset($, "clear"))}
             />
             <Button
-            key="kit-roadmap"
-            label={isOpen ? "▤ Close dashboard" : "▤ Dashboard"}
+              key="kit-roadmap"
+              label={isOpen ? "▤ Close dashboard" : "▤ Dashboard"}
+              onPress={() => {
+                const toggle = isOpen ? $.ui.close({ id: PANE }) : openRoadmap($);
+                void toggle.then(() => $.ui.invalidate("ui.render"));
+              }}
+            />
+          </Box>
+        </Box>
+        <Box gap={1} flexWrap="wrap">
+          <Button
+            key="kit-run"
+            label={`◆ ${displayName(run.model)} · ${run.effort ?? "auto"}${run.locked ? " ▪" : ""}`}
+            onPress={() => unfold($, "run")}
+          />
+          <Button
+            key="kit-commit"
+            label="✓ Commit"
             onPress={() => {
-              const toggle = isOpen ? $.ui.close({ id: PANE }) : openRoadmap($);
-              void toggle.then(() => $.ui.invalidate("ui.render"));
+              void $.command
+                .run({ command: "kit:commit" })
+                .catch((err) =>
+                  $.ui.toast(`kit: could not start /commit: ${String(err)}`),
+                );
             }}
           />
-          </Box>
+          <Button
+            key="kit-orchestrate"
+            label="⑂ Orchestrate"
+            dimColor={!orch}
+            onPress={() => {
+              void setOrchestrating($, !orch).then(() =>
+                $.ui.invalidate("ui.render"),
+              );
+            }}
+          />
+          <Button
+            key="kit-warm"
+            label="♨ Keep cache"
+            dimColor={!warm}
+            onPress={() => {
+              void setWarm($, !warm);
+            }}
+          />
+          {warmed ? <Text dimColor>{warmed}</Text> : null}
+          {pause ? <Text color="#f59e0b">{pause}</Text> : null}
+          {pause ? (
+            <Button
+              key="kit-resume"
+              label="Resume now"
+              onPress={() => {
+                void resumeNow($);
+              }}
+            />
+          ) : null}
         </Box>
       </Box>
     );

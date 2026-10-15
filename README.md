@@ -858,13 +858,16 @@ versions skip it. It never writes files.
   disk, not from the summary, so it is always right.
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
-- **The band** above the prompt is one row of icons: `◇ Balanced` (profile), `◆ Opus 5.5`
-  (model), `◐ medium` (effort, `▪` when locked), `✓ Commit` (runs `/kit:commit`), `⑂ Orchestrate`, `♨ Keep cache` and, at
-  the right end, `⇲ Compact`, `⌫ Clear` and `▤ Dashboard` (`▤ Close dashboard` closes it). Compact and Clear run at once. ◇ ◆ ◐ open a menu
-  in its own block above the band: the profiles; the models, then **Keep context**, **Compact**
-  or **Clear** before the switch; the effort levels of the running model (a pick locks it until
-  **Auto**, over new chats and restarts; the engine lowers a level the model lacks).
-- **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (◇ in the band,
+- **The band** above the prompt, two lines. On top, usage (`ctx 114k   session 55% · 2h 53m
+  week 75% · 4d 3h`) with, at the right, `⇲ Compact`, `⌫ Clear` and `▤ Dashboard` (`▤ Close
+  dashboard` closes it); Compact and Clear run at once, or when the running turn ends. Below,
+  `◆ Opus 5.5 · medium` (the model requests go to and their effort, `▪` when locked), `✓ Commit`
+  (runs `/kit:commit`), `⑂ Orchestrate` and `♨ Keep cache`. ◆ opens a menu in its own block
+  above the band: **Profile**, **Model** (then **Keep context**, **Compact** or **Clear**
+  before the switch) and **Effort** (a pick locks it until **Auto**, over new chats and
+  restarts; the engine lowers a level the model lacks). The effort shown is what kit set for
+  the last prompt, which can differ from the session setting in the app's model picker.
+- **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (◆'s menu in the band,
   or `/mode lean|balanced|quality|off`). The choice is kept across sessions. Each prompt is sorted (kit's own skills by name, the rest by a Haiku
   classifier) into question, routine, planning or heavy work, and the profile maps that to a
   model and effort:
@@ -910,14 +913,14 @@ versions skip it. It never writes files.
   and so renews it. Not free: each ping costs a cache read of the whole context, far less
   than rebuilding the cache, but it counts toward your limits. A failed ping turns it off.
 - **`/band`** draws the band above the prompt again; folded (`[+]`)? `ctrl+x ctrl+a` unfolds it.
-- **Usage**: `ctx 114k   session 55% · 2h 53m   week 75% · 4d 3h` on a line above the band's buttons,
+- **Usage**: `ctx 114k   session 55% · 2h 53m   week 75% · 4d 3h` on the band's top line,
   each limit with the time until it resets (amber from 60%, red from 85%); updated after
   every turn.
 
 **Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
 columns, above the prompt otherwise):
 
-- **Dashboard**: titled with the product's name, in four tabs (a row of
+- **Dashboard**: titled with the product's name (`Dashboard` without `docs/product.md`), in four tabs (a row of
   buttons on top, the shown one at full strength): **▤ Roadmap** (below), **◎ Chat** (model
   and effort, turns, how long, cost where the host reports it, compactions, the context by
   category as a bar like `/context`, the files this chat wrote or edited and the subagents it
@@ -932,7 +935,7 @@ columns, above the prompt otherwise):
   **Make a roadmap** (`/product`) without one. At the bottom of the pane, under every tab, in
   its own block, the **pad** (docked, at the bottom of the screen while the tab is shorter;
   a longer tab pushes it down): kit's skills by
-  stage, the stage on the left, its buttons on the right. **Plan**: **Setup** (only when
+  stage, the stage name with its buttons right beside it. **Plan**: **Setup** (only when
   `AGENTS.md` is missing), **Brainstorm**, **Critique**, **Intake**, **SEO**, **Theme**.
   **Make**: **Convert**, **Explain**, **Lessons**. **Ship**: **Audit** and **Scan** (git state
   is in the Changes tab). Commit, compact, clear and

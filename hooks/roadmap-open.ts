@@ -37,11 +37,11 @@ export const panelCommand: CommandSpec = {
   immediate: true,
 };
 
-// docs/product.md's `# <name>`, or "Roadmap" without one.
+// docs/product.md's `# <name>`, or "Dashboard" without one.
 async function productName($: EngineInterface): Promise<string> {
   const root = await $.session.root();
   const text = await $.fs.read(inRoot(root, "docs/product.md")).catch(() => "");
-  return /^# (.+)$/m.exec(String(text))?.[1]?.trim() || "Roadmap";
+  return /^# (.+)$/m.exec(String(text))?.[1]?.trim() || "Dashboard";
 }
 
 // Opens the pane, a draft or the live roadmap; says whether a surface drew it.

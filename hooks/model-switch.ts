@@ -98,7 +98,8 @@ export async function setEffortLock(
   await saved.catch(() => {});
 }
 
-// Clears or compacts between turns; false, with a toast, when it could not.
+// Clears or compacts between turns; false, with a toast, when it could not now (during a
+// turn it is queued for the turn's end).
 export async function reset(
   $: EngineInterface,
   way: "compact" | "clear",
@@ -111,7 +112,18 @@ export async function reset(
     }
     return true;
   } catch (err) {
-    $.ui.toast(`kit: could not ${way} (${String(err)})`);
+    // A turn is running: queue it as the person's own /compact or /clear, which the engine
+    // sends once the turn ends (a plugin's prompt runs when idle).
+    if (/turn is running/i.test(String(err))) {
+      const queued = await $.prompt
+        .submit({ text: `/${way}`, asUser: true })
+        .then(() => true, () => false);
+      if (queued) {
+        $.ui.toast(`kit: /${way} runs when this turn ends`);
+        return false;
+      }
+    }
+    $.ui.toast(`kit: could not ${way} (${String(err).replace(/^.*?kit: /, "")})`);
     return false;
   }
 }
