@@ -7,14 +7,13 @@ import type {
 
 import { autoModel, modeCommand } from "./auto-model";
 import { freshStart, freshTool } from "./fresh-start";
-import { bandCommand, kitBand } from "./kit-band";
+import { bandCommand, bandUsage, kitBand } from "./kit-band";
 import { warmCommand } from "./keep-warm";
 import { noteLimits } from "./limit-guard";
 import { panelCommand, roadmapOpen, roadmapTool } from "./roadmap-open";
 import {
   roadmapEdited,
   roadmapStale,
-  roadmapUsage,
   roadmapView,
 } from "./roadmap-view";
 import type { Usage } from "./roadmap-parts";
@@ -23,7 +22,7 @@ import { themeTool, themeView } from "./theme-view";
 
 // kit's context mod. Reads the active spec (slug from the feat/ or fix/ branch); never writes.
 // - After a compaction: appends the spec's state, so the next turn re-reads it from disk.
-// - Context and plan limits as one line in the roadmap pane's dashboard (USAGE).
+// - Context and plan limits as the band's second line (kit-band.tsx).
 // - The roadmap and theme panes: tools the skills call with data (roadmap-view, theme-view);
 //   the roadmap pane also opens on /panel (roadmap-open) and the band's button (kit-band).
 // - Model and effort picked per prompt and per subagent from a profile (auto-model), chosen
@@ -92,7 +91,7 @@ async function refresh($: EngineInterface, figures?: Figures) {
         note: untilReset(rl.resetsAt, now),
       });
   }
-  roadmapUsage(meters);
+  bandUsage(meters);
   $.ui.invalidate("ui.render");
 }
 
@@ -122,7 +121,7 @@ export const register: Register = (on) => {
   on("session.end", async ($, e, next) => {
     if (e.reason === "clear") {
       meters = meters.filter((m) => m.label !== "ctx");
-      roadmapUsage(meters);
+      bandUsage(meters);
       $.ui.invalidate("ui.render");
     }
     return next(e);

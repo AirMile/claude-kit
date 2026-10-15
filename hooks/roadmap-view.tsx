@@ -3,7 +3,7 @@ import type { ElementTable, EngineInterface, On } from "claude-code";
 import * as file from "./roadmap-file";
 import { body } from "./roadmap-dashboard";
 import { pressOnFocus, tracked } from "./roadmap-press";
-import type { Card, Git, Usage } from "./roadmap-parts";
+import type { Card, Git } from "./roadmap-parts";
 import * as wt from "./roadmap-worktree";
 import { inRoot, parseSpec, type SpecState } from "./spec";
 
@@ -27,7 +27,6 @@ let git: Git | null = null;
 let isSetUp = true;
 let hasDiff = false;
 let gitError = ""; // why git state is missing, shown dim in the dashboard
-let usage: Usage[] = []; // context and plan limits, from register.tsx
 let needsLoad = true;
 let note = "";
 let added = 0;
@@ -56,10 +55,6 @@ export function roadmapStale(): void {
   needsLoad = true;
 }
 
-// Context and plan limits, as register.tsx measures them after each turn.
-export function roadmapUsage(figures: Usage[]): void {
-  usage = figures;
-}
 
 function cards(r: file.Roadmap): Card[] {
   return r.items.map((i) => ({
@@ -249,7 +244,6 @@ export function roadmapView(on: On) {
       isSetUp,
       hasDiff,
       gitError,
-      usage,
       note,
       adding,
       added,

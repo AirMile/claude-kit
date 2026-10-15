@@ -859,8 +859,8 @@ versions skip it. It never writes files.
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt is one row of icons: `◇ Balanced` (profile), `◆ Opus 5.5`
-  (model), `◐ medium` (effort, `▪` when locked), `⇲ Compact`, `⌫ Clear`, `✓ Commit` (runs `/kit:commit`), `♨ Warm` and, at
-  the right end, `▤ Roadmap` (`▤ Close roadmap` closes it). A press on ◇ ◆ ◐ ⇲ ⌫ unfolds a second
+  (model), `◐ medium` (effort, `▪` when locked), `✓ Commit` (runs `/kit:commit`), `♨ Keep cache` and, at
+  the right end, `⇲ Compact`, `⌫ Clear` and `▤ Roadmap` (`▤ Close roadmap` closes it). A press on ◇ ◆ ◐ ⇲ ⌫ unfolds a second
   row: the profiles; the models, then **Keep context**, **Compact** or **Clear** before the
   switch; the effort levels of the running model (a pick locks it until **Auto**, over new
   chats and restarts; the engine lowers a level the model lacks); or a confirm for compact
@@ -897,27 +897,30 @@ versions skip it. It never writes files.
   band shows `paused until 14:05`, and **Resume now** ends the pause by hand. The prompt
   cache is kept warm meanwhile (see Keep warm), only when the reset is under 5 hours away:
   further out, a cold start is cheaper. At the reset a cut-off turn continues by itself.
-- **Keep warm**: the band's `♨ Warm` button (or `/warm`, `/warm on|off`) keeps a long
+- **Keep warm**: the band's `♨ Keep cache` button (or `/warm`, `/warm on|off`) keeps a long
   chat's prompt cache alive while you are away. After 50 idle minutes (the cache lives an
   hour) a tiny request, a fork of the chat that replies "ok", reads the cached context again
   and so renews it. Not free: each ping costs a cache read of the whole context, far less
   than rebuilding the cache, but it counts toward your limits. A failed ping turns it off.
 - **`/band`** draws the band above the prompt again; folded (`[+]`)? `ctrl+x ctrl+a` unfolds it.
-- **Usage**: `ctx 114k · session 55% · 2h 53m · week 75% · 4d 3h` on top of the roadmap
-  dashboard, each limit with the time until it resets; updated after every turn.
+- **Usage**: `ctx 114k   session 55% · 2h 53m   week 75% · 4d 3h` as the band's second line,
+  each limit with the time until it resets (amber from 60%, red from 85%); updated after
+  every turn.
 
 **Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
 columns, above the prompt otherwise):
 
-- **Roadmap**: a project dashboard, titled with the product's name. It never opens by itself: the **Roadmap** button above the prompt opens it (in any project, while the pane is closed), `/product` opens it too, and so does `/panel`. Without `docs/roadmap.md` it shows the dashboard alone, as an action pad, with **Make a roadmap** (`/product`). On top, in its own block:
-  context and plan usage (a value turns amber from 60%, red from 85%; compact and clear are in the band); git state (branch,
-  changed files, commits not on `origin/HEAD`) with **Diff** (`/diff`, where it exists) and
-  **Commit** when files changed and **Launch** when commits aren't live; then kit's skills:
-  **Setup** (only when `AGENTS.md` is missing), **Brainstorm**, **Critique**, **Theme** and
-  **Audit**. One click on a button runs its command at once (a second click within 2 seconds
-  counts as a double click and is ignored; if running fails, the command lands in your prompt box); a done
-  feature's **Explain** runs `/explain <slug>`. On the desktop app a click also counts when
-  the pane didn't have focus yet; the catch is that Tab onto a button there presses it. Below that, `docs/roadmap.md` live, grouped by phase (a release: `v1 · MVP`, `v1.1 · Sharing`; any `##` heading works, shown as written): a
+- **Roadmap**: a project dashboard, titled with the product's name. It never opens by itself: the band's **▤ Roadmap** button opens it (in any project, while the pane is closed), `/product` opens it too, and so does `/panel`. Without `docs/roadmap.md` it shows **Make a roadmap** (`/product`) and the pad. On top,
+  `docs/roadmap.md` live (below). At the bottom, in its own block, the **pad**: kit's skills by
+  stage, the stage on the left, its buttons on the right. **Plan**: **Setup** (only when
+  `AGENTS.md` is missing), **Brainstorm**, **Critique**, **Intake**, **SEO**, **Theme**.
+  **Make**: **Convert**, **Explain**, **Lessons**. **Ship**: git state (branch, changed files,
+  commits not on `origin/HEAD`) with **Diff** (`/diff`, where it exists) when files changed and
+  **Launch** when commits aren't live, then **Audit** and **Scan**. Commit, compact, clear and
+  usage are in the band. One click on a button runs its command at once (a second click within
+  2 seconds counts as a double click and is ignored; if running fails, the command lands in
+  your prompt box); a done feature's **Explain** runs `/explain <slug>`. On the desktop app a
+  click also counts when the pane didn't have focus yet; the catch is that Tab onto a button there presses it. The roadmap: `docs/roadmap.md` live, grouped by phase (a release: `v1 · MVP`, `v1.1 · Sharing`; any `##` heading works, shown as written): a
   card per feature with its state, and for one in progress its step (define → build → verify, with the criteria count while verifying). **Pick
   up** (open), **Build** (spec ready), **Resume** (building) or **Verify** (ready to verify)
   clears the chat and runs `/build <slug>` in the fresh one, which continues at that step. A feature not started has **▶** (Pick up), on the desktop app **↗** (a chip that starts `/build <slug>` in a new worktree session; the card then says "sent to worktree", later "runs on <branch>" once that session commits the spec, and pressing ↗ again asks "Again?") and **⋯**, a row of buttons that

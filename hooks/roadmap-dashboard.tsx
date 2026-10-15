@@ -1,15 +1,17 @@
+import type { RenderChildren } from "claude-code";
+
 import { type Parts, phaseNames } from "./roadmap-parts";
 import { phases } from "./roadmap-phase";
 import { later } from "./roadmap-later";
 
-// The roadmap pane's top (the pane's title is the product): a dashboard of context and plan usage and kit's
-// skills as buttons. Pure, like roadmap-parts.tsx.
+// The roadmap pane (its title is the product): the roadmap on top, then the pad, a bordered block
+// of kit's skills by stage of work (git state with Diff and Launch sits in Ship). Commit, compact
+// and clear are in the band above the prompt (kit-band.tsx). Pure, like roadmap-parts.tsx.
 
 export function body(p: Parts) {
   const { Box, Text } = p.el;
   return (
     <Box flexDirection="column" gap={1} paddingX={1} paddingY={1}>
-      {p.draft ? null : dashboard(p)}
       {p.note ? <Text color="#818cf8">{p.note}</Text> : null}
       {p.hasRoadmap ? (
         <Box flexDirection="column" gap={1}>
@@ -26,24 +28,16 @@ export function body(p: Parts) {
           />
         </Box>
       )}
+      {p.draft ? null : pad(p)}
     </Box>
   );
 }
 
-// Calm below the fresh-start advice (60%), amber up to 85%, red above.
-const tone = (pct: number) =>
-  pct < 60 ? undefined : pct < 85 ? "#f59e0b" : "#ef4444";
-
-// The dashboard: its own bordered block above the roadmap. Usage; git state with Diff, Commit
-// and Launch only when there is something for them to do; then kit's skills as buttons.
-function dashboard(p: Parts) {
+// The pad: one row per stage, its name on the left and its skills on the right. Setup leads
+// while the project isn't set up; Diff and Launch show only when there is something for them.
+function pad(p: Parts) {
   const { Box, Text, Button } = p.el;
   const g = p.git;
-  // Two lines: context and the 5h session, then the weekly limit.
-  const usageRows = [
-    p.usage.filter((u) => u.label !== "week"),
-    p.usage.filter((u) => u.label === "week"),
-  ].filter((row) => row.length);
   const skill = (
     key: string,
     label: string,
@@ -58,6 +52,36 @@ function dashboard(p: Parts) {
       onPress={() => p.act.run(command, args)}
     />
   );
+  const stage = (
+    name: string,
+    note: RenderChildren,
+    skills: RenderChildren[],
+  ) => (
+    <Box key={`pad-${name}`} justifyContent="space-between" gap={2} flexWrap="wrap">
+      <Text wrap="wrap">
+        <Text dimColor>{name.padEnd(6)}</Text>
+        {note}
+      </Text>
+      <Box gap={1} flexWrap="wrap">
+        {skills}
+      </Box>
+    </Box>
+  );
+  const gitNote = g ? (
+    <Text>
+      <Text dimColor>{`${g.branch}  `}</Text>
+      {g.changed ? (
+        <Text>{`${g.changed} file${g.changed === 1 ? "" : "s"} changed`}</Text>
+      ) : (
+        <Text dimColor>clean</Text>
+      )}
+      {g.unpushed ? (
+        <Text>{`  ·  ${g.unpushed} commit${g.unpushed === 1 ? "" : "s"} not live`}</Text>
+      ) : null}
+    </Text>
+  ) : p.gitError ? (
+    <Text dimColor>{`git: ${p.gitError}`}</Text>
+  ) : null;
   return (
     <Box
       flexDirection="column"
@@ -67,55 +91,25 @@ function dashboard(p: Parts) {
       paddingX={1}
       paddingY={1}
     >
-      {/* Usage; compact and clear sit in the band above the prompt (kit-band.tsx). */}
-      <Box justifyContent="space-between" gap={2} flexWrap="wrap" marginBottom={1}>
-        <Box flexDirection="column">
-          {usageRows.map((row, r) => (
-            <Text key={String(r)}>
-              {row.map((u, i) => (
-                <Text key={u.label}>
-                  {i ? "     " : ""}
-                  <Text dimColor>{`${u.label} `}</Text>
-                  <Text bold color={tone(u.pct)}>
-                    {u.value}
-                  </Text>
-                  {u.note ? <Text dimColor>{` · ${u.note}`}</Text> : null}
-                </Text>
-              ))}
-            </Text>
-          ))}
-        </Box>
-      </Box>
-      {!g && p.gitError ? (
-        <Text dimColor wrap="wrap">{`git: ${p.gitError}`}</Text>
-      ) : null}
-      {g ? (
-        <Box justifyContent="space-between" gap={2} flexWrap="wrap">
-          <Text wrap="wrap">
-            <Text dimColor>{`${g.branch}  `}</Text>
-            {g.changed ? (
-              <Text>{`${g.changed} file${g.changed === 1 ? "" : "s"} changed`}</Text>
-            ) : (
-              <Text dimColor>clean</Text>
-            )}
-            {g.unpushed ? (
-              <Text>{`  ·  ${g.unpushed} commit${g.unpushed === 1 ? "" : "s"} not live`}</Text>
-            ) : null}
-          </Text>
-          <Box gap={1} flexWrap="wrap">
-            {g.changed && p.hasDiff ? skill("diff", "Diff", "diff") : null}
-            {g.changed ? skill("commit", "Commit", "kit:commit") : null}
-            {g.unpushed ? skill("launch", "Launch", "kit:launch") : null}
-          </Box>
-        </Box>
-      ) : null}
-      <Box gap={1} flexWrap="wrap" marginTop={1}>
-        {p.isSetUp ? null : skill("setup", "Setup", "kit:setup", "", true)}
-        {skill("brainstorm", "Brainstorm", "kit:product", "brainstorm")}
-        {skill("critique", "Critique", "kit:product", "critique")}
-        {skill("theme", "Theme", "kit:theme")}
-        {skill("audit", "Audit", "kit:audit")}
-      </Box>
+      {stage("Plan", null, [
+        p.isSetUp ? null : skill("setup", "Setup", "kit:setup", "", true),
+        skill("brainstorm", "Brainstorm", "kit:product", "brainstorm"),
+        skill("critique", "Critique", "kit:product", "critique"),
+        skill("intake", "Intake", "kit:intake"),
+        skill("seo", "SEO", "kit:seo"),
+        skill("theme", "Theme", "kit:theme"),
+      ])}
+      {stage("Make", null, [
+        skill("convert", "Convert", "kit:convert"),
+        skill("explain", "Explain", "kit:explain"),
+        skill("lessons", "Lessons", "kit:lessons"),
+      ])}
+      {stage("Ship", gitNote, [
+        g?.changed && p.hasDiff ? skill("diff", "Diff", "diff") : null,
+        g?.unpushed ? skill("launch", "Launch", "kit:launch") : null,
+        skill("audit", "Audit", "kit:audit"),
+        skill("scan", "Scan", "kit:scan"),
+      ])}
     </Box>
   );
 }

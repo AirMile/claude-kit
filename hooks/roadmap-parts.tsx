@@ -54,7 +54,6 @@ export type Parts = {
   isSetUp: boolean;
   hasDiff: boolean;
   gitError: string; // /diff exists here (the CLI's built-in diff mod)
-  usage: Usage[];
   note: string;
   adding: string | null;
   added: number;
