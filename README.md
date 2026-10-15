@@ -823,12 +823,12 @@ tokens.
 
 ### push-guard
 
-`PreToolUse` on Bash. Any `git push` (also `git -C dir push`, chained commands) needs your OK:
+`PreToolUse` on Bash. Any `git push` (also `git -C dir push`, chained commands) needs your OK, except a plain push in auto mode:
 
 | Permission mode              | What happens                                                                                                                       |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | default / acceptEdits / plan | the normal permission prompt appears                                                                                               |
-| auto                         | the permission prompt appears too: auto mode still shows prompts a hook asks for                                                   |
+| auto                         | a plain push goes through (auto mode's own checks still apply); a force push (`-f`, `--force`, `--force-with-lease`) still asks   |
 | bypassPermissions            | the push is **denied** with a message telling Claude to ask you in chat; after you confirm, Claude runs `KIT_PUSH_OK=1 git push …` |
 
 When you already said "push" (e.g. `/commit` and you answered Push, or "commit and push"),

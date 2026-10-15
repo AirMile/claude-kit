@@ -20,7 +20,11 @@ function decide(command, mode = "default", tool = "Bash") {
 
 const cases = [
   ["git push", "default", "ask"],
-  ["git push origin main", "auto", "ask"],
+  ["git push origin main", "auto", "pass"],
+  ["git push --force origin main", "auto", "ask"],
+  ["git push -f", "auto", "ask"],
+  ["git push --force-with-lease", "auto", "ask"],
+  ["git push -u origin feat", "auto", "pass"],
   ["git push --force", "bypassPermissions", "deny"],
   ["git add . && git push", "default", "ask"],
   ["git -C repo push", "default", "ask"],
@@ -31,7 +35,7 @@ const cases = [
   ['git commit -m "push fix"', "default", "pass"],
   ["echo push", "default", "pass"],
   ["git pull --rebase", "default", "pass"],
-  ["git push origin main", "auto", "ask", "PowerShell"],
+  ["git push origin main", "auto", "pass", "PowerShell"],
   ["cd app; git push", "bypassPermissions", "deny", "PowerShell"],
   ["$env:KIT_PUSH_OK=1; git push", "bypassPermissions", "pass", "PowerShell"],
   ["git push", "default", "pass", "Read"],

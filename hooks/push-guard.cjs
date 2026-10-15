@@ -3,12 +3,14 @@
  * PreToolUse (Bash): never let `git push` run without the user's explicit OK.
  *
  * - Command contains KIT_PUSH_OK=1 → allowed (the user confirmed in chat).
+ * - auto mode → a plain push passes (auto mode's own checks still apply); a force push asks.
  * - bypassPermissions mode → deny: only "deny" is guaranteed to hold in that mode
  *   (hooks-guide § Hooks and permission modes), so the reason tells Claude to ask in chat.
  * - Any other mode → "ask": the normal permission prompt shows.
  */
 
 const PUSH = /(^|[\s;&|()`])git(\s+-[cC]\s+\S+)*\s+push\b/;
+const FORCE = /\spush\b[^;&|]*\s(--force(-with-lease)?\b|-[a-zA-Z]*f)/;
 
 async function main() {
   let input = "";
@@ -24,6 +26,8 @@ async function main() {
 
   const cmd = String(data.tool_input?.command ?? "");
   if (!PUSH.test(cmd) || /\bKIT_PUSH_OK=1\b/.test(cmd)) return;
+
+  if (data.permission_mode === "auto" && !FORCE.test(cmd)) return;
 
   const bypass = data.permission_mode === "bypassPermissions";
   const reason = bypass
