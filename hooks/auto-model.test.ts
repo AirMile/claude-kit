@@ -194,11 +194,11 @@ function band($: Parameters<Parameters<typeof test>[1]>[0], on: On) {
 test("an effort picked in the band is locked until Auto unlocks it", async ($, on) => {
   const w = world(on, { model: "claude-haiku-5-5", label: QUESTION, drawn: true });
   const ui = await band($, on);
-  await ui.press({ key: "kit-run" });
+  await ui.press({ key: "kit-model" });
   await ui.press({ key: "kit-effort-high" });
   expect(w.store.effortLock).toBe("high");
-  expect((await ui.find({ key: "kit-run" }))?.text).toBe("◆ Haiku 5.5 · high ▪");
-  await ui.press({ key: "kit-run" });
+  expect((await ui.find({ key: "kit-effort" }))?.text).toBe("high ▪");
+  await ui.press({ key: "kit-model" });
   await ui.press({ key: "kit-effort-auto" });
   expect(w.store.effortLock).toBe(undefined);
 });
@@ -211,7 +211,7 @@ test("the band's model switch clears first when asked, and keeps the switch", as
     drawn: true,
   });
   const ui = await band($, on);
-  await ui.press({ key: "kit-run" });
+  await ui.press({ key: "kit-model" });
   await ui.press({ key: "kit-model-claude-opus-5-5" });
   await ui.press({ key: "kit-way-clear" });
   await settle();
@@ -219,7 +219,7 @@ test("the band's model switch clears first when asked, and keeps the switch", as
   expect(w.store.switches).toEqual({
     s1: { chosen: "claude-opus-5-5", base: "claude-haiku-5-5" },
   });
-  expect((await ui.find({ key: "kit-run" }))?.text).toContain("◆ Opus 5.5");
+  expect((await ui.find({ key: "kit-model" }))?.text).toContain("Opus 5.5");
 });
 
 test("clear in the band clears at once, just after the press", async ($, on) => {

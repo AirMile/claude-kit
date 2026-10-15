@@ -21,7 +21,7 @@ import { PANE } from "./roadmap-view";
 // The band above the prompt, top to bottom: an open menu (a bordered block), then context and
 // plan usage (register.tsx measures it after each turn) with what acts on the chat at its right:
 // compact (⇲) and clear (⌫), run at once, and the dashboard pane (▤). Below, the run and the
-// switches: ◆ the model main requests go to with their effort (▪ when locked), whose menu
+// switches: the model main requests go to and its effort (▪ when locked), both opening a menu that
 // holds the profile (auto-model.ts), the models (then keep the context, compact or clear) and
 // the effort levels (a pick locks it, Auto unlocks); /commit (✓); orchestrate (⑂,
 // orchestrate.ts); keep cache (♨, keep-warm.ts); the plan-limit pause with Resume now
@@ -212,10 +212,15 @@ export function kitBand(on: On) {
             />
           </Box>
         </Box>
-        <Box gap={1} flexWrap="wrap">
+        <Box justifyContent="space-between" gap={1} flexWrap="wrap">
           <Button
-            key="kit-run"
-            label={`◆ ${displayName(run.model)} · ${run.effort ?? "auto"}${run.locked ? " ▪" : ""}`}
+            key="kit-model"
+            label={displayName(run.model)}
+            onPress={() => unfold($, "run")}
+          />
+          <Button
+            key="kit-effort"
+            label={`${run.effort ?? "auto"}${run.locked ? " ▪" : ""}`}
             onPress={() => unfold($, "run")}
           />
           <Button
@@ -247,18 +252,22 @@ export function kitBand(on: On) {
               void setWarm($, !warm);
             }}
           />
-          {warmed ? <Text dimColor>{warmed}</Text> : null}
-          {pause ? <Text color="#f59e0b">{pause}</Text> : null}
-          {pause ? (
-            <Button
-              key="kit-resume"
-              label="Resume now"
-              onPress={() => {
-                void resumeNow($);
-              }}
-            />
-          ) : null}
         </Box>
+        {warmed || pause ? (
+          <Box gap={1} flexWrap="wrap">
+            {warmed ? <Text dimColor>{warmed}</Text> : null}
+            {pause ? <Text color="#f59e0b">{pause}</Text> : null}
+            {pause ? (
+              <Button
+                key="kit-resume"
+                label="Resume now"
+                onPress={() => {
+                  void resumeNow($);
+                }}
+              />
+            ) : null}
+          </Box>
+        ) : null}
       </Box>
     );
   });
