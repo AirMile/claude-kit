@@ -1,6 +1,7 @@
 import type { CommandSpec, EngineInterface, On } from "claude-code";
 
 import { getMode, runState, setMode, switchModel } from "./auto-model";
+import { GIT_ITEMS, gitAction } from "./git-menu";
 import { isWarm, setWarm, warmCommandRun, warmInfo } from "./keep-warm";
 import { limitInfo, resumeNow } from "./limit-guard";
 import {
@@ -23,7 +24,7 @@ import { PANE } from "./roadmap-view";
 // compact (⇲) and clear (⌫), run at once. Below, in three groups:
 // the model main requests go to and its effort (▪ when locked), each opening only its own
 // menu (the profile from auto-model.ts; the models, then keep the context,
-// compact or clear; the effort's the levels, a pick locks it, Auto unlocks); /commit (✓) with the dashboard pane (▤);
+// compact or clear; the effort's the levels, a pick locks it, Auto unlocks); /commit (✓) with a Git menu (⎇, git-menu.ts) and the dashboard pane (▤);
 // orchestrate (⑂, orchestrate.ts) with keep cache (♨, keep-warm.ts). The plan-limit pause with
 // Resume now (limit-guard.ts) follows on its own line. Each icon carries a short word.
 // It yields to a survey. /band draws it again; /warm toggles keep warm.
@@ -35,7 +36,7 @@ export const bandCommand: CommandSpec = {
   immediate: true,
 };
 
-type Menu = "profile" | "model" | "effort" | "way";
+type Menu = "profile" | "model" | "effort" | "git" | "way";
 
 let menu: Menu | null = null; // the unfolded menu row
 let usage: Usage[] = []; // context and plan limits, from register.tsx
@@ -126,6 +127,24 @@ export function kitBand(on: On) {
                   if (family(m) === family(run.model)) return done();
                   target = m;
                   unfold($, "way");
+                }}
+              />
+            )),
+          )}
+        </Box>
+      );
+    } else if (menu === "git") {
+      body = (
+        <Box flexDirection="column" flexGrow={1}>
+          {line(
+            "Git",
+            GIT_ITEMS.map((g) => (
+              <Button
+                key={`kit-git-${g}`}
+                label={g}
+                onPress={() => {
+                  done();
+                  void gitAction($, g);
                 }}
               />
             )),
@@ -243,6 +262,11 @@ export function kitBand(on: On) {
                     $.ui.toast(`kit: could not start /commit: ${String(err)}`),
                   );
               }}
+            />
+            <Button
+              key="kit-git"
+              label="⎇ Git"
+              onPress={() => unfold($, "git")}
             />
             <Button
               key="kit-roadmap"

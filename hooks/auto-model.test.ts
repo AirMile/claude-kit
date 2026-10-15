@@ -242,6 +242,16 @@ test("Commit in the band starts /kit:commit", async ($, on) => {
   expect(ran).toEqual(["kit:commit"]);
 });
 
+test("the band's Git menu sends its item as a prompt", async ($, on) => {
+  const w = world(on, { model: "claude-haiku-5-5", label: QUESTION, drawn: true });
+  const ui = await band($, on);
+  await ui.press({ key: "kit-git" });
+  await ui.press({ key: "kit-git-Push" });
+  expect(w.sent.map((m) => m.text)).toEqual([
+    "Push the current branch to origin.",
+  ]);
+});
+
 test("Orchestrate adds a note by kind of work: none for a question", async ($, on) => {
   const w = world(on, {
     model: "claude-opus-5-5",
