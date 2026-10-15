@@ -859,8 +859,8 @@ versions skip it. It never writes files.
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt is one row of icons: `◇ Balanced` (profile), `◆ Opus 5.5`
-  (model), `◐ medium` (effort, `▪` when locked), `⇲` compact, `⌫` clear, `♨` keep warm and, at
-  the right end, `▤` the roadmap pane (`▤ ×` closes it). A press on ◇ ◆ ◐ ⇲ ⌫ unfolds a second
+  (model), `◐ medium` (effort, `▪` when locked), `⇲ Compact`, `⌫ Clear`, `♨ Warm` and, at
+  the right end, `▤ Roadmap` (`▤ Close roadmap` closes it). A press on ◇ ◆ ◐ ⇲ ⌫ unfolds a second
   row: the profiles; the models, then **Keep context**, **Compact** or **Clear** before the
   switch; the effort levels of the running model (a pick locks it until **Auto**, over new
   chats and restarts; the engine lowers a level the model lacks); or a confirm for compact
@@ -897,7 +897,7 @@ versions skip it. It never writes files.
   band shows `paused until 14:05`, and **Resume now** ends the pause by hand. The prompt
   cache is kept warm meanwhile (see Keep warm), only when the reset is under 5 hours away:
   further out, a cold start is cheaper. At the reset a cut-off turn continues by itself.
-- **Keep warm**: the band's `♨` button (or `/warm`, `/warm on|off`) keeps a long
+- **Keep warm**: the band's `♨ Warm` button (or `/warm`, `/warm on|off`) keeps a long
   chat's prompt cache alive while you are away. After 50 idle minutes (the cache lives an
   hour) a tiny request, a fork of the chat that replies "ok", reads the cached context again
   and so renews it. Not free: each ping costs a cache read of the whole context, far less
