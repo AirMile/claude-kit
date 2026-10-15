@@ -17,14 +17,14 @@ import { openRoadmap } from "./roadmap-open";
 import type { Usage } from "./roadmap-parts";
 import { PANE } from "./roadmap-view";
 
-// The band above the prompt. Left, the settings: profile (◇, auto-model.ts), the model main
-// requests go to (◆) and their effort (◐, ▪ when locked), /commit (✓), keep cache (♨,
-// keep-warm.ts), the plan-limit pause with Resume now (limit-guard.ts). Right, what acts on
-// the chat: compact (⇲), clear (⌫) and the roadmap pane (▤). Each icon carries a short word: an
-// icon alone is too small to hit. A press on ◇ ◆ ◐ ⇲ ⌫ unfolds a menu row: the profiles, the
-// models (then keep the context, compact or clear), the effort levels (a pick locks it, Auto
-// unlocks), or a confirm for compact and clear, which can't be undone. Below, context and plan
-// usage (register.tsx measures it after each turn).
+// The band above the prompt, top to bottom: an open menu (a bordered block), context and plan
+// usage (register.tsx measures it after each turn), then the buttons. Left, the settings:
+// profile (◇, auto-model.ts), the model main requests go to (◆) and their effort (◐, ▪ when
+// locked), /commit (✓), keep cache (♨, keep-warm.ts), the plan-limit pause with Resume now
+// (limit-guard.ts). Right, what acts on the chat: compact (⇲) and clear (⌫), run at once, and
+// the dashboard pane (▤). Each icon carries a short word: an icon alone is too small to hit.
+// ◇ ◆ ◐ open their menu: the profiles, the models (then keep the context, compact or clear),
+// the effort levels (a pick locks it, Auto unlocks).
 // It yields to a survey. /band draws it again; /warm toggles keep warm.
 
 export const bandCommand: CommandSpec = {
@@ -34,7 +34,7 @@ export const bandCommand: CommandSpec = {
   immediate: true,
 };
 
-type Menu = "profile" | "model" | "way" | "effort" | "compact" | "clear";
+type Menu = "profile" | "model" | "way" | "effort";
 
 let menu: Menu | null = null; // the unfolded menu row
 let usage: Usage[] = []; // context and plan limits, from register.tsx
@@ -48,6 +48,14 @@ export function bandUsage(figures: Usage[]): void {
 const tone = (pct: number) =>
   pct < 60 ? undefined : pct < 85 ? "#f59e0b" : "#ef4444";
 let target = ""; // the model picked in the model row, for the way row
+
+// Compact, clear and a switch run just after the press: inside it they can be refused.
+function soon($: EngineInterface, work: () => Promise<unknown>) {
+  $.clock.after(50, async () => {
+    await work();
+    $.ui.invalidate("ui.render");
+  });
+}
 
 function unfold($: EngineInterface, next: Menu | null) {
   menu = menu === next ? null : next;
@@ -110,7 +118,7 @@ export function kitBand(on: On) {
             label={label}
             onPress={() => {
               done();
-              void switchModel($, target, way);
+              soon($, () => switchModel($, target, way));
             }}
           />
         )),
@@ -133,25 +141,37 @@ export function kitBand(on: On) {
           />
         )),
       ];
-    } else if (menu === "compact" || menu === "clear") {
-      const way = menu;
-      row = [
-        <Text key="kit-confirm" dimColor>
-          {way === "clear" ? "Clear this chat?" : "Compact this chat?"}
-        </Text>,
-        <Button
-          key="kit-confirm-yes"
-          label={way === "clear" ? "Clear" : "Compact"}
-          onPress={() => {
-            done();
-            void reset($, way).then(() => $.ui.invalidate("ui.render"));
-          }}
-        />,
-      ];
     }
 
     return (
       <Box flexDirection="column">
+        {row ? (
+          <Box
+            key="kit-menu"
+            gap={1}
+            flexWrap="wrap"
+            borderStyle="round"
+            borderColor="#334155"
+            paddingX={1}
+            marginBottom={1}
+          >
+            {row}
+            {close}
+          </Box>
+        ) : null}
+        {usage.length ? (
+          <Box key="kit-usage" gap={3} flexWrap="wrap" marginBottom={1}>
+            {usage.map((u) => (
+              <Text key={`kit-usage-${u.label}`}>
+                <Text dimColor>{`${u.label} `}</Text>
+                <Text bold color={tone(u.pct)}>
+                  {u.value}
+                </Text>
+                {u.note ? <Text dimColor>{` · ${u.note}`}</Text> : null}
+              </Text>
+            ))}
+          </Box>
+        ) : null}
         <Box justifyContent="space-between" gap={2} flexWrap="wrap">
           <Box gap={1} flexWrap="wrap">
             <Button
@@ -204,16 +224,16 @@ export function kitBand(on: On) {
             <Button
               key="kit-compact"
               label="⇲ Compact"
-              onPress={() => unfold($, "compact")}
+              onPress={() => soon($, () => reset($, "compact"))}
             />
             <Button
               key="kit-clear"
               label="⌫ Clear"
-              onPress={() => unfold($, "clear")}
+              onPress={() => soon($, () => reset($, "clear"))}
             />
             <Button
             key="kit-roadmap"
-            label={isOpen ? "▤ Close roadmap" : "▤ Roadmap"}
+            label={isOpen ? "▤ Close dashboard" : "▤ Dashboard"}
             onPress={() => {
               const toggle = isOpen ? $.ui.close({ id: PANE }) : openRoadmap($);
               void toggle.then(() => $.ui.invalidate("ui.render"));
@@ -221,25 +241,6 @@ export function kitBand(on: On) {
           />
           </Box>
         </Box>
-        {row ? (
-          <Box gap={1} flexWrap="wrap">
-            {row}
-            {close}
-          </Box>
-        ) : null}
-        {usage.length ? (
-          <Box key="kit-usage" gap={3} flexWrap="wrap">
-            {usage.map((u) => (
-              <Text key={`kit-usage-${u.label}`}>
-                <Text dimColor>{`${u.label} `}</Text>
-                <Text bold color={tone(u.pct)}>
-                  {u.value}
-                </Text>
-                {u.note ? <Text dimColor>{` · ${u.note}`}</Text> : null}
-              </Text>
-            ))}
-          </Box>
-        ) : null}
       </Box>
     );
   });

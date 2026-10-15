@@ -17,7 +17,8 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, switches kept by `hooks/model-switch.ts`, `/mode`), a pause before the plan limit with
   cache keep-alive (`hooks/limit-guard.ts` on the pure `hooks/limit-policy.ts`), keep-alive forks by hand or
   for the pause (`hooks/keep-warm.ts`, `/warm`), `/band` (the roadmap
-  pane draws through the pure `roadmap-{dashboard,phase,card,later}.tsx` on `roadmap-parts.tsx`),
+  pane draws through the pure `roadmap-{dashboard,tabs,phase,card,later}.tsx` on `roadmap-parts.tsx`, with
+  git read by `roadmap-git.ts` and the Chat tab's facts by `hooks/chat-facts.ts`),
   and `mcp__kit__fresh_start` (`hooks/fresh-start.ts`), which `/build`'s safe point calls to
   clear and resume. Only `register.tsx` registers events; `$` never crosses an import (the
   validator refuses it), so `hooks/spec.ts` stays pure

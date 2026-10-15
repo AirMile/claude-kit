@@ -7,6 +7,7 @@ import type {
 
 import { autoModel, modeCommand } from "./auto-model";
 import { freshStart, freshTool } from "./fresh-start";
+import { noteCompact, noteFile, resetChat } from "./chat-facts";
 import { bandCommand, bandUsage, kitBand } from "./kit-band";
 import { warmCommand } from "./keep-warm";
 import { noteLimits } from "./limit-guard";
@@ -120,6 +121,7 @@ export const register: Register = (on) => {
   // figure now, or the dashboard keeps showing it in the fresh chat.
   on("session.end", async ($, e, next) => {
     if (e.reason === "clear") {
+      resetChat();
       meters = meters.filter((m) => m.label !== "ctx");
       bandUsage(meters);
       $.ui.invalidate("ui.render");
@@ -136,6 +138,7 @@ export const register: Register = (on) => {
 
   on("tool.call", { tool: ["Edit", "Write"] }, async ($, e, next) => {
     const ran = await next(e);
+    if (!e.agentId) noteFile(e.file_path);
     if (SPEC_PATH.test(e.file_path.replace(/\\/g, "/"))) await refresh($);
     if (roadmapEdited(e.file_path)) $.ui.invalidate("ui.render");
     return ran;
@@ -145,6 +148,7 @@ export const register: Register = (on) => {
     const compacted = await next(e);
     if (e.trigger === "precompute" || e.agentId || !compacted.messages)
       return compacted;
+    noteCompact();
     const now = await activeSpec($);
     if (!now) return compacted;
     const note: SessionMessage = {

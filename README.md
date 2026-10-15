@@ -860,11 +860,10 @@ versions skip it. It never writes files.
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt is one row of icons: `◇ Balanced` (profile), `◆ Opus 5.5`
   (model), `◐ medium` (effort, `▪` when locked), `✓ Commit` (runs `/kit:commit`), `♨ Keep cache` and, at
-  the right end, `⇲ Compact`, `⌫ Clear` and `▤ Roadmap` (`▤ Close roadmap` closes it). A press on ◇ ◆ ◐ ⇲ ⌫ unfolds a second
-  row: the profiles; the models, then **Keep context**, **Compact** or **Clear** before the
-  switch; the effort levels of the running model (a pick locks it until **Auto**, over new
-  chats and restarts; the engine lowers a level the model lacks); or a confirm for compact
-  and clear, which can't be undone.
+  the right end, `⇲ Compact`, `⌫ Clear` and `▤ Dashboard` (`▤ Close dashboard` closes it). Compact and Clear run at once. ◇ ◆ ◐ open a menu
+  in its own block above the band: the profiles; the models, then **Keep context**, **Compact**
+  or **Clear** before the switch; the effort levels of the running model (a pick locks it until
+  **Auto**, over new chats and restarts; the engine lowers a level the model lacks).
 - **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (◇ in the band,
   or `/mode lean|balanced|quality|off`). The choice is kept across sessions. Each prompt is sorted (kit's own skills by name, the rest by a Haiku
   classifier) into question, routine, planning or heavy work, and the profile maps that to a
@@ -903,20 +902,29 @@ versions skip it. It never writes files.
   and so renews it. Not free: each ping costs a cache read of the whole context, far less
   than rebuilding the cache, but it counts toward your limits. A failed ping turns it off.
 - **`/band`** draws the band above the prompt again; folded (`[+]`)? `ctrl+x ctrl+a` unfolds it.
-- **Usage**: `ctx 114k   session 55% · 2h 53m   week 75% · 4d 3h` as the band's second line,
+- **Usage**: `ctx 114k   session 55% · 2h 53m   week 75% · 4d 3h` on a line above the band's buttons,
   each limit with the time until it resets (amber from 60%, red from 85%); updated after
   every turn.
 
 **Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
 columns, above the prompt otherwise):
 
-- **Roadmap**: a project dashboard, titled with the product's name. It never opens by itself: the band's **▤ Roadmap** button opens it (in any project, while the pane is closed), `/product` opens it too, and so does `/panel`. Without `docs/roadmap.md` it shows **Make a roadmap** (`/product`) and the pad. On top,
-  `docs/roadmap.md` live (below). At the bottom, in its own block, the **pad**: kit's skills by
+- **Dashboard**: titled with the product's name, in three tabs (a row of
+  buttons on top, the shown one at full strength): **▤ Roadmap** (below), **◎ Chat** (model
+  and effort, turns, how long, cost where the host reports it, compactions, the context by
+  category as a bar like `/context`, the files this chat wrote or edited and the subagents it
+  ran, counted since the mod loaded; a `/clear` starts over) and **± Changes** (branch, the
+  changed files, the commits not on `origin/HEAD`, with **Diff**, **✓ Commit** and **Launch**
+  when there is something for them). A draft (plan mode) shows the roadmap alone. It never
+  opens by itself: the band's **▤ Dashboard** button opens it (in any project), `/product`
+  opens it too, and so does `/panel`. The Roadmap tab shows `docs/roadmap.md` live (below), or
+  **Make a roadmap** (`/product`) without one. At the bottom of the pane, under every tab, in
+  its own block, the **pad** (docked, at the bottom of the screen while the tab is shorter;
+  a longer tab pushes it down): kit's skills by
   stage, the stage on the left, its buttons on the right. **Plan**: **Setup** (only when
   `AGENTS.md` is missing), **Brainstorm**, **Critique**, **Intake**, **SEO**, **Theme**.
-  **Make**: **Convert**, **Explain**, **Lessons**. **Ship**: git state (branch, changed files,
-  commits not on `origin/HEAD`) with **Diff** (`/diff`, where it exists) when files changed and
-  **Launch** when commits aren't live, then **Audit** and **Scan**. Commit, compact, clear and
+  **Make**: **Convert**, **Explain**, **Lessons**. **Ship**: **Audit** and **Scan** (git state
+  is in the Changes tab). Commit, compact, clear and
   usage are in the band. One click on a button runs its command at once (a second click within
   2 seconds counts as a double click and is ignored; if running fails, the command lands in
   your prompt box); a done feature's **Explain** runs `/explain <slug>`. On the desktop app a

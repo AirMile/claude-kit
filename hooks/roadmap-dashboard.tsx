@@ -3,16 +3,42 @@ import type { RenderChildren } from "claude-code";
 import { type Parts, phaseNames } from "./roadmap-parts";
 import { phases } from "./roadmap-phase";
 import { later } from "./roadmap-later";
+import { changesTab, chatTab, tabRow } from "./roadmap-tabs";
 
-// The roadmap pane (its title is the product): the roadmap on top, then the pad, a bordered block
-// of kit's skills by stage of work (git state with Diff and Launch sits in Ship). Commit, compact
-// and clear are in the band above the prompt (kit-band.tsx). Pure, like roadmap-parts.tsx.
+// The dashboard pane (its title is the product): tabs (roadmap-tabs.tsx) over the shown one, and
+// at the bottom the pad, a bordered block of kit's skills by stage of work, under every tab.
+// Docked, the body is at least the pane's height and the tab fills it, so the pad sits at the
+// bottom; a longer tab pushes it down. Chat and Changes: roadmap-tabs.tsx. A draft (plan mode) shows the roadmap alone. Commit,
+// compact and clear are also in the band above the prompt (kit-band.tsx). Pure, like
+// roadmap-parts.tsx.
 
 export function body(p: Parts) {
   const { Box, Text } = p.el;
   return (
-    <Box flexDirection="column" gap={1} paddingX={1} paddingY={1}>
+    <Box
+      flexDirection="column"
+      gap={1}
+      paddingX={1}
+      paddingY={1}
+      minHeight={p.rows || undefined}
+    >
+      {p.draft ? null : tabRow(p)}
       {p.note ? <Text color="#818cf8">{p.note}</Text> : null}
+      <Box flexDirection="column" flexGrow={1}>
+        {p.draft || p.tab === "roadmap" ? roadmap(p) : null}
+        {!p.draft && p.tab === "chat" ? chatTab(p) : null}
+        {!p.draft && p.tab === "changes" ? changesTab(p) : null}
+      </Box>
+      {p.draft ? null : pad(p)}
+    </Box>
+  );
+}
+
+// The Roadmap tab: docs/roadmap.md live, or Make a roadmap.
+function roadmap(p: Parts) {
+  const { Box, Text } = p.el;
+  return (
+    <Box flexDirection="column" gap={1}>
       {p.hasRoadmap ? (
         <Box flexDirection="column" gap={1}>
           {phases(p, phaseNames(p))}
@@ -28,16 +54,14 @@ export function body(p: Parts) {
           />
         </Box>
       )}
-      {p.draft ? null : pad(p)}
     </Box>
   );
 }
 
 // The pad: one row per stage, its name on the left and its skills on the right. Setup leads
-// while the project isn't set up; Diff and Launch show only when there is something for them.
+// while the project isn't set up. Git state, Diff and Launch are in the Changes tab.
 function pad(p: Parts) {
   const { Box, Text, Button } = p.el;
-  const g = p.git;
   const skill = (
     key: string,
     label: string,
@@ -67,21 +91,6 @@ function pad(p: Parts) {
       </Box>
     </Box>
   );
-  const gitNote = g ? (
-    <Text>
-      <Text dimColor>{`${g.branch}  `}</Text>
-      {g.changed ? (
-        <Text>{`${g.changed} file${g.changed === 1 ? "" : "s"} changed`}</Text>
-      ) : (
-        <Text dimColor>clean</Text>
-      )}
-      {g.unpushed ? (
-        <Text>{`  ·  ${g.unpushed} commit${g.unpushed === 1 ? "" : "s"} not live`}</Text>
-      ) : null}
-    </Text>
-  ) : p.gitError ? (
-    <Text dimColor>{`git: ${p.gitError}`}</Text>
-  ) : null;
   return (
     <Box
       flexDirection="column"
@@ -104,9 +113,7 @@ function pad(p: Parts) {
         skill("explain", "Explain", "kit:explain"),
         skill("lessons", "Lessons", "kit:lessons"),
       ])}
-      {stage("Ship", gitNote, [
-        g?.changed && p.hasDiff ? skill("diff", "Diff", "diff") : null,
-        g?.unpushed ? skill("launch", "Launch", "kit:launch") : null,
+      {stage("Ship", null, [
         skill("audit", "Audit", "kit:audit"),
         skill("scan", "Scan", "kit:scan"),
       ])}

@@ -213,6 +213,7 @@ test("the band's model switch clears first when asked, and keeps the switch", as
   await ui.press({ key: "kit-model" });
   await ui.press({ key: "kit-model-claude-opus-5-5" });
   await ui.press({ key: "kit-way-clear" });
+  await settle();
   expect(w.cleared).toEqual(["clear"]);
   expect(w.store.switches).toEqual({
     s1: { chosen: "claude-opus-5-5", base: "claude-haiku-5-5" },
@@ -220,12 +221,11 @@ test("the band's model switch clears first when asked, and keeps the switch", as
   expect((await ui.find({ key: "kit-model" }))?.text).toBe("◆ Opus 5.5");
 });
 
-test("clear in the band asks once more before it clears", async ($, on) => {
+test("clear in the band clears at once, just after the press", async ($, on) => {
   const w = world(on, { model: "claude-haiku-5-5", label: QUESTION, drawn: true });
   const ui = await band($, on);
   await ui.press({ key: "kit-clear" });
-  expect(w.cleared).toEqual([]);
-  await ui.press({ key: "kit-confirm-yes" });
+  await settle();
   expect(w.cleared).toEqual(["clear"]);
 });
 

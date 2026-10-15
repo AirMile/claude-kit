@@ -1,9 +1,11 @@
 import type { ElementTable, EngineInterface, On } from "claude-code";
 
+import { readChat } from "./chat-facts";
 import * as file from "./roadmap-file";
+import { readGit } from "./roadmap-git";
 import { body } from "./roadmap-dashboard";
 import { pressOnFocus, tracked } from "./roadmap-press";
-import type { Card, Git } from "./roadmap-parts";
+import type { Card, Chat, Git, Tab } from "./roadmap-parts";
 import * as wt from "./roadmap-worktree";
 import { inRoot, parseSpec, type SpecState } from "./spec";
 
@@ -27,6 +29,8 @@ let git: Git | null = null;
 let isSetUp = true;
 let hasDiff = false;
 let gitError = ""; // why git state is missing, shown dim in the dashboard
+let tab: Tab = "roadmap"; // the pane's shown tab
+let chat: Chat | null = null; // the Chat tab's facts, read on each draw while it shows
 let needsLoad = true;
 let note = "";
 let added = 0;
@@ -64,35 +68,6 @@ function cards(r: file.Roadmap): Card[] {
     phase: i.phase,
     editable: file.isEditable(i),
   }));
-}
-
-// Read-only git facts for the dashboard: changed files, branch, commits not on the remote's
-// default branch. Null outside a repo; `unpushed` null without a remote.
-async function readGit($: EngineInterface): Promise<Git | null> {
-  const root = await $.session.root();
-  let cwd: string | undefined = root;
-  const out = async (args: string[]) => {
-    const r = await $.process
-      .run(["git", ...args], cwd ? { cwd } : undefined)
-      .catch((err) => ({ exitCode: -1, stdout: "", stderr: String(err) }));
-    if (r.exitCode !== 0) gitError = r.stderr.trim().split("\n")[0] ?? "";
-    return r.exitCode === 0 ? r.stdout.trim() : null;
-  };
-  gitError = "";
-  let status = await out(["status", "--porcelain"]);
-  if (status === null) {
-    cwd = undefined; // the shell's cwd: still inside the repo after a `cd` within it
-    status = await out(["status", "--porcelain"]);
-  }
-  if (status === null) return null;
-  gitError = "";
-  const ahead = await out(["rev-list", "--count", "origin/HEAD..HEAD"]);
-  gitError = ""; // no origin/HEAD is normal: no Launch row then
-  return {
-    changed: status ? status.split("\n").length : 0,
-    branch: (await out(["symbolic-ref", "--short", "HEAD"])) ?? "detached",
-    unpushed: ahead === null ? null : Number(ahead),
-  };
 }
 
 // Open features sent to a worktree (a $.store mark per project) or claimed on another branch
@@ -136,7 +111,7 @@ export function roadmapView(on: On) {
           specs[i.slug] = parseSpec(
             await $.fs.read(inRoot(root, i.spec)).catch(() => null),
           );
-      git = await readGit($);
+      ({ git, error: gitError } = await readGit($));
       const open = (live?.items ?? []).filter((i) => !i.done && !i.spec);
       const elsewhere = await readAway(
         $,
@@ -150,6 +125,7 @@ export function roadmapView(on: On) {
         (c) => c.name === "diff",
       );
     }
+    chat = tab === "chat" && !draft ? await readChat($) : null;
     // No docs/roadmap.md: the dashboard alone, as an action pad.
     const view = draft ??
       (live && { product, cards: cards(live), later: live.later }) ?? {
@@ -250,7 +226,15 @@ export function roadmapView(on: On) {
       menuOpen,
       confirming,
       toggled,
+      tab,
+      chat,
+      rows: e.props.placement === "dock" ? e.props.scroll.bodyRows : 0,
       act: {
+        tab: (next) => {
+          tab = next;
+          needsLoad = true; // Changes shows git as it is now
+          redraw();
+        },
         build: (slug) => void run("kit:build", slug, true),
         worktree: (slug) => void toWorktree(slug),
         run: (command, args = "") => void run(command, args, false),

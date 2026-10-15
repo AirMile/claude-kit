@@ -28,6 +28,7 @@ import {
   running,
   switchTo,
 } from "./model-switch";
+import { noteAgent } from "./chat-facts";
 
 // Picks model and effort before the model runs (it cannot change its own turn's effort):
 // - the first prompt of a chat (a new session or after /clear) picks a model from the profile,
@@ -286,6 +287,7 @@ export function autoModel(on: On) {
   });
 
   on("agent.spawn", async ($, e, next) => {
+    noteAgent(e.subagentType);
     const now = await getMode($);
     if (now === "off" || e.fork) return next(e);
     const isEngine = e.provider.plugin === "engine";

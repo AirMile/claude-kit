@@ -22,8 +22,31 @@ export type Usage = {
   note?: string;
   pct: number;
 };
-export type Git = { changed: number; branch: string; unpushed: number | null };
+export type Git = {
+  changed: number;
+  branch: string;
+  unpushed: number | null;
+  files: string[]; // `git status --porcelain` lines: " M path", "?? path"
+  commits: string[]; // commits not on origin/HEAD, one line each, newest first
+};
+export type Tab = "roadmap" | "chat" | "changes";
+// The Chat tab: the run, the session's usage with the context by category, what it touched.
+export type Chat = {
+  model: string;
+  effort: string | undefined;
+  locked: boolean;
+  turns: number;
+  minutes: number;
+  usd: number | undefined;
+  context: { name: string; tokens: number }[];
+  used: number;
+  max: number;
+  files: string[];
+  agents: { type: string; n: number }[];
+  compactions: number;
+};
 export type Actions = {
+  tab: (tab: Tab) => void; // shows another tab of the pane
   build: (slug: string) => void; // runs /clear, then /kit:build <slug> in the fresh chat
   worktree: (slug: string) => void; // raises the desktop's chip: /kit:build <slug> in a worktree
   run: (command: string, args?: string) => void; // runs the slash command at once
@@ -58,6 +81,9 @@ export type Parts = {
   adding: string | null;
   added: number;
   toggled: Set<string>;
+  tab: Tab;
+  chat: Chat | null;
+  rows: number; // the docked pane's body rows, so the pad sits at the bottom; 0 inline
   act: Actions;
 };
 
