@@ -67,15 +67,15 @@ export function kitBand(on: On) {
             />
           ) : null}
         </Box>
-        {!isOpen ? (
-          <Button
-            key="kit-roadmap"
-            label="Roadmap"
-            onPress={() => {
-              void openRoadmap($).then(() => $.ui.invalidate("ui.render"));
-            }}
-          />
-        ) : null}
+        <Button
+          key="kit-roadmap"
+          label={isOpen ? "Close roadmap" : "Roadmap"}
+          variant={isOpen ? "primary" : "secondary"}
+          onPress={() => {
+            const toggle = isOpen ? $.ui.close({ id: PANE }) : openRoadmap($);
+            void toggle.then(() => $.ui.invalidate("ui.render"));
+          }}
+        />
       </Box>
     );
   });
