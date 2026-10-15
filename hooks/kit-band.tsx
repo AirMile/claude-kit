@@ -20,10 +20,10 @@ import { PANE } from "./roadmap-view";
 
 // The band above the prompt, top to bottom: an open menu (a bordered block), then context and
 // plan usage (register.tsx measures it after each turn) with what acts on the chat at its right:
-// compact (⇲) and clear (⌫), run at once, and the dashboard pane (▤). Below, in three groups:
+// compact (⇲) and clear (⌫), run at once. Below, in three groups:
 // the model main requests go to and its effort (▪ when locked), each opening only its own
 // menu (the model's holds the profile from auto-model.ts and the models, then keep the context,
-// compact or clear; the effort's the levels, a pick locks it, Auto unlocks); /commit (✓);
+// compact or clear; the effort's the levels, a pick locks it, Auto unlocks); /commit (✓) with the dashboard pane (▤);
 // orchestrate (⑂, orchestrate.ts) with keep cache (♨, keep-warm.ts). The plan-limit pause with
 // Resume now (limit-guard.ts) follows on its own line. Each icon carries a short word.
 // It yields to a survey. /band draws it again; /warm toggles keep warm.
@@ -207,14 +207,6 @@ export function kitBand(on: On) {
               label="⌫ Clear"
               onPress={() => soon($, () => reset($, "clear"))}
             />
-            <Button
-              key="kit-roadmap"
-              label={isOpen ? "▤ Close dashboard" : "▤ Dashboard"}
-              onPress={() => {
-                const toggle = isOpen ? $.ui.close({ id: PANE }) : openRoadmap($);
-                void toggle.then(() => $.ui.invalidate("ui.render"));
-              }}
-            />
           </Box>
         </Box>
         <Box justifyContent="space-between" gap={1} flexWrap="wrap">
@@ -230,17 +222,27 @@ export function kitBand(on: On) {
               onPress={() => unfold($, "effort")}
             />
           </Box>
-          <Button
-            key="kit-commit"
-            label="✓ Commit"
-            onPress={() => {
-              void $.command
-                .run({ command: "kit:commit" })
-                .catch((err) =>
-                  $.ui.toast(`kit: could not start /commit: ${String(err)}`),
-                );
-            }}
-          />
+          <Box key="kit-group-project" gap={1}>
+            <Button
+              key="kit-commit"
+              label="✓ Commit"
+              onPress={() => {
+                void $.command
+                  .run({ command: "kit:commit" })
+                  .catch((err) =>
+                    $.ui.toast(`kit: could not start /commit: ${String(err)}`),
+                  );
+              }}
+            />
+            <Button
+              key="kit-roadmap"
+              label={isOpen ? "▤ Close dashboard" : "▤ Dashboard"}
+              onPress={() => {
+                const toggle = isOpen ? $.ui.close({ id: PANE }) : openRoadmap($);
+                void toggle.then(() => $.ui.invalidate("ui.render"));
+              }}
+            />
+          </Box>
           <Box key="kit-group-keep" gap={1}>
             <Button
               key="kit-orchestrate"
