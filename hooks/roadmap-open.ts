@@ -6,10 +6,9 @@ import { inRoot } from "./spec";
 import { list } from "./theme-view";
 
 // Opens the roadmap pane (roadmap-view.tsx draws it): the tool /product calls, with items for
-// a read-only draft (plan mode) or none for docs/roadmap.md live. The live pane also opens on
-// its own in a project with docs/roadmap.md: at session start, and at the first prompt when the
-// start could not seat it (unasked, a terminal needs 144 columns; a prompt counts as asked).
-// /panel opens it by hand, anywhere (without docs/roadmap.md the pane says to run /product).
+// a read-only draft (plan mode) or none for docs/roadmap.md live. It never opens on its own:
+// the band's Roadmap button (kit-band.tsx) and /panel open it by hand, /panel anywhere
+// (without docs/roadmap.md the pane says to run /product).
 
 export const roadmapTool: ToolSpec = {
   name: "roadmap_view",
@@ -61,43 +60,14 @@ async function show(
   return opened;
 }
 
-// True while the pane opened at session start waits undrawn (terminal too narrow).
-let waiting = false;
+// The live roadmap, opened by a press or a command (asked, so placed at any width).
+export function openRoadmap($: EngineInterface) {
+  return show($, null);
+}
 
 export function roadmapOpen(on: On) {
-  // Show the live roadmap without a /product call, in a project with docs/roadmap.md only (a
-  // user plugin runs everywhere; a pane elsewhere is noise). Not after /clear or a compaction,
-  // so a pane the user closed by hand stays closed. (register.tsx owns session.start.)
-  on(
-    "classic.SessionStart",
-    { source: /^(startup|resume)$/ },
-    async ($, e, next) => {
-      const started = await next(e);
-      waiting = false;
-      if (e.agent_type) return started;
-      const root = await $.session.root();
-      const has = await $.fs
-        .exists(inRoot(root, "docs/roadmap.md"))
-        .catch(() => false);
-      if (has)
-        waiting = !(await show($, null).catch(() => ({ isPlaced: true })))
-          .isPlaced;
-      return started;
-    },
-  );
-
-  // The first prompt seats a pane that waited undrawn at session start (asked, so any width).
-  on("prompt.submit", async ($, e, next) => {
-    if (waiting) {
-      waiting = false;
-      await show($, null).catch(() => {});
-    }
-    return next(e);
-  });
-
   on("command.run", { command: "panel" }, async ($) => {
-    waiting = false;
-    const opened = await show($, null);
+    const opened = await openRoadmap($);
     return {
       text: opened.isPlaced
         ? "Roadmap pane opened."

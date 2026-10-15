@@ -858,13 +858,34 @@ versions skip it. It never writes files.
   disk, not from the summary, so it is always right.
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
+- **Model and effort**: the band above the prompt has **Lean**, **Balanced** and **Quality**
+  (or `/mode lean|balanced|quality|off`; pressing the active one turns it off). The choice is
+  kept across sessions. Each prompt is sorted (kit's own skills by name, the rest by a Haiku
+  classifier) into question, routine, planning or heavy work, and the profile maps that to a
+  model and effort:
+
+  ```
+  kind      Lean             Balanced          Quality
+  question  Haiku  · low     Haiku  · low      Sonnet · medium
+  routine   Sonnet · medium  Sonnet · medium   Opus   · high
+  planning  Opus   · high    Opus   · high     Fable  · high
+  heavy     Opus   · high    Opus   · xhigh    Fable  · xhigh
+  ```
+
+  The first prompt of a session picks the model: when it differs from the session's, you are
+  asked to switch or stay (a switch sends every request to that model; the model picker keeps
+  showing the old one, the status line under the prompt shows the real one; picking another
+  model with `/model` ends the switch). Every prompt sets the effort. Subagents get their
+  own: `Explore` as question work, `kit:verifier` as routine (effort only, its model is its
+  own), other built-in agents classified on their task. An explicit `model` on the Agent call
+  is kept.
 - **Usage**: `ctx 114k · session 55% · 2h 53m · week 75% · 4d 3h` on top of the roadmap
   dashboard, each limit with the time until it resets; updated after every turn.
 
 **Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
 columns, above the prompt otherwise):
 
-- **Roadmap**: a project dashboard, titled with the product's name. It opens by itself when a session starts (or resumes) in a project with `docs/roadmap.md`, and `/product` opens it too; `/panel` opens it by hand, in any project. If the terminal is under 144 columns at start it waits, and your first prompt seats it (not after `/clear`: a pane you closed stays closed). On top, in its own block:
+- **Roadmap**: a project dashboard, titled with the product's name. It never opens by itself: the **Roadmap** button above the prompt opens it (in a project with `docs/roadmap.md`, while the pane is closed), `/product` opens it too, and `/panel` opens it by hand, in any project. On top, in its own block:
   context and plan usage (a value turns amber from 60%, red from 85%) with **Compact** and **Clear**; git state (branch,
   changed files, commits not on `origin/HEAD`) with **Diff** (`/diff`, where it exists) and
   **Commit** when files changed and **Launch** when commits aren't live; then kit's skills:

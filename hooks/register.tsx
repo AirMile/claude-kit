@@ -5,7 +5,9 @@ import type {
   SessionUsage,
 } from "claude-code";
 
+import { autoModel, modeCommand } from "./auto-model";
 import { freshStart, freshTool } from "./fresh-start";
+import { kitBand } from "./kit-band";
 import { panelCommand, roadmapOpen, roadmapTool } from "./roadmap-open";
 import {
   roadmapEdited,
@@ -21,8 +23,9 @@ import { themeTool, themeView } from "./theme-view";
 // - After a compaction: appends the spec's state, so the next turn re-reads it from disk.
 // - Context and plan limits as one line in the roadmap pane's dashboard (USAGE).
 // - The roadmap and theme panes: tools the skills call with data (roadmap-view, theme-view);
-//   the roadmap pane also opens itself in a project with docs/roadmap.md, and on /panel
-//   (roadmap-open).
+//   the roadmap pane also opens on /panel (roadmap-open) and the band's button (kit-band).
+// - Model and effort picked per prompt and per subagent from a profile (auto-model), chosen
+//   in the band above the prompt or with /mode.
 // - fresh_start: /build's safe point clears the chat and resumes (fresh-start).
 
 type Spec = SpecState & { slug: string };
@@ -94,6 +97,8 @@ export const register: Register = (on) => {
   roadmapOpen(on);
   themeView(on);
   freshStart(on);
+  autoModel(on);
+  kitBand(on);
 
   on("session.start", async ($, e, next) => {
     const started = await next(e);
@@ -101,6 +106,7 @@ export const register: Register = (on) => {
     await $.tool.register(themeTool);
     await $.tool.register(freshTool);
     await $.command.register(panelCommand);
+    await $.command.register(modeCommand);
     await refresh($);
     return started;
   });

@@ -10,3 +10,10 @@
 - In `claude-code/testing`, a bottom hook for an API call (`session.root`, `fs.read`,
   `ui.status`, `store.keys` …) must return `{ value }`: a bare value is skipped and the call
   fails with "no implementation".
+- A streaming event (`turn.step`) takes `async function* ($, e, next)` and ends in
+  `return yield* next(e)`; a plain async hook is refused at load.
+- `$` passed into an imported function is allowed only into a `function` declaration, not a
+  `const f = (...) =>`; the validator refuses the arrow at load.
+- In `claude-code/testing`, `$.prompt.submit` leaves `e.origin` unset: pass
+  `origin: { kind: "composer" }`. `$.ui.ask` is answered by a `tool.call` hook on
+  `AskUserQuestion` returning `{ result: { questions, answers: { [question]: label } } }`.
