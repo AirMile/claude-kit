@@ -20,12 +20,12 @@ import { PANE } from "./roadmap-view";
 
 // The band above the prompt, top to bottom: an open menu (a bordered block), then context and
 // plan usage (register.tsx measures it after each turn) with what acts on the chat at its right:
-// compact (⇲) and clear (⌫), run at once, and the dashboard pane (▤). Below, the run and the
-// switches: the model main requests go to and its effort (▪ when locked), both opening a menu that
-// holds the profile (auto-model.ts), the models (then keep the context, compact or clear) and
-// the effort levels (a pick locks it, Auto unlocks); /commit (✓); orchestrate (⑂,
-// orchestrate.ts); keep cache (♨, keep-warm.ts); the plan-limit pause with Resume now
-// (limit-guard.ts). Each icon carries a short word: an icon alone is too small to hit.
+// compact (⇲) and clear (⌫), run at once, and the dashboard pane (▤). Below, in three groups:
+// the model main requests go to and its effort (▪ when locked), each opening only its own
+// menu (the model's holds the profile from auto-model.ts and the models, then keep the context,
+// compact or clear; the effort's the levels, a pick locks it, Auto unlocks); /commit (✓);
+// orchestrate (⑂, orchestrate.ts) with keep cache (♨, keep-warm.ts). The plan-limit pause with
+// Resume now (limit-guard.ts) follows on its own line. Each icon carries a short word.
 // It yields to a survey. /band draws it again; /warm toggles keep warm.
 
 export const bandCommand: CommandSpec = {
@@ -35,7 +35,7 @@ export const bandCommand: CommandSpec = {
   immediate: true,
 };
 
-type Menu = "run" | "way";
+type Menu = "model" | "effort" | "way";
 
 let menu: Menu | null = null; // the unfolded menu row
 let usage: Usage[] = []; // context and plan limits, from register.tsx
@@ -93,9 +93,8 @@ export function kitBand(on: On) {
     );
 
     let body = null;
-    if (menu === "run") {
+    if (menu === "model") {
       const modes: Mode[] = [...PROFILES, "off"];
-      const levels = ["auto", ...EFFORTS] as const;
       body = (
         <Box flexDirection="column" flexGrow={1}>
           {line(
@@ -126,6 +125,12 @@ export function kitBand(on: On) {
               />
             )),
           )}
+        </Box>
+      );
+    } else if (menu === "effort") {
+      const levels = ["auto", ...EFFORTS] as const;
+      body = (
+        <Box flexDirection="column" flexGrow={1}>
           {line(
             "Effort",
             levels.map((l) => (
@@ -213,16 +218,18 @@ export function kitBand(on: On) {
           </Box>
         </Box>
         <Box justifyContent="space-between" gap={1} flexWrap="wrap">
-          <Button
-            key="kit-model"
-            label={displayName(run.model)}
-            onPress={() => unfold($, "run")}
-          />
-          <Button
-            key="kit-effort"
-            label={`${run.effort ?? "auto"}${run.locked ? " ▪" : ""}`}
-            onPress={() => unfold($, "run")}
-          />
+          <Box key="kit-group-model" gap={1}>
+            <Button
+              key="kit-model"
+              label={displayName(run.model)}
+              onPress={() => unfold($, "model")}
+            />
+            <Button
+              key="kit-effort"
+              label={`${run.effort ?? "auto"}${run.locked ? " ▪" : ""}`}
+              onPress={() => unfold($, "effort")}
+            />
+          </Box>
           <Button
             key="kit-commit"
             label="✓ Commit"
@@ -234,24 +241,26 @@ export function kitBand(on: On) {
                 );
             }}
           />
-          <Button
-            key="kit-orchestrate"
-            label="⑂ Orchestrate"
-            dimColor={!orch}
-            onPress={() => {
-              void setOrchestrating($, !orch).then(() =>
-                $.ui.invalidate("ui.render"),
-              );
-            }}
-          />
-          <Button
-            key="kit-warm"
-            label="♨ Keep cache"
-            dimColor={!warm}
-            onPress={() => {
-              void setWarm($, !warm);
-            }}
-          />
+          <Box key="kit-group-keep" gap={1}>
+            <Button
+              key="kit-orchestrate"
+              label="⑂ Orchestrate"
+              dimColor={!orch}
+              onPress={() => {
+                void setOrchestrating($, !orch).then(() =>
+                  $.ui.invalidate("ui.render"),
+                );
+              }}
+            />
+            <Button
+              key="kit-warm"
+              label="♨ Keep cache"
+              dimColor={!warm}
+              onPress={() => {
+                void setWarm($, !warm);
+              }}
+            />
+          </Box>
         </Box>
         {warmed || pause ? (
           <Box gap={1} flexWrap="wrap">

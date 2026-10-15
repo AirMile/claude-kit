@@ -194,11 +194,11 @@ function band($: Parameters<Parameters<typeof test>[1]>[0], on: On) {
 test("an effort picked in the band is locked until Auto unlocks it", async ($, on) => {
   const w = world(on, { model: "claude-haiku-5-5", label: QUESTION, drawn: true });
   const ui = await band($, on);
-  await ui.press({ key: "kit-model" });
+  await ui.press({ key: "kit-effort" });
   await ui.press({ key: "kit-effort-high" });
   expect(w.store.effortLock).toBe("high");
   expect((await ui.find({ key: "kit-effort" }))?.text).toBe("high ▪");
-  await ui.press({ key: "kit-model" });
+  await ui.press({ key: "kit-effort" });
   await ui.press({ key: "kit-effort-auto" });
   expect(w.store.effortLock).toBe(undefined);
 });
