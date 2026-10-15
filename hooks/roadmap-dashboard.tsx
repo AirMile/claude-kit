@@ -3,7 +3,7 @@ import type { RenderChildren } from "claude-code";
 import { type Parts, phaseNames } from "./roadmap-parts";
 import { phases } from "./roadmap-phase";
 import { later } from "./roadmap-later";
-import { changesTab, chatTab, tabRow } from "./roadmap-tabs";
+import { changesTab, chatTab, memoryTab, tabRow } from "./roadmap-tabs";
 
 // The dashboard pane (its title is the product): tabs (roadmap-tabs.tsx) over the shown one, and
 // at the bottom the pad, a bordered block of kit's skills by stage of work, under every tab.
@@ -28,6 +28,7 @@ export function body(p: Parts) {
         {p.draft || p.tab === "roadmap" ? roadmap(p) : null}
         {!p.draft && p.tab === "chat" ? chatTab(p) : null}
         {!p.draft && p.tab === "changes" ? changesTab(p) : null}
+        {!p.draft && p.tab === "memory" ? memoryTab(p) : null}
       </Box>
       {p.draft ? null : pad(p)}
     </Box>

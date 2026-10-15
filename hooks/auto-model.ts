@@ -8,18 +8,17 @@ import {
   displayName,
   type Effort,
   escalation,
-  family,
   isMode,
   type Kind,
   kindOfLabel,
   LABELS,
-  MODELS,
   type Mode,
   pick,
   profileName,
   PROFILES,
 } from "./model-policy";
 import {
+  askFirstModel,
   dropSwitch,
   effortLock,
   override,
@@ -29,6 +28,7 @@ import {
   switchTo,
 } from "./model-switch";
 import { noteAgent } from "./chat-facts";
+import { isOrchestrating, orchestrateNote } from "./orchestrate";
 
 // Picks model and effort before the model runs (it cannot change its own turn's effort):
 // - the first prompt of a chat (a new session or after /clear) picks a model from the profile,
@@ -118,39 +118,6 @@ export async function switchModel(
 
 async function showStatus($: EngineInterface) {
   $.ui.invalidate("ui.render");
-}
-
-// The first prompt's model question. A session that already has turns (a resume, a mod
-// reload) keeps its model without asking. True when it asked.
-async function decideModel(
-  $: EngineInterface,
-  kind: Kind,
-  now: Mode,
-): Promise<boolean> {
-  decided = true;
-  if (now === "off" || (await $.session.turns()) > 1) return false;
-  const want = pick(now, kind).model;
-  const have = await $.session.model();
-  if (family(want) === family(have)) return false;
-  // All models, the suggested one on top; the session's own reads "Stay on".
-  const ordered = [want, ...MODELS.filter((m) => m !== want)];
-  const labels = new Map(
-    ordered.map((m) => [
-      family(m) === family(have)
-        ? `Stay on ${displayName(have)}`
-        : `Switch to ${displayName(m)}`,
-      m,
-    ]),
-  );
-  const answer = await $.ui
-    .ask(
-      `This task fits ${displayName(want)}. Switch model for this session?`,
-      { header: "Model", options: [...labels.keys()] },
-    )
-    .catch(() => undefined);
-  const picked = answer === undefined ? undefined : labels.get(answer);
-  if (picked && family(picked) !== family(have)) await switchTo($, picked);
-  return true;
 }
 
 type Way = "now" | "compact" | "clear" | "stay";
@@ -250,11 +217,17 @@ export function autoModel(on: On) {
     }
     const now = await getMode($);
     const typed = e.origin.kind === "composer" || e.origin.kind === "bridge";
-    if (now !== "off" && typed) {
-      const kind = (await kindOf($, e.text)) ?? "routine";
+    const orchestrating = typed && (await isOrchestrating($));
+    if (!typed || (now === "off" && !orchestrating)) return next(e);
+    const kind = (await kindOf($, e.text)) ?? "routine";
+    if (now !== "off") {
       const p = pick(now, kind);
       if (await restoreSwitch($)) decided = true; // a reload kept the switch
-      const asked = !decided && (await decideModel($, kind, now));
+      let asked = false;
+      if (!decided) {
+        decided = true;
+        asked = await askFirstModel($, p.model);
+      }
       effort = p.effort;
       // The first prompt's question just settled the model: no second one for it.
       const parked = await escalate($, e.text, p.model, !asked);
@@ -264,7 +237,9 @@ export function autoModel(on: On) {
         return { drop: parked };
       }
     }
-    return next(e);
+    // Orchestrate (the band's ⑂): a note for this kind of work rides along with the prompt.
+    const note = orchestrating ? orchestrateNote(kind) : undefined;
+    return next(note ? { ...e, context: [...(e.context ?? []), note] } : e);
   });
 
   // A streaming event: the hook is a generator that forwards the chunks beneath.

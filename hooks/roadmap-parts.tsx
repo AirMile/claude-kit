@@ -29,7 +29,9 @@ export type Git = {
   files: string[]; // `git status --porcelain` lines: " M path", "?? path"
   commits: string[]; // commits not on origin/HEAD, one line each, newest first
 };
-export type Tab = "roadmap" | "chat" | "changes";
+export type Tab = "roadmap" | "chat" | "changes" | "memory";
+// One recent message of this chat, for the Memory tab: whose, and its text on one line.
+export type Excerpt = { role: "you" | "claude"; text: string };
 // The Chat tab: the run, the session's usage with the context by category, what it touched.
 export type Chat = {
   model: string;
@@ -47,6 +49,7 @@ export type Chat = {
 };
 export type Actions = {
   tab: (tab: Tab) => void; // shows another tab of the pane
+  remember: (text: string) => void; // asks the model to keep it as a lesson (kit:lessons)
   build: (slug: string) => void; // runs /clear, then /kit:build <slug> in the fresh chat
   worktree: (slug: string) => void; // raises the desktop's chip: /kit:build <slug> in a worktree
   run: (command: string, args?: string) => void; // runs the slash command at once
@@ -83,6 +86,7 @@ export type Parts = {
   toggled: Set<string>;
   tab: Tab;
   chat: Chat | null;
+  memory: Excerpt[] | null; // the Memory tab's recent messages, newest first
   rows: number; // the docked pane's body rows, so the pad sits at the bottom; 0 inline
   act: Actions;
 };

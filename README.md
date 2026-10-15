@@ -859,7 +859,7 @@ versions skip it. It never writes files.
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt is one row of icons: `◇ Balanced` (profile), `◆ Opus 5.5`
-  (model), `◐ medium` (effort, `▪` when locked), `✓ Commit` (runs `/kit:commit`), `♨ Keep cache` and, at
+  (model), `◐ medium` (effort, `▪` when locked), `✓ Commit` (runs `/kit:commit`), `⑂ Orchestrate`, `♨ Keep cache` and, at
   the right end, `⇲ Compact`, `⌫ Clear` and `▤ Dashboard` (`▤ Close dashboard` closes it). Compact and Clear run at once. ◇ ◆ ◐ open a menu
   in its own block above the band: the profiles; the models, then **Keep context**, **Compact**
   or **Clear** before the switch; the effort levels of the running model (a pick locks it until
@@ -896,6 +896,14 @@ versions skip it. It never writes files.
   band shows `paused until 14:05`, and **Resume now** ends the pause by hand. The prompt
   cache is kept warm meanwhile (see Keep warm), only when the reset is under 5 hours away:
   further out, a cold start is cheaper. At the reset a cut-off turn continues by itself.
+- **Orchestrate**: the band's `⑂ Orchestrate` (off by default, kept across sessions) makes
+  this chat the orchestrator. Each typed prompt carries a note by its kind of work: a question
+  none; routine work stays here unless it means searching many files (then an Explore
+  subagent); planning sends the research to subagents and keeps the decision here; heavy work
+  is split into independent pieces for subagents or, on the desktop app, their own sessions,
+  with this chat coordinating and verifying. Every note says to keep work here when it depends
+  on this conversation, is small or needs your answers: a subagent starts cold and reads again.
+  It works with the profile off too.
 - **Keep warm**: the band's `♨ Keep cache` button (or `/warm`, `/warm on|off`) keeps a long
   chat's prompt cache alive while you are away. After 50 idle minutes (the cache lives an
   hour) a tiny request, a fork of the chat that replies "ok", reads the cached context again
@@ -909,13 +917,16 @@ versions skip it. It never writes files.
 **Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
 columns, above the prompt otherwise):
 
-- **Dashboard**: titled with the product's name, in three tabs (a row of
+- **Dashboard**: titled with the product's name, in four tabs (a row of
   buttons on top, the shown one at full strength): **▤ Roadmap** (below), **◎ Chat** (model
   and effort, turns, how long, cost where the host reports it, compactions, the context by
   category as a bar like `/context`, the files this chat wrote or edited and the subagents it
   ran, counted since the mod loaded; a `/clear` starts over) and **± Changes** (branch, the
   changed files, the commits not on `origin/HEAD`, with **Diff**, **✓ Commit** and **Launch**
-  when there is something for them). A draft (plan mode) shows the roadmap alone. It never
+  when there is something for them) and **◈ Memory** (this chat's latest messages, each with
+  **Remember**, which asks the model to keep it as a project lesson through `kit:lessons`:
+  only what a later session could not learn from the code ends up in `AGENTS.md`). A draft
+  (plan mode) shows the roadmap alone. It never
   opens by itself: the band's **▤ Dashboard** button opens it (in any project), `/product`
   opens it too, and so does `/panel`. The Roadmap tab shows `docs/roadmap.md` live (below), or
   **Make a roadmap** (`/product`) without one. At the bottom of the pane, under every tab, in

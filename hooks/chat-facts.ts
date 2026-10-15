@@ -1,7 +1,7 @@
 import type { EngineInterface } from "claude-code";
 
 import { runState } from "./auto-model";
-import type { Chat } from "./roadmap-parts";
+import type { Chat, Excerpt } from "./roadmap-parts";
 
 // What the roadmap pane's Chat tab shows. register.tsx and auto-model.ts note what this chat
 // touched (files written or edited, subagents, compactions) as it happens, so it counts from
@@ -59,4 +59,36 @@ export async function readChat($: EngineInterface): Promise<Chat> {
     agents: [...agents].map(([type, n]) => ({ type, n })),
     compactions,
   };
+}
+
+// The Memory tab: this chat's latest messages with text, newest first, on one line each.
+// Injected context (a text that opens with a tag) is left out.
+export async function readMemory($: EngineInterface): Promise<Excerpt[]> {
+  const messages = await $.session.messages().catch(() => []);
+  return messages
+    .map((m) => ({
+      role: m.role === "user" ? ("you" as const) : ("claude" as const),
+      text: m.text.replace(/\s+/g, " ").trim(),
+    }))
+    .filter((m) => m.text && !m.text.startsWith("<"))
+    .slice(-12)
+    .reverse();
+}
+
+let remembered = 0; // when Remember was last pressed: a press within 2s is a double click
+
+// Remember: sent as the person's own prompt (they pressed it), just after the press; the
+// kit:lessons skill decides whether it qualifies and where it goes.
+export async function remember($: EngineInterface, text: string) {
+  const now = await $.clock.now();
+  if (now - remembered < 2000) return;
+  remembered = now;
+  const prompt =
+    "Remember this as a project lesson through the kit:lessons skill, only if it qualifies " +
+    `there:\n\n> ${text.slice(0, 1200)}`;
+  $.clock.after(50, async () => {
+    await $.prompt
+      .submit({ text: prompt, asUser: true })
+      .catch((err) => $.ui.toast(`kit: could not send it (${String(err)})`));
+  });
 }

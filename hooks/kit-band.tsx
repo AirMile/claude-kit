@@ -13,6 +13,7 @@ import {
   profileName,
 } from "./model-policy";
 import { reset, setEffortLock } from "./model-switch";
+import { isOrchestrating, setOrchestrating } from "./orchestrate";
 import { openRoadmap } from "./roadmap-open";
 import type { Usage } from "./roadmap-parts";
 import { PANE } from "./roadmap-view";
@@ -20,7 +21,7 @@ import { PANE } from "./roadmap-view";
 // The band above the prompt, top to bottom: an open menu (a bordered block), context and plan
 // usage (register.tsx measures it after each turn), then the buttons. Left, the settings:
 // profile (◇, auto-model.ts), the model main requests go to (◆) and their effort (◐, ▪ when
-// locked), /commit (✓), keep cache (♨, keep-warm.ts), the plan-limit pause with Resume now
+// locked), /commit (✓), orchestrate (⑂, orchestrate.ts), keep cache (♨, keep-warm.ts), the plan-limit pause with Resume now
 // (limit-guard.ts). Right, what acts on the chat: compact (⇲) and clear (⌫), run at once, and
 // the dashboard pane (▤). Each icon carries a short word: an icon alone is too small to hit.
 // ◇ ◆ ◐ open their menu: the profiles, the models (then keep the context, compact or clear),
@@ -72,6 +73,7 @@ export function kitBand(on: On) {
     const run = await runState($);
     const pause = await limitInfo($);
     const warm = isWarm();
+    const orch = await isOrchestrating($);
     const warmed = warmInfo();
     const done = () => unfold($, null);
     const close = (
@@ -198,6 +200,16 @@ export function kitBand(on: On) {
                   .catch((err) =>
                     $.ui.toast(`kit: could not start /commit: ${String(err)}`),
                   );
+              }}
+            />
+            <Button
+              key="kit-orchestrate"
+              label="⑂ Orchestrate"
+              dimColor={!orch}
+              onPress={() => {
+                void setOrchestrating($, !orch).then(() =>
+                  $.ui.invalidate("ui.render"),
+                );
               }}
             />
             <Button

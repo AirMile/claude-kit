@@ -1,12 +1,13 @@
 import type { Parts, Tab } from "./roadmap-parts";
 
-// The roadmap pane's tabs (no tab element exists: a row of buttons, the shown one at full
-// strength), and the Chat and Changes tabs. Pure, like roadmap-parts.tsx.
+// The dashboard pane's tabs (no tab element exists: a row of buttons, the shown one at full
+// strength), and the Chat, Changes and Memory tabs. Pure, like roadmap-parts.tsx.
 
 const TABS: [Tab, string][] = [
   ["roadmap", "▤ Roadmap"],
   ["chat", "◎ Chat"],
   ["changes", "± Changes"],
+  ["memory", "◈ Memory"],
 ];
 
 export function tabRow(p: Parts) {
@@ -163,6 +164,40 @@ export function changesTab(p: Parts) {
           ))}
         </Box>
       ) : null}
+    </Box>
+  );
+}
+
+// The Memory tab: this chat's latest messages, each with Remember, which asks the model to
+// keep it as a project lesson in AGENTS.md (kit:lessons: only what qualifies, nothing else).
+export function memoryTab(p: Parts) {
+  const { Box, Text, Button } = p.el;
+  const recent = p.memory;
+  if (!recent) return <Text dimColor>Reading this chat…</Text>;
+  return (
+    <Box flexDirection="column" gap={1}>
+      <Text dimColor wrap="wrap">
+        Remember sends a message to /kit:lessons, which keeps it in AGENTS.md only when a later
+        session could not learn it from the code.
+      </Text>
+      {recent.length ? (
+        recent.map((m, i) => (
+          <Box key={`mem-${i}`} justifyContent="space-between" gap={2}>
+            <Text wrap="truncate-end">
+              <Text dimColor>{m.role === "you" ? "you     " : "claude  "}</Text>
+              {m.text}
+            </Text>
+            <Button
+              key={`remember-${i}`}
+              label="Remember"
+              dimColor
+              onPress={() => p.act.remember(m.text)}
+            />
+          </Box>
+        ))
+      ) : (
+        <Text dimColor>Nothing said in this chat yet.</Text>
+      )}
     </Box>
   );
 }

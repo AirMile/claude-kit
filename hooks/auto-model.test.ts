@@ -16,7 +16,8 @@ function world(
 ) {
   const asked: string[] = [];
   const offered: string[] = [];
-  const sent: { text: string; origin: unknown }[] = [];
+  const sent: { text: string; origin: unknown; context?: readonly string[] }[] =
+    [];
   const cleared: string[] = [];
   const store: Record<string, unknown> = { ...opts.store };
   on("session.root", async () => ({ value: "/p/app" }));
@@ -53,7 +54,7 @@ function world(
     return { value: undefined };
   });
   on("prompt.submit", async (_$, e) => {
-    sent.push({ text: e.text, origin: e.origin });
+    sent.push({ text: e.text, origin: e.origin, context: e.context });
     return { text: e.text };
   });
   on("classic.SessionStart", async () => ({ value: {} }));
@@ -239,4 +240,39 @@ test("Commit in the band starts /kit:commit", async ($, on) => {
   const ui = await band($, on);
   await ui.press({ key: "kit-commit" });
   expect(ran).toEqual(["kit:commit"]);
+});
+
+test("Orchestrate adds a note by kind of work: none for a question", async ($, on) => {
+  const w = world(on, {
+    model: "claude-opus-5-5",
+    label: HEAVY,
+    turns: 5,
+    store: { orchestrate: true },
+  });
+  await $.prompt.submit({ text: "rebuild the importer", origin: TYPED });
+  expect(String(w.sent[0]?.context)).toContain("kit orchestrate: split this");
+});
+
+test("Orchestrate leaves a question alone, and works with the profile off", async ($, on) => {
+  const w = world(on, {
+    model: "claude-opus-5-5",
+    label: QUESTION,
+    turns: 5,
+    store: { orchestrate: true, mode: "off" },
+  });
+  await $.prompt.submit({ text: "what does this do?", origin: TYPED });
+  expect(w.sent[0]?.context ?? []).toEqual([]);
+});
+
+test("without Orchestrate a prompt carries no note", async ($, on) => {
+  const w = world(on, { model: "claude-opus-5-5", label: HEAVY, turns: 5 });
+  await $.prompt.submit({ text: "rebuild the importer", origin: TYPED });
+  expect(w.sent[0]?.context ?? []).toEqual([]);
+});
+
+test("the band's Orchestrate button turns it on and keeps it", async ($, on) => {
+  const w = world(on, { model: "claude-opus-5-5", label: QUESTION, drawn: true });
+  const ui = await band($, on);
+  await ui.press({ key: "kit-orchestrate" });
+  expect(w.store.orchestrate).toBe(true);
 });

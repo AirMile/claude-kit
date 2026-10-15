@@ -3,6 +3,20 @@ import { expect, test } from "claude-code/testing";
 
 // kit's own mod is loaded around the test; these hooks only answer what is beneath it.
 function world(on: On) {
+  const sent: string[] = [];
+  on("session.messages", async () => ({
+    value: [
+      { role: "user", text: "<system-reminder>skip me</system-reminder>", toolUses: [] },
+      { role: "user", text: "Why does the import fail?", toolUses: [] },
+      { role: "assistant", text: "The CSV has a BOM;\nstrip it first.", toolUses: [] },
+    ],
+  }));
+  on("clock.after", async () => ({ value: undefined }));
+  on("ui.toast", async () => ({ value: undefined }));
+  on("prompt.submit", async (_$, e) => {
+    sent.push(e.text);
+    return { text: e.text };
+  });
   on("session.root", async () => ({ value: "/p/app" }));
   on("session.model", async () => ({ value: "claude-opus-5-5" }));
   on("session.turns", async () => ({ value: 7 }));
@@ -45,6 +59,7 @@ function world(on: On) {
           : "main";
     return { value: { exitCode: 0, stdout, stderr: "" } };
   });
+  return sent;
 }
 
 function pane($: Parameters<Parameters<typeof test>[1]>[0]) {
@@ -78,4 +93,18 @@ test("the Changes tab lists changed files and commits not live", async ($, on) =
   expect(texts).toContain("?? hooks/b.ts");
   expect(texts).toContain("abc1234 feat: one");
   expect(await ui.find({ key: "changes-commit" })).toBeTruthy();
+});
+
+test("the Memory tab lists this chat newest first and Remember asks kit:lessons", async ($, on) => {
+  const sent = world(on);
+  const ui = await pane($);
+  await ui.press({ key: "tab-memory" });
+  const texts = (await ui.findAll({ type: "Text" })).map((t) => t.text).join("\n");
+  expect(texts).toContain("The CSV has a BOM; strip it first.");
+  expect(texts).not.toContain("skip me");
+  await ui.press({ key: "remember-0" });
+  await new Promise((r) => setTimeout(r, 20));
+  expect(sent.length).toBe(1);
+  expect(sent[0]).toContain("kit:lessons");
+  expect(sent[0]).toContain("The CSV has a BOM; strip it first.");
 });

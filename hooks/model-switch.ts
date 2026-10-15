@@ -1,9 +1,11 @@
 import type { EngineInterface } from "claude-code";
 
 import {
+  displayName,
   type Effort,
   family,
   isEffort,
+  MODELS,
   switchOf,
   withSwitch,
 } from "./model-policy";
@@ -112,4 +114,35 @@ export async function reset(
     $.ui.toast(`kit: could not ${way} (${String(err)})`);
     return false;
   }
+}
+
+// The first prompt's model question, when the profile picks `want` and the session runs
+// another. A session that already has turns (a resume, a mod reload) keeps its model without
+// asking. True when it asked.
+export async function askFirstModel(
+  $: EngineInterface,
+  want: string,
+): Promise<boolean> {
+  if ((await $.session.turns()) > 1) return false;
+  const have = await $.session.model();
+  if (family(want) === family(have)) return false;
+  // All models, the suggested one on top; the session's own reads "Stay on".
+  const ordered = [want, ...MODELS.filter((m) => m !== want)];
+  const labels = new Map(
+    ordered.map((m) => [
+      family(m) === family(have)
+        ? `Stay on ${displayName(have)}`
+        : `Switch to ${displayName(m)}`,
+      m,
+    ]),
+  );
+  const answer = await $.ui
+    .ask(
+      `This task fits ${displayName(want)}. Switch model for this session?`,
+      { header: "Model", options: [...labels.keys()] },
+    )
+    .catch(() => undefined);
+  const picked = answer === undefined ? undefined : labels.get(answer);
+  if (picked && family(picked) !== family(have)) await switchTo($, picked);
+  return true;
 }

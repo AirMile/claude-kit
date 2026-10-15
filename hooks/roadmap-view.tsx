@@ -1,11 +1,11 @@
 import type { ElementTable, EngineInterface, On } from "claude-code";
 
-import { readChat } from "./chat-facts";
+import { readChat, readMemory, remember } from "./chat-facts";
 import * as file from "./roadmap-file";
 import { readGit } from "./roadmap-git";
 import { body } from "./roadmap-dashboard";
 import { pressOnFocus, tracked } from "./roadmap-press";
-import type { Card, Chat, Git, Tab } from "./roadmap-parts";
+import type { Card, Chat, Excerpt, Git, Tab } from "./roadmap-parts";
 import * as wt from "./roadmap-worktree";
 import { inRoot, parseSpec, type SpecState } from "./spec";
 
@@ -31,6 +31,7 @@ let hasDiff = false;
 let gitError = ""; // why git state is missing, shown dim in the dashboard
 let tab: Tab = "roadmap"; // the pane's shown tab
 let chat: Chat | null = null; // the Chat tab's facts, read on each draw while it shows
+let memory: Excerpt[] | null = null; // the Memory tab's recent messages, likewise
 let needsLoad = true;
 let note = "";
 let added = 0;
@@ -126,6 +127,7 @@ export function roadmapView(on: On) {
       );
     }
     chat = tab === "chat" && !draft ? await readChat($) : null;
+    memory = tab === "memory" && !draft ? await readMemory($) : null;
     // No docs/roadmap.md: the dashboard alone, as an action pad.
     const view = draft ??
       (live && { product, cards: cards(live), later: live.later }) ?? {
@@ -228,8 +230,10 @@ export function roadmapView(on: On) {
       toggled,
       tab,
       chat,
+      memory,
       rows: e.props.placement === "dock" ? e.props.scroll.bodyRows : 0,
       act: {
+        remember: (text) => void remember($, text),
         tab: (next) => {
           tab = next;
           needsLoad = true; // Changes shows git as it is now
