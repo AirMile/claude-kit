@@ -98,27 +98,24 @@ export async function setEffortLock(
   await saved.catch(() => {});
 }
 
-// Clears or compacts between turns; false, with a toast, when it could not now (during a
-// turn it is queued for the turn's end).
+// Clears or compacts as the person's own command; false, with a toast, when it could not
+// now. $.prompt.submit refuses a text that starts with "/" (the host wants $.command.run), and
+// $.session.compact is missing in a headless session (the desktop app). During a turn the line
+// goes into the prompt box instead, for the person to send.
 export async function reset(
   $: EngineInterface,
   way: "compact" | "clear",
 ): Promise<boolean> {
   try {
-    if (way === "clear") await $.command.run({ command: "clear" });
-    // As the person's own /compact: $.session.compact is missing in a headless session (the
-    // desktop app) and refused during a turn, while a plugin's prompt runs once idle.
-    else await $.prompt.submit({ text: "/compact", asUser: true });
+    await $.command.run({ command: way });
     return true;
   } catch (err) {
-    // A turn is running: queue it as the person's own /compact or /clear, which the engine
-    // sends once the turn ends (a plugin's prompt runs when idle).
     if (/turn is running/i.test(String(err))) {
-      const queued = await $.prompt
-        .submit({ text: `/${way}`, asUser: true })
+      const filled = await $.prompt
+        .fill({ text: `/${way}` })
         .then(() => true, () => false);
-      if (queued) {
-        $.ui.toast(`kit: /${way} runs when this turn ends`);
+      if (filled) {
+        $.ui.toast(`kit: /${way} is in the prompt box, send it when this turn ends`);
         return false;
       }
     }
