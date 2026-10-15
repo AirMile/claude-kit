@@ -14,7 +14,9 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   `mcp__kit__roadmap_view` / `mcp__kit__theme_view` (`hooks/roadmap-open.ts`,
   `hooks/theme-view.tsx`) that `/product` and `/theme` call to open their panes (plus the `/panel` command), the band
   above the prompt (`hooks/kit-band.tsx`: Roadmap button + model profiles), model/effort per prompt and subagent
-  (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, `/mode`) (the roadmap
+  (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, `/mode`), a pause before the plan limit with
+  cache keep-alive (`hooks/limit-guard.ts` on the pure `hooks/limit-policy.ts`), keep-alive forks by hand or
+  for the pause (`hooks/keep-warm.ts`, `/warm`), `/band` (the roadmap
   pane draws through the pure `roadmap-{dashboard,phase,card,later}.tsx` on `roadmap-parts.tsx`),
   and `mcp__kit__fresh_start` (`hooks/fresh-start.ts`), which `/build`'s safe point calls to
   clear and resume. Only `register.tsx` registers events; `$` never crosses an import (the

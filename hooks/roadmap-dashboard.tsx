@@ -71,7 +71,7 @@ function dashboard(p: Parts) {
       <Box justifyContent="space-between" gap={2} flexWrap="wrap" marginBottom={1}>
         <Box flexDirection="column">
           {usageRows.map((row, r) => (
-            <Text key={r}>
+            <Text key={String(r)}>
               {row.map((u, i) => (
                 <Text key={u.label}>
                   {i ? "     " : ""}

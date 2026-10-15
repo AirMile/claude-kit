@@ -91,8 +91,8 @@ export function family(model: string): string | undefined {
 // What the status line and the question call a model: `claude-opus-5-5` → `Opus 5.5`.
 export function displayName(model: string): string {
   const m = /(haiku|sonnet|opus|fable|mythos)-(\d+)(?:-(\d+))?/i.exec(model);
-  if (!m) return model;
-  const name = m[1][0].toUpperCase() + m[1].slice(1).toLowerCase();
+  if (!m?.[1] || !m[2]) return model;
+  const name = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
   return `${name} ${m[2]}${m[3] ? `.${m[3]}` : ""}`;
 }
 
@@ -100,7 +100,7 @@ export const isMode = (v: unknown): v is Mode =>
   v === "off" || PROFILES.includes(v as Profile);
 
 export const profileName = (mode: Mode): string =>
-  mode[0].toUpperCase() + mode.slice(1);
+  mode.charAt(0).toUpperCase() + mode.slice(1);
 
 // The band's run line: `Opus 5.5 · medium`, the effort left out before the first prompt.
 export const runLine = (model: string, effort: string | undefined): string =>

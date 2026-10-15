@@ -17,3 +17,8 @@
 - In `claude-code/testing`, `$.prompt.submit` leaves `e.origin` unset: pass
   `origin: { kind: "composer" }`. `$.ui.ask` is answered by a `tool.call` hook on
   `AskUserQuestion` returning `{ result: { questions, answers: { [question]: label } } }`.
+- `$.clock.after`/`every` return a `{ cancel }` object, not a function. In tests, a bottom
+  hook that resolves fires the timer at once; return a never-settling promise to hold it.
+- In tests, a bottom `session.measure` hook must return `{ changed }`, or it is skipped.
+- Typecheck with `npx -y -p typescript@5.6.3 tsc --noEmit -p .`; `claude plugin test` does not
+  type-check (test inputs are partial by design, so ignore errors in `*.test.ts`).

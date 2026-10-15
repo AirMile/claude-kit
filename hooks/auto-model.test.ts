@@ -15,7 +15,7 @@ function world(
   // $.ui.ask is a tool.call of AskUserQuestion beneath; answered by question text.
   on("tool.call", { tool: "AskUserQuestion" }, async (_$, e) => {
     const { questions } = e as unknown as { questions: { question: string }[] };
-    const question = questions[0].question;
+    const question = questions[0]?.question ?? "";
     asked.push(question);
     if (!opts.answer) return { deny: "dismissed" };
     return { result: { questions, answers: { [question]: opts.answer } } };

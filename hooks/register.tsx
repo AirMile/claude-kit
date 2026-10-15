@@ -7,7 +7,9 @@ import type {
 
 import { autoModel, modeCommand } from "./auto-model";
 import { freshStart, freshTool } from "./fresh-start";
-import { kitBand } from "./kit-band";
+import { bandCommand, kitBand } from "./kit-band";
+import { warmCommand } from "./keep-warm";
+import { noteLimits } from "./limit-guard";
 import { panelCommand, roadmapOpen, roadmapTool } from "./roadmap-open";
 import {
   roadmapEdited,
@@ -26,6 +28,8 @@ import { themeTool, themeView } from "./theme-view";
 //   the roadmap pane also opens on /panel (roadmap-open) and the band's button (kit-band).
 // - Model and effort picked per prompt and per subagent from a profile (auto-model), chosen
 //   in the band above the prompt or with /mode.
+// - A pause before the plan limit runs out, with the cache kept warm until the reset
+//   (limit-guard), and keep warm by hand for an idle chat (keep-warm, the band, /warm).
 // - fresh_start: /build's safe point clears the chat and resumes (fresh-start).
 
 type Spec = SpecState & { slug: string };
@@ -107,6 +111,8 @@ export const register: Register = (on) => {
     await $.tool.register(freshTool);
     await $.command.register(panelCommand);
     await $.command.register(modeCommand);
+    await $.command.register(warmCommand);
+    await $.command.register(bandCommand);
     await refresh($);
     return started;
   });
@@ -125,6 +131,7 @@ export const register: Register = (on) => {
   on("session.measure", async ($, e, next) => {
     roadmapStale(); // the pane reloads git and specs on its next draw
     await refresh($, e);
+    await noteLimits($, e.rateLimits);
     return next(e);
   });
 

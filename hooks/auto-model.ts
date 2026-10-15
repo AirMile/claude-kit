@@ -1,5 +1,6 @@
 import type { CommandSpec, EngineInterface, On } from "claude-code";
 
+import { limitPrompt, limitStep } from "./limit-guard";
 import {
   agentKind,
   commandKind,
@@ -137,6 +138,11 @@ export function autoModel(on: On) {
   );
 
   on("prompt.submit", async ($, e, next) => {
+    const held = await limitPrompt($, e.text);
+    if (held) {
+      $.ui.toast(held, { timeoutMs: 10_000 });
+      return { drop: held };
+    }
     const now = await getMode($);
     const typed = e.origin.kind === "composer" || e.origin.kind === "bridge";
     if (now !== "off" && typed) {
@@ -150,6 +156,8 @@ export function autoModel(on: On) {
 
   // A streaming event: the hook is a generator that forwards the chunks beneath.
   on("turn.step", async function* ($, e, next) {
+    const stopped = await limitStep($, e); // the plan limit is nearly used up
+    if (stopped) return stopped;
     let step = e;
     if ((await getMode($)) !== "off") {
       if (e.agentId) {

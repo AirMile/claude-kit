@@ -879,6 +879,19 @@ versions skip it. It never writes files.
   own: `Explore` as question work, `kit:verifier` as routine (effort only, its model is its
   own), other built-in agents classified on their task. An explicit `model` on the Agent call
   is kept.
+- **Plan limit pause**: when the 5-hour (or weekly) limit nears 100%, the chat pauses before
+  its next model request. The pause point is 95%, lower when the percentage climbs fast
+  between two readings (other chats and agents count too: the figure is account-wide), and
+  2 points stay free. While paused, prompts you send are kept and sent at the reset, the
+  band shows `paused until 14:05`, and **Resume now** ends the pause by hand. The prompt
+  cache is kept warm meanwhile (see Keep warm), only when the reset is under 5 hours away:
+  further out, a cold start is cheaper. At the reset a cut-off turn continues by itself.
+- **Keep warm**: the band's **Keep warm** button (or `/warm`, `/warm on|off`) keeps a long
+  chat's prompt cache alive while you are away. After 50 idle minutes (the cache lives an
+  hour) a tiny request, a fork of the chat that replies "ok", reads the cached context again
+  and so renews it. Not free: each ping costs a cache read of the whole context, far less
+  than rebuilding the cache, but it counts toward your limits. A failed ping turns it off.
+- **`/band`** draws the band above the prompt again; folded (`[+]`)? `ctrl+x ctrl+a` unfolds it.
 - **Usage**: `ctx 114k · session 55% · 2h 53m · week 75% · 4d 3h` on top of the roadmap
   dashboard, each limit with the time until it resets; updated after every turn.
 
