@@ -874,7 +874,7 @@ versions skip it. It never writes files.
 
   The first prompt of a chat (a new session or after `/clear`, not a resume) picks the model
   before it is sent: when it differs from the session's, you are asked to switch or stay (a switch sends every request to that model; the model picker keeps
-  showing the old one, the status line under the prompt shows the real one; picking another
+  showing the old one, the band shows the real one with the effort, e.g. `Opus 5.5 · medium`; picking another
   model with `/model` ends the switch). Every prompt sets the effort. Subagents get their
   own: `Explore` as question work, `kit:verifier` as routine (effort only, its model is its
   own), other built-in agents classified on their task. An explicit `model` on the Agent call

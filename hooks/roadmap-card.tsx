@@ -32,7 +32,13 @@ export function card(p: Parts, c: Card) {
   // Done: one quiet line, aligned with a card's icon. The work is behind it.
   if (c.state === "done")
     return (
-      <Box key={c.slug} justifyContent="space-between" gap={2} paddingLeft={3}>
+      <Box
+        key={c.slug}
+        justifyContent="space-between"
+        gap={2}
+        flexWrap="wrap"
+        paddingLeft={3}
+      >
         <Text dimColor wrap="wrap">
           <Text color={color}>{ICON.done}</Text>
           {"  "}
@@ -58,17 +64,17 @@ export function card(p: Parts, c: Card) {
       flexDirection="column"
       borderStyle="round"
       borderColor="#334155"
-      paddingX={2}
+      paddingX={1}
       paddingY={1}
     >
       <Text bold>{c.slug}</Text>
       {/* The actions sit bottom right, like an active card's button on its step line. */}
-      <Box justifyContent="space-between" gap={2}>
+      <Box justifyContent="space-between" gap={2} flexWrap="wrap">
         <Text dimColor wrap="wrap">
           {c.description}
         </Text>
         {p.draft || c.state !== "open" || spec ? null : (
-          <Box gap={2}>
+          <Box gap={2} flexShrink={0}>
             <Button
               key={`go-${c.slug}`}
               plain
@@ -87,8 +93,13 @@ export function card(p: Parts, c: Card) {
         </Text>
       ) : null}
       {spec ? (
-        <Box marginTop={1} justifyContent="space-between" gap={2}>
-          <Box gap={2}>
+        <Box
+          marginTop={1}
+          justifyContent="space-between"
+          gap={2}
+          flexWrap="wrap"
+        >
+          <Box gap={2} flexWrap="wrap">
             {STEPS.map((name, i) => {
               const at = STEP[spec.status]?.[0] ?? 0;
               return (
@@ -170,7 +181,7 @@ export function moves(p: Parts, key: string, list: Action[]) {
   if (p.menuOpen !== key) return null;
   const { Box, Button } = p.el;
   return (
-    <Box key={`moves-${key}`} gap={1} marginTop={1}>
+    <Box key={`moves-${key}`} gap={1} flexWrap="wrap" marginTop={1}>
       {list.map(([label, press]) => (
         <Button
           key={`${key}-${label}`}

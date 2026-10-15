@@ -13,6 +13,7 @@ import {
   LABELS,
   type Mode,
   pick,
+  runLine,
   profileName,
   PROFILES,
 } from "./model-policy";
@@ -81,12 +82,16 @@ async function overriding($: EngineInterface): Promise<boolean> {
   return !!chosen && (await $.session.model()) === base;
 }
 
-async function showStatus($: EngineInterface) {
-  const now = await getMode($);
-  if (now === "off") return $.ui.status(undefined);
+// What the band shows beside the profiles: the model main requests really go to (the
+// picker keeps the session's) and the current effort; empty while off.
+export async function runInfo($: EngineInterface): Promise<string> {
+  if ((await getMode($)) === "off") return "";
   const model = (await overriding($)) ? chosen! : await $.session.model();
-  const parts = [displayName(model), effort, profileName(now)].filter(Boolean);
-  $.ui.status(`kit: ${parts.join(" · ")}`);
+  return runLine(model, effort);
+}
+
+async function showStatus($: EngineInterface) {
+  $.ui.invalidate("ui.render");
 }
 
 // The first prompt's model question. A session that already has turns (a resume, a mod

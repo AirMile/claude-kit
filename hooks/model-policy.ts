@@ -101,3 +101,7 @@ export const isMode = (v: unknown): v is Mode =>
 
 export const profileName = (mode: Mode): string =>
   mode[0].toUpperCase() + mode.slice(1);
+
+// The band's run line: `Opus 5.5 · medium`, the effort left out before the first prompt.
+export const runLine = (model: string, effort: string | undefined): string =>
+  [displayName(model), effort].filter(Boolean).join(" · ");

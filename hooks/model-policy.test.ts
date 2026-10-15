@@ -9,6 +9,7 @@ import {
   kindOfLabel,
   LABELS,
   pick,
+  runLine,
 } from "./model-policy";
 
 test("each profile maps a kind of work to a model and an effort", async () => {
@@ -61,4 +62,9 @@ test("only the three profiles and off are modes", async () => {
   expect(isMode("off")).toBe(true);
   expect(isMode("max")).toBe(false);
   expect(isMode(undefined)).toBe(false);
+});
+
+test("the band's run line names the model and the effort once known", async () => {
+  expect(runLine("claude-opus-5-5[1m]", "medium")).toBe("Opus 5.5 · medium");
+  expect(runLine("claude-haiku-5-5", undefined)).toBe("Haiku 5.5");
 });

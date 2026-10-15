@@ -17,7 +17,7 @@ export function body(p: Parts) {
           {p.later.length || !p.draft ? later(p) : null}
         </Box>
       ) : (
-        <Box gap={1}>
+        <Box gap={1} flexWrap="wrap">
           <Text dimColor>No docs/roadmap.md here.</Text>
           <p.el.Button
             key="make-roadmap"
@@ -64,11 +64,11 @@ function dashboard(p: Parts) {
       gap={1}
       borderStyle="round"
       borderColor="#334155"
-      paddingX={2}
+      paddingX={1}
       paddingY={1}
     >
       {/* Usage, with the two commands that act on the context: compact or clear it. */}
-      <Box justifyContent="space-between" gap={2} marginBottom={1}>
+      <Box justifyContent="space-between" gap={2} flexWrap="wrap" marginBottom={1}>
         <Box flexDirection="column">
           {usageRows.map((row, r) => (
             <Text key={r}>
@@ -85,7 +85,7 @@ function dashboard(p: Parts) {
             </Text>
           ))}
         </Box>
-        <Box gap={1}>
+        <Box gap={1} flexWrap="wrap">
           {skill("compact", "Compact", "compact")}
           {skill("clear", "Clear", "clear")}
         </Box>
@@ -94,7 +94,7 @@ function dashboard(p: Parts) {
         <Text dimColor wrap="wrap">{`git: ${p.gitError}`}</Text>
       ) : null}
       {g ? (
-        <Box justifyContent="space-between" gap={2}>
+        <Box justifyContent="space-between" gap={2} flexWrap="wrap">
           <Text wrap="wrap">
             <Text dimColor>{`${g.branch}  `}</Text>
             {g.changed ? (
@@ -106,14 +106,14 @@ function dashboard(p: Parts) {
               <Text>{`  ·  ${g.unpushed} commit${g.unpushed === 1 ? "" : "s"} not live`}</Text>
             ) : null}
           </Text>
-          <Box gap={1}>
+          <Box gap={1} flexWrap="wrap">
             {g.changed && p.hasDiff ? skill("diff", "Diff", "diff") : null}
             {g.changed ? skill("commit", "Commit", "kit:commit") : null}
             {g.unpushed ? skill("launch", "Launch", "kit:launch") : null}
           </Box>
         </Box>
       ) : null}
-      <Box gap={1} marginTop={1}>
+      <Box gap={1} flexWrap="wrap" marginTop={1}>
         {p.isSetUp ? null : skill("setup", "Setup", "kit:setup", "", true)}
         {skill("brainstorm", "Brainstorm", "kit:product", "brainstorm")}
         {skill("critique", "Critique", "kit:product", "critique")}

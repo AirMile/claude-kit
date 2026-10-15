@@ -49,6 +49,7 @@ export function later(p: Parts) {
               key={`later-${index}`}
               justifyContent="space-between"
               gap={2}
+              flexWrap="wrap"
               paddingLeft={1}
             >
               <Text dimColor wrap="wrap">{`· ${idea}`}</Text>
