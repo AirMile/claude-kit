@@ -859,7 +859,7 @@ versions skip it. It never writes files.
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt is one row of icons: `◇ Balanced` (profile), `◆ Opus 5.5`
-  (model), `◐ medium` (effort, `▪` when locked), `⇲ Compact`, `⌫ Clear`, `♨ Warm` and, at
+  (model), `◐ medium` (effort, `▪` when locked), `⇲ Compact`, `⌫ Clear`, `✓ Commit` (runs `/kit:commit`), `♨ Warm` and, at
   the right end, `▤ Roadmap` (`▤ Close roadmap` closes it). A press on ◇ ◆ ◐ ⇲ ⌫ unfolds a second
   row: the profiles; the models, then **Keep context**, **Compact** or **Clear** before the
   switch; the effort levels of the running model (a pick locks it until **Auto**, over new
@@ -910,7 +910,7 @@ versions skip it. It never writes files.
 columns, above the prompt otherwise):
 
 - **Roadmap**: a project dashboard, titled with the product's name. It never opens by itself: the **Roadmap** button above the prompt opens it (in any project, while the pane is closed), `/product` opens it too, and so does `/panel`. Without `docs/roadmap.md` it shows the dashboard alone, as an action pad, with **Make a roadmap** (`/product`). On top, in its own block:
-  context and plan usage (a value turns amber from 60%, red from 85%) with **Compact** and **Clear**; git state (branch,
+  context and plan usage (a value turns amber from 60%, red from 85%; compact and clear are in the band); git state (branch,
   changed files, commits not on `origin/HEAD`) with **Diff** (`/diff`, where it exists) and
   **Commit** when files changed and **Launch** when commits aren't live; then kit's skills:
   **Setup** (only when `AGENTS.md` is missing), **Brainstorm**, **Critique**, **Theme** and

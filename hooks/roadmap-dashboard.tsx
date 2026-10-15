@@ -67,7 +67,7 @@ function dashboard(p: Parts) {
       paddingX={1}
       paddingY={1}
     >
-      {/* Usage, with the two commands that act on the context: compact or clear it. */}
+      {/* Usage; compact and clear sit in the band above the prompt (kit-band.tsx). */}
       <Box justifyContent="space-between" gap={2} flexWrap="wrap" marginBottom={1}>
         <Box flexDirection="column">
           {usageRows.map((row, r) => (
@@ -84,10 +84,6 @@ function dashboard(p: Parts) {
               ))}
             </Text>
           ))}
-        </Box>
-        <Box gap={1} flexWrap="wrap">
-          {skill("compact", "Compact", "compact")}
-          {skill("clear", "Clear", "clear")}
         </Box>
       </Box>
       {!g && p.gitError ? (

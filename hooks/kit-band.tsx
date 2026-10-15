@@ -17,8 +17,8 @@ import { openRoadmap } from "./roadmap-open";
 import { PANE } from "./roadmap-view";
 
 // The band above the prompt, one row of icon buttons: the profile (◇, auto-model.ts), the model
-// main requests go to (◆) and their effort (◐, ▪ when locked), compact (⇲), clear (⌫), keep
-// warm (♨, keep-warm.ts), the plan-limit pause with Resume now (limit-guard.ts), and the
+// main requests go to (◆) and their effort (◐, ▪ when locked), compact (⇲), clear (⌫), /commit (✓),
+// keep warm (♨, keep-warm.ts), the plan-limit pause with Resume now (limit-guard.ts), and the
 // roadmap pane at the right end (▤); each icon carries a short word, an icon alone is too small to hit. A press on ◇ ◆ ◐ ⇲ ⌫ unfolds a second
 // row: the profiles, the models (then keep the context, compact or clear), the effort levels
 // (a pick locks it, Auto unlocks), or a confirm for compact and clear, which can't be undone.
@@ -165,6 +165,17 @@ export function kitBand(on: On) {
               key="kit-clear"
               label="⌫ Clear"
               onPress={() => unfold($, "clear")}
+            />
+            <Button
+              key="kit-commit"
+              label="✓ Commit"
+              onPress={() => {
+                void $.command
+                  .run({ command: "kit:commit" })
+                  .catch((err) =>
+                    $.ui.toast(`kit: could not start /commit: ${String(err)}`),
+                  );
+              }}
             />
             <Button
               key="kit-warm"

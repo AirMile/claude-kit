@@ -228,3 +228,15 @@ test("clear in the band asks once more before it clears", async ($, on) => {
   await ui.press({ key: "kit-confirm-yes" });
   expect(w.cleared).toEqual(["clear"]);
 });
+
+test("Commit in the band starts /kit:commit", async ($, on) => {
+  world(on, { model: "claude-haiku-5-5", label: QUESTION, drawn: true });
+  const ran: string[] = [];
+  on("command.run", { command: "kit:commit" }, async () => {
+    ran.push("kit:commit");
+    return { text: "" };
+  });
+  const ui = await band($, on);
+  await ui.press({ key: "kit-commit" });
+  expect(ran).toEqual(["kit:commit"]);
+});
