@@ -40,7 +40,7 @@ export function kitBand(on: On) {
             <Button
               key={`kit-mode-${p}`}
               label={profileName(p)}
-              variant={now === p ? "primary" : "secondary"}
+              dimColor={now !== p}
               onPress={() => {
                 void setMode($, now === p ? "off" : p);
               }}
@@ -50,7 +50,7 @@ export function kitBand(on: On) {
           <Button
             key="kit-warm"
             label="Keep warm"
-            variant={warm ? "primary" : "secondary"}
+            dimColor={!warm}
             onPress={() => {
               void setWarm($, !warm);
             }}
@@ -70,7 +70,6 @@ export function kitBand(on: On) {
         <Button
           key="kit-roadmap"
           label={isOpen ? "Close roadmap" : "Roadmap"}
-          variant={isOpen ? "primary" : "secondary"}
           onPress={() => {
             const toggle = isOpen ? $.ui.close({ id: PANE }) : openRoadmap($);
             void toggle.then(() => $.ui.invalidate("ui.render"));
