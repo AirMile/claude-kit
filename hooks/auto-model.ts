@@ -1,8 +1,10 @@
 import type { CommandSpec, EngineInterface, On } from "claude-code";
 
+import { agentCalls, askedEffort } from "./agent-effort";
 import { limitPrompt, limitStep } from "./limit-guard";
 import {
   agentKind,
+  carry,
   commandKind,
   DEFAULT_MODE,
   displayName,
@@ -16,6 +18,8 @@ import {
   pick,
   profileName,
   PROFILES,
+  stretch,
+  subagentEffort,
 } from "./model-policy";
 import {
   askFirstModel,
@@ -34,13 +38,15 @@ import { isOrchestrating, orchestrateNote } from "./orchestrate";
 // - the first prompt of a chat (a new session or after /clear) picks a model from the profile,
 //   before the prompt is sent; when it differs from the session's, the user is asked to
 //   switch or stay, and a switch rewrites every main request;
-// - every prompt picks the effort; a later prompt that needs a stronger model than the one
-//   running escalates (model-policy.ts `escalation`): one tier short it runs at the top effort,
-//   further short the user picks: switch now (light context only), compact or clear and then
-//   switch and send it again, or stay at the top effort (not asked again this chat);
-// - a subagent the engine defines gets its own model and effort for its task.
-// The profile (lean, balanced, quality, or off) is kept in $.store across sessions, a switch
-// per session id, so a mod reload or restart keeps it.
+// - every prompt picks the effort (a short reply like "ja" keeps the kind of work it continues);
+//   a later prompt that needs a stronger model than the one running escalates (model-policy.ts
+//   `escalation`): one tier short it runs at the stretch effort, further short the user picks:
+//   switch now (light context only), compact or clear and then switch and send it again, or
+//   stay at the stretch effort (not asked again this chat);
+// - a subagent the engine defines gets its own model and effort for its task, unless its Agent
+//   call asked for an effort (agent-effort.ts).
+// The profile (lean, balanced, quality, off) is kept in $.store across sessions, a switch per
+// session id, so a mod reload or restart keeps it.
 
 export const modeCommand: CommandSpec = {
   name: "mode",
@@ -57,6 +63,7 @@ let mode: Mode | undefined; // read from $.store on first use
 let decided = false; // the session's model question was settled
 let stayed = false; // the user chose to stay on a weaker model: no more asking this chat
 let effort: Effort | undefined; // the effort for the current prompt's requests
+let lastKind: Kind | undefined; // the kind of work the last typed prompt ran as
 const agentEffort = new Map<string, Effort>(); // subagent id → its effort
 
 export async function getMode($: EngineInterface): Promise<Mode> {
@@ -123,7 +130,7 @@ async function showStatus($: EngineInterface) {
 type Way = "now" | "compact" | "clear" | "stay";
 
 // A later prompt that needs `want`, above the model running. One tier short, or after the user
-// chose to stay, it runs at the top effort; further short the user picks how to go on. Returns
+// chose to stay, it runs at the stretch effort; further short the user picks how to go on. Returns
 // why the prompt is held when a clear or compact runs first and sends it again.
 async function escalate(
   $: EngineInterface,
@@ -136,7 +143,7 @@ async function escalate(
   const step = escalation(have, want, usage?.context?.percent);
   if (step.step === "none") return undefined;
   if (step.step === "effort" || stayed || !mayAsk) {
-    effort = "max";
+    effort = stretch(have);
     return undefined;
   }
   const to = displayName(step.want);
@@ -145,7 +152,7 @@ async function escalate(
   if (step.switchNow) ways.set(`Switch to ${to} now`, "now");
   ways.set(`Compact, then ${to}`, "compact");
   ways.set(`Clear, then ${to}`, "clear");
-  ways.set(`Stay on ${from} at max effort`, "stay");
+  ways.set(`Stay on ${from} at ${stretch(have)} effort`, "stay");
   const answer = await $.ui
     .ask(`This prompt needs ${to}; ${from} is running. How to go on?`, {
       header: "Model",
@@ -159,7 +166,7 @@ async function escalate(
   }
   if (way === "stay") {
     stayed = true;
-    effort = "max";
+    effort = stretch(have);
     return undefined;
   }
   const level = effort;
@@ -203,6 +210,7 @@ export function autoModel(on: On) {
       stayed = false;
       dropSwitch(true); // a new chat: nothing stored to pick up
       effort = undefined;
+      lastKind = undefined;
       agentEffort.clear();
       await showStatus($);
       return started;
@@ -221,7 +229,10 @@ export function autoModel(on: On) {
     if (!typed || (now === "off" && !orchestrating)) return next(e);
     const kind = (await kindOf($, e.text)) ?? "routine";
     if (now !== "off") {
-      const p = pick(now, kind);
+      // A command's kind is explicit; a thin reply keeps the work's kind.
+      const ran = commandKind(e.text) ? kind : carry(kind, lastKind, e.text);
+      lastKind = ran;
+      const p = pick(now, ran);
       if (await restoreSwitch($)) decided = true; // a reload kept the switch
       let asked = false;
       if (!decided) {
@@ -275,9 +286,12 @@ export function autoModel(on: On) {
     const spawned = await next(
       isEngine && !e.model ? { ...e, model: p.model } : e,
     );
-    if (spawned.agentId) agentEffort.set(spawned.agentId, p.effort);
+    const own = subagentEffort(askedEffort(e.tool_use_id), p.effort);
+    if (spawned.agentId && own) agentEffort.set(spawned.agentId, own);
     return spawned;
   });
+
+  agentCalls(on);
 
   on("command.run", { command: "mode" }, async ($, e) => {
     const arg = e.args.trim().toLowerCase();

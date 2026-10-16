@@ -8,6 +8,7 @@ function world(
     model: string;
     label: string;
     answer?: string;
+    labels?: string[]; // classifier answers in order, then `label`
     turns?: number;
     percent?: number;
     store?: Record<string, unknown>;
@@ -33,7 +34,8 @@ function world(
     cleared.push("clear");
     return { text: "" };
   });
-  on("model.classify", async () => ({ value: opts.label }));
+  const queue = [...(opts.labels ?? [])];
+  on("model.classify", async () => ({ value: queue.shift() ?? opts.label }));
   // $.ui.ask is a tool.call of AskUserQuestion beneath; answered by question text.
   on("tool.call", { tool: "AskUserQuestion" }, async (_$, e) => {
     const { questions } = e as unknown as { questions: { question: string }[] };
@@ -133,7 +135,7 @@ test("a full context offers no switch now; staying is not asked again", async ($
     label: HEAVY,
     turns: 5,
     percent: 60,
-    answer: "Stay on Haiku 5.5 at max effort",
+    answer: "Stay on Haiku 5.5 at high effort",
   });
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
   await $.prompt.submit({ text: "and the billing layer", origin: TYPED });
@@ -154,7 +156,9 @@ test("a stored switch survives a reload: no question on the stronger model", asy
     label: HEAVY,
     turns: 5,
     percent: 60,
-    store: { switches: { s1: { chosen: "claude-opus-5-5", base: "claude-haiku-5-5" } } },
+    store: {
+      switches: { s1: { chosen: "claude-opus-5-5", base: "claude-haiku-5-5" } },
+    },
   });
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
   expect(w.asked).toEqual([]);
@@ -168,7 +172,10 @@ test("clear, then switch: the prompt is held, the chat cleared, and sent again",
     percent: 60,
     answer: "Clear, then Opus 5.5",
   });
-  const r = await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
+  const r = await $.prompt.submit({
+    text: "refactor the auth layer",
+    origin: TYPED,
+  });
   expect(String((r as { drop?: string }).drop)).toContain("clearing");
   await settle();
   expect(w.cleared).toEqual(["clear"]);
@@ -192,7 +199,11 @@ function band($: Parameters<Parameters<typeof test>[1]>[0], on: On) {
 }
 
 test("an effort picked in the band is locked until Auto unlocks it", async ($, on) => {
-  const w = world(on, { model: "claude-haiku-5-5", label: QUESTION, drawn: true });
+  const w = world(on, {
+    model: "claude-haiku-5-5",
+    label: QUESTION,
+    drawn: true,
+  });
   const ui = await band($, on);
   await ui.press({ key: "kit-effort" });
   await ui.press({ key: "kit-effort-high" });
@@ -201,6 +212,36 @@ test("an effort picked in the band is locked until Auto unlocks it", async ($, o
   await ui.press({ key: "kit-effort" });
   await ui.press({ key: "kit-effort-auto" });
   expect(w.store.effortLock).toBe(undefined);
+});
+
+test("a thin reply keeps the effort of the work it continues", async ($, on) => {
+  world(on, {
+    model: "claude-opus-5-5",
+    label: HEAVY,
+    labels: [HEAVY, QUESTION, QUESTION],
+    turns: 5,
+    drawn: true,
+  });
+  const ui = await band($, on);
+  const shown = async () => (await ui.find({ key: "kit-effort" }))?.text;
+  await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
+  expect(await shown()).toBe("xhigh");
+  await $.prompt.submit({ text: "ja", origin: TYPED });
+  expect(await shown()).toBe("xhigh");
+  await $.prompt.submit({
+    text: "what does the importer do on retries",
+    origin: TYPED,
+  });
+  expect(await shown()).toBe("low");
+});
+
+test("/build runs at high, a plain heavy prompt at xhigh", async ($, on) => {
+  world(on, { model: "claude-opus-5-5", label: HEAVY, turns: 5, drawn: true });
+  const ui = await band($, on);
+  await $.prompt.submit({ text: "/build login-form", origin: TYPED });
+  expect((await ui.find({ key: "kit-effort" }))?.text).toBe("high");
+  await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
+  expect((await ui.find({ key: "kit-effort" }))?.text).toBe("xhigh");
 });
 
 test("the band's model switch clears first when asked, and keeps the switch", async ($, on) => {
@@ -223,7 +264,11 @@ test("the band's model switch clears first when asked, and keeps the switch", as
 });
 
 test("clear in the band clears at once, just after the press", async ($, on) => {
-  const w = world(on, { model: "claude-haiku-5-5", label: QUESTION, drawn: true });
+  const w = world(on, {
+    model: "claude-haiku-5-5",
+    label: QUESTION,
+    drawn: true,
+  });
   const ui = await band($, on);
   await ui.press({ key: "kit-clear" });
   await settle();
@@ -243,7 +288,11 @@ test("Commit in the band starts /kit:commit", async ($, on) => {
 });
 
 test("the band's Git menu sends its item as a prompt", async ($, on) => {
-  const w = world(on, { model: "claude-haiku-5-5", label: QUESTION, drawn: true });
+  const w = world(on, {
+    model: "claude-haiku-5-5",
+    label: QUESTION,
+    drawn: true,
+  });
   const ui = await band($, on);
   await ui.press({ key: "kit-git" });
   await ui.press({ key: "kit-git-Push" });
@@ -281,7 +330,11 @@ test("without Orchestrate a prompt carries no note", async ($, on) => {
 });
 
 test("the band's Orchestrate button turns it on and keeps it", async ($, on) => {
-  const w = world(on, { model: "claude-opus-5-5", label: QUESTION, drawn: true });
+  const w = world(on, {
+    model: "claude-opus-5-5",
+    label: QUESTION,
+    drawn: true,
+  });
   const ui = await band($, on);
   await ui.press({ key: "kit-orchestrate" });
   expect(w.store.orchestrate).toBe(true);

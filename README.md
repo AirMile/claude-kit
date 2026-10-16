@@ -870,7 +870,10 @@ dashboard` closes it); Compact and Clear run at once, or when the running turn e
 - **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (◆'s menu in the band,
   or `/mode lean|balanced|quality|off`). The choice is kept across sessions. Each prompt is sorted (kit's own skills by name, the rest by a Haiku
   classifier) into question, routine, planning or heavy work, and the profile maps that to a
-  model and effort:
+  model and effort. `/build` counts as planning work, not heavy: it starts from a spec and ends
+  in a fresh-context verifier, and xhigh costs about twice high on Opus for little gain. A short
+  reply that is not a question (`ja`, `doe maar`, 30 characters or fewer) keeps the kind of the
+  work before it, so it never drops to low in the middle of a build:
 
   ```
   kind      Lean             Balanced          Quality
@@ -885,13 +888,14 @@ dashboard` closes it); Compact and Clear run at once, or when the running turn e
   showing the old one, the band shows the real one with the effort, e.g. `Opus 5.5 · medium`; picking another
   model with `/model` ends the switch; a switch is kept per session over a restart). Every
   prompt sets the effort, unless one is locked. A later prompt that needs a stronger model
-  than the one running escalates: one tier short (Sonnet for Opus work) it runs at the top
-  effort; two or more short you pick: switch now (offered only below 30% context, since a
-  switch reads the whole chat again without the cache), compact or clear and then switch
-  (the prompt is sent again), or stay at the top effort (not asked again in that chat). Subagents get their
-  own: `Explore` as question work, `kit:verifier` as routine (effort only, its model is its
-  own), other built-in agents classified on their task. An explicit `model` on the Agent call
-  is kept.
+  than the one running escalates: one tier short (Sonnet for Opus work) it runs at xhigh (Haiku:
+  high, since Haiku's xhigh can end a turn with no answer; never max, which costs up to 3
+  times xhigh for no better coding); two or more short you pick: switch now (offered only below 30%
+  context, since a switch reads the whole chat again without the cache), compact or clear and
+  then switch (the prompt is sent again), or stay at that effort (not asked again in that
+  chat). Subagents get their own: `Explore` as question work, `kit:verifier` as planning work
+  (a review: effort high, its model is its own), other built-in agents classified on their
+  task. An explicit `model` or `effort` on the Agent call is kept.
 
 - **Plan limit pause**: when the 5-hour (or weekly) limit nears 100%, the chat pauses before
   its next model request. The pause point is 95%, lower when the percentage climbs fast

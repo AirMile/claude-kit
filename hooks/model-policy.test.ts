@@ -2,15 +2,19 @@ import { expect, test } from "claude-code/testing";
 
 import {
   agentKind,
+  carry,
   commandKind,
   displayName,
   escalation,
   family,
   isMode,
+  isThin,
   kindOfLabel,
   LABELS,
   pick,
   runLine,
+  stretch,
+  subagentEffort,
   switchOf,
   withSwitch,
 } from "./model-policy";
@@ -29,7 +33,7 @@ test("each profile maps a kind of work to a model and an effort", async () => {
 });
 
 test("kit's skills are known without the classifier", async () => {
-  expect(commandKind("/build login-form")).toBe("heavy");
+  expect(commandKind("/build login-form")).toBe("planning");
   expect(commandKind("/kit:product")).toBe("planning");
   expect(
     commandKind("<command-name>/kit:commit</command-name>\nstage it"),
@@ -46,8 +50,38 @@ test("a classifier label reads back as its kind, anything else as none", async (
 
 test("subagents of a known type get their kind", async () => {
   expect(agentKind("Explore")).toBe("question");
-  expect(agentKind("kit:verifier")).toBe("routine");
+  expect(agentKind("kit:verifier")).toBe("planning");
   expect(agentKind("general-purpose")).toBe(undefined);
+});
+
+test("/build and the verifier run at high in every profile, never above", async () => {
+  for (const profile of ["lean", "balanced"] as const) {
+    expect(pick(profile, "planning").effort).toBe("high");
+  }
+  expect(pick("quality", "planning")).toEqual({
+    model: "claude-fable-5-1",
+    effort: "high",
+  });
+});
+
+test("a subagent keeps the effort its Agent call asked for", async () => {
+  expect(subagentEffort(undefined, "medium")).toBe("medium");
+  expect(subagentEffort("high", "medium")).toBe(undefined);
+});
+
+test("a thin reply never lowers the work it continues", async () => {
+  expect(isThin("ja")).toBe(true);
+  expect(isThin("  ja, doe maar  ")).toBe(true);
+  expect(isThin("wat doet dit?")).toBe(false);
+  expect(isThin("fix the failing login test in the auth module")).toBe(false);
+  expect(carry("question", "heavy", "ja")).toBe("heavy");
+  expect(carry("question", "planning", "ga door")).toBe("planning");
+  expect(carry("planning", "routine", "ja")).toBe("planning");
+  expect(carry("question", undefined, "ja")).toBe("question");
+  expect(carry("question", "heavy", "wat doet dit?")).toBe("question");
+  expect(
+    carry("question", "heavy", "explain how the importer handles retries"),
+  ).toBe("question");
 });
 
 test("model ids and aliases name their family and a short name", async () => {
@@ -76,15 +110,35 @@ const HAIKU = "claude-haiku-5-5";
 const SONNET = "claude-sonnet-5-5";
 const OPUS = "claude-opus-5-5";
 
-test("a prompt one tier above the running model gets the top effort", async () => {
-  expect(escalation(SONNET, OPUS, 80)).toEqual({ step: "effort", effort: "max" });
-  expect(escalation(HAIKU, SONNET, 5)).toEqual({ step: "effort", effort: "max" });
+test("a prompt one tier above the running model gets the stretch effort, not max", async () => {
+  expect(escalation(SONNET, OPUS, 80)).toEqual({
+    step: "effort",
+    effort: "xhigh",
+  });
+  expect(escalation(HAIKU, SONNET, 5)).toEqual({
+    step: "effort",
+    effort: "high",
+  });
+  expect(stretch(HAIKU)).toBe("high");
+  expect(stretch(`${OPUS}[1m]`)).toBe("xhigh");
 });
 
 test("two tiers short asks; switch now only with a light context", async () => {
-  expect(escalation(HAIKU, OPUS, 10)).toEqual({ step: "ask", want: OPUS, switchNow: true });
-  expect(escalation(HAIKU, OPUS, 30)).toEqual({ step: "ask", want: OPUS, switchNow: false });
-  expect(escalation(HAIKU, OPUS, undefined)).toEqual({ step: "ask", want: OPUS, switchNow: false });
+  expect(escalation(HAIKU, OPUS, 10)).toEqual({
+    step: "ask",
+    want: OPUS,
+    switchNow: true,
+  });
+  expect(escalation(HAIKU, OPUS, 30)).toEqual({
+    step: "ask",
+    want: OPUS,
+    switchNow: false,
+  });
+  expect(escalation(HAIKU, OPUS, undefined)).toEqual({
+    step: "ask",
+    want: OPUS,
+    switchNow: false,
+  });
 });
 
 test("no escalation at or above the model a prompt needs, or for an unknown model", async () => {
@@ -95,13 +149,17 @@ test("no escalation at or above the model a prompt needs, or for an unknown mode
 });
 
 test("a switch is stored per session, junk ignored, the newest twenty kept", async () => {
-  const one = withSwitch({ junk: 1, old: { chosen: 3 } }, "s1", { chosen: OPUS, base: HAIKU });
+  const one = withSwitch({ junk: 1, old: { chosen: 3 } }, "s1", {
+    chosen: OPUS,
+    base: HAIKU,
+  });
   expect(one).toEqual({ s1: { chosen: OPUS, base: HAIKU } });
   expect(switchOf(one, "s1")).toEqual({ chosen: OPUS, base: HAIKU });
   expect(switchOf(one, "s2")).toBe(undefined);
   expect(withSwitch(one, "s1", undefined)).toEqual({});
   let many: unknown = {};
-  for (let i = 0; i < 25; i++) many = withSwitch(many, `s${i}`, { chosen: OPUS, base: HAIKU });
+  for (let i = 0; i < 25; i++)
+    many = withSwitch(many, `s${i}`, { chosen: OPUS, base: HAIKU });
   expect(Object.keys(many as object).length).toBe(20);
   expect(switchOf(many, "s24")).toEqual({ chosen: OPUS, base: HAIKU });
   expect(switchOf(many, "s0")).toBe(undefined);

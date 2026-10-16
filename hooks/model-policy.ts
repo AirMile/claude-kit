@@ -10,7 +10,13 @@ export type Pick = { model: string; effort: Effort };
 
 export const PROFILES: readonly Profile[] = ["lean", "balanced", "quality"];
 // Effort levels, lowest first; the engine lowers one the running model lacks.
-export const EFFORTS: readonly Effort[] = ["low", "medium", "high", "xhigh", "max"];
+export const EFFORTS: readonly Effort[] = [
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+];
 export const isEffort = (v: unknown): v is Effort =>
   EFFORTS.includes(v as Effort);
 export const DEFAULT_MODE: Profile = "balanced";
@@ -61,9 +67,11 @@ export function kindOfLabel(label: string | undefined): Kind | undefined {
   return (Object.keys(LABELS) as Kind[]).find((k) => LABELS[k] === label);
 }
 
-// kit's own skills need no classifier: their work is known.
+// kit's own skills need no classifier: their work is known. `build` works from a spec with
+// acceptance criteria and a verifier that reads it afresh, so it needs no more than planning:
+// xhigh costs about twice high on Opus for little gain (see README, Model and effort).
 const COMMANDS: Record<string, Kind> = {
-  build: "heavy",
+  build: "planning",
   product: "planning",
   seo: "planning",
   theme: "planning",
@@ -82,11 +90,37 @@ export function commandKind(text: string): Kind | undefined {
   return name ? COMMANDS[name] : undefined;
 }
 
-// Subagents whose work is known by their type; others are classified on their prompt.
+// Subagents whose work is known by their type; others are classified on their prompt. The
+// verifier is a review where edge cases decide the result, so it runs at high in every profile.
 const AGENTS: Record<string, Kind> = {
   Explore: "question",
-  "kit:verifier": "routine",
+  "kit:verifier": "planning",
 };
+
+// A subagent's effort: the profile's pick, unless its Agent call asked for one (that call wins).
+export const subagentEffort = (
+  asked: Effort | undefined,
+  picked: Effort,
+): Effort | undefined => (asked ? undefined : picked);
+
+// Kinds of work, lightest first.
+const RANK: Record<Kind, number> = {
+  question: 0,
+  routine: 1,
+  planning: 2,
+  heavy: 3,
+};
+export const THIN_CHARS = 30;
+
+// A reply such as "ja" or "doe maar" holds no task, so it would be sorted as the lightest work
+// in the middle of heavy work. Thin: short, and not a question.
+export const isThin = (text: string): boolean =>
+  text.trim().length <= THIN_CHARS && !text.includes("?");
+
+// The kind a prompt runs as: a thin one never lowers the work it continues (`last`).
+export function carry(kind: Kind, last: Kind | undefined, text: string): Kind {
+  return last && isThin(text) && RANK[last] > RANK[kind] ? last : kind;
+}
 
 export const agentKind = (type: string): Kind | undefined => AGENTS[type];
 
@@ -107,8 +141,14 @@ export type Escalation =
   | { step: "effort"; effort: Effort }
   | { step: "ask"; want: string; switchNow: boolean };
 
-// What a prompt that needs `want` does on `running`: nothing at or above it, the top effort one
-// tier short (the engine lowers a level the model lacks), further short a question.
+// The effort a model runs at when the prompt needs a stronger one. Not `max`: it costs up to 3 times
+// xhigh and scores no better on coding. Haiku stops at high: its xhigh can end a turn with no
+// visible answer.
+export const stretch = (running: string): Effort =>
+  family(running) === "haiku" ? "high" : "xhigh";
+
+// What a prompt that needs `want` does on `running`: nothing at or above it, the stretch effort
+// one tier short (the engine lowers a level the model lacks), further short a question.
 export function escalation(
   running: string,
   want: string,
@@ -117,7 +157,7 @@ export function escalation(
   const have = TIERS.indexOf(family(running) ?? "");
   const need = TIERS.indexOf(family(want) ?? "");
   if (have < 0 || need <= have) return { step: "none" };
-  if (need - have === 1) return { step: "effort", effort: "max" };
+  if (need - have === 1) return { step: "effort", effort: stretch(running) };
   const switchNow =
     contextPercent !== undefined && contextPercent < SWITCH_NOW_BELOW;
   return { step: "ask", want, switchNow };
