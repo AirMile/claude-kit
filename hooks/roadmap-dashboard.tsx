@@ -81,7 +81,7 @@ function pad(p: Parts) {
     note: RenderChildren,
     skills: RenderChildren[],
   ) => (
-    <Box key={`pad-${name}`} flexDirection="column" flexGrow={1}>
+    <Box key={`pad-${name}`} flexDirection="column">
       <Box gap={1}>
         <Text dimColor>{name}</Text>
         {note}
@@ -104,8 +104,6 @@ function pad(p: Parts) {
         p.isSetUp ? null : skill("setup", "Setup", "kit:setup", "", true),
         skill("brainstorm", "Brainstorm", "kit:product", "brainstorm"),
         skill("critique", "Critique", "kit:product", "critique"),
-        skill("intake", "Intake", "kit:intake"),
-        skill("seo", "SEO", "kit:seo"),
         skill("theme", "Theme", "kit:theme"),
       ])}
       {stage("Make", null, [
@@ -113,7 +111,9 @@ function pad(p: Parts) {
         skill("explain", "Explain", "kit:explain"),
         skill("lessons", "Lessons", "kit:lessons"),
       ])}
-      {stage("Ship", null, [
+      {stage("Client", null, [
+        skill("intake", "Intake", "kit:intake"),
+        skill("seo", "SEO", "kit:seo"),
         skill("audit", "Audit", "kit:audit"),
         skill("scan", "Scan", "kit:scan"),
       ])}

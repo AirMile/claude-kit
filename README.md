@@ -934,9 +934,9 @@ columns, above the prompt otherwise):
   **Make a roadmap** (`/product`) without one. At the bottom of the pane, under every tab, in
   its own block, the **pad** (docked, at the bottom of the screen while the tab is shorter;
   a longer tab pushes it down): kit's skills by
-  stage, the stage name with its buttons right beside it. **Plan**: **Setup** (only when
-  `AGENTS.md` is missing), **Brainstorm**, **Critique**, **Intake**, **SEO**, **Theme**.
-  **Make**: **Convert**, **Explain**, **Lessons**. **Ship**: **Audit** and **Scan**. Commit, git, compact, clear and
+  stage, side by side, each stage name above its buttons. **Plan**: **Setup** (only when
+  `AGENTS.md` is missing), **Brainstorm**, **Critique**, **Theme**.
+  **Make**: **Convert**, **Explain**, **Lessons**. **Client**: **Intake**, **SEO**, **Audit**, **Scan**. Commit, git, compact, clear and
   usage are in the band. One click on a button runs its command at once (a second click within
   2 seconds counts as a double click and is ignored; if running fails, the command lands in
   your prompt box); a done feature's **Explain** runs `/explain <slug>`. On the desktop app a
