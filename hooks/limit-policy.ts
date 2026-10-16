@@ -7,20 +7,18 @@
 
 export type Reading = { kind: string; percentUsed: number; resetsAt?: string };
 
-const WINDOWS = ["five_hour", "seven_day"];
+// Only the 5-hour window pauses: a weekly pause would last days, so the week is left to the user.
+const WINDOWS = ["five_hour"];
 const KEEP_FREE = 2; // points left for keep-alive pings
 const MIN_MARGIN = 3;
-const MAX_MARGIN = 15;
+const MIN_STOP = 90; // never pause earlier than this
 export const PING_EVERY_MS = 50 * 60_000; // inside the 1-hour cache lifetime
 export const PING_HORIZON_MS = 5 * 60 * 60_000; // further away, a cold start is cheaper
 
 export function stopAt(rises: readonly number[]): number {
   const worst = Math.max(0, ...rises);
-  const margin = Math.min(
-    MAX_MARGIN,
-    Math.max(MIN_MARGIN, Math.ceil(3 * worst)),
-  );
-  return 100 - margin - KEEP_FREE;
+  const margin = Math.max(MIN_MARGIN, Math.ceil(3 * worst));
+  return Math.max(MIN_STOP, 100 - margin - KEEP_FREE);
 }
 
 // The windows still running (a reading whose reset has passed is stale) that reached `limit`;

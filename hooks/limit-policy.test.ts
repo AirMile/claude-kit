@@ -9,10 +9,10 @@ test("the pause point drops as the account burns faster", async () => {
   expect(stopAt([])).toBe(95);
   expect(stopAt([0.5])).toBe(95);
   expect(stopAt([0.5, 2])).toBe(92); // three rises of 2 points may land meanwhile
-  expect(stopAt([20])).toBe(83); // margin capped at 15
+  expect(stopAt([20])).toBe(90); // never earlier than 90
 });
 
-test("only a running 5-hour or weekly window at the limit pauses", async () => {
+test("only a running 5-hour window at the limit pauses", async () => {
   const at = (kind: string, pct: number, resetsAt = IN_2H) => ({
     kind,
     percentUsed: pct,
@@ -26,10 +26,11 @@ test("only a running 5-hour or weekly window at the limit pauses", async () => {
   // A reading whose reset has passed is stale.
   expect(overLimit([at("five_hour", 99, "2026-10-16T11:00:00Z")], 95, NOW)).toBe(null);
   expect(overLimit([at("spend_limit", 99)], 95, NOW)).toBe(null);
-  // Both over: wait for the later reset.
+  // The weekly window never pauses, even over the limit.
   const week = "2026-10-19T09:00:00Z";
-  expect(overLimit([at("five_hour", 97), at("seven_day", 96, week)], 95, NOW)?.until).toBe(
-    Date.parse(week),
+  expect(overLimit([at("seven_day", 99, week)], 95, NOW)).toBe(null);
+  expect(overLimit([at("five_hour", 97), at("seven_day", 99, week)], 95, NOW)?.until).toBe(
+    Date.parse(IN_2H),
   );
 });
 

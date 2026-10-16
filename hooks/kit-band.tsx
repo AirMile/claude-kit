@@ -46,9 +46,6 @@ export function bandUsage(figures: Usage[]): void {
   usage = figures;
 }
 
-// Calm below the fresh-start advice (60%), amber up to 85%, red above.
-const tone = (pct: number) =>
-  pct < 60 ? undefined : pct < 85 ? "#f59e0b" : "#ef4444";
 let target = ""; // the model picked in the model row, for the way row
 
 // Compact, clear and a switch run just after the press: inside it they can be refused.
@@ -213,7 +210,7 @@ export function kitBand(on: On) {
             {usage.map((u) => (
               <Text key={`kit-usage-${u.label}`}>
                 <Text dimColor>{`${u.label} `}</Text>
-                <Text bold color={tone(u.pct)}>
+                <Text bold>
                   {u.value}
                 </Text>
                 {u.note ? <Text dimColor>{` · ${u.note}`}</Text> : null}

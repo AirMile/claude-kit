@@ -226,7 +226,8 @@ export function autoModel(on: On) {
       let asked = false;
       if (!decided) {
         decided = true;
-        asked = await askFirstModel($, p.model);
+        // An orchestrator keeps its model: handing work off is what makes it cheaper.
+        asked = !orchestrating && (await askFirstModel($, p.model));
       }
       effort = p.effort;
       // The first prompt's question just settled the model: no second one for it.

@@ -7,7 +7,7 @@ import type {
 import { endPauseWarm, noteActive, warmForPause } from "./keep-warm";
 import { clockTime, overLimit, type Reading, rise, stopAt } from "./limit-policy";
 
-// Pauses this chat before the 5-hour (or weekly) plan limit runs out, has keep-warm.ts keep
+// Pauses this chat before the 5-hour plan limit runs out, has keep-warm.ts keep
 // its prompt cache warm while the reset is near, and resumes at the reset.
 // - register.tsx feeds every usage reading to noteLimits;
 // - auto-model.ts asks limitStep before each model request (main and subagents) and
