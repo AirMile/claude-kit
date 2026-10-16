@@ -61,9 +61,9 @@ export async function readChat($: EngineInterface): Promise<Chat> {
   };
 }
 
-// The Memory tab: this chat's latest messages with text, newest first, on one line each.
+// The Messages tab: this chat's latest messages with text, newest first, on one line each.
 // Injected context (a text that opens with a tag) is left out.
-export async function readMemory($: EngineInterface): Promise<Excerpt[]> {
+export async function readMessages($: EngineInterface): Promise<Excerpt[]> {
   const messages = await $.session.messages().catch(() => []);
   return messages
     .map((m) => ({

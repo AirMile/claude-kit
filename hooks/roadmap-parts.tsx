@@ -22,15 +22,8 @@ export type Usage = {
   note?: string;
   pct: number;
 };
-export type Git = {
-  changed: number;
-  branch: string;
-  unpushed: number | null;
-  files: string[]; // `git status --porcelain` lines: " M path", "?? path"
-  commits: string[]; // commits not on origin/HEAD, one line each, newest first
-};
-export type Tab = "roadmap" | "chat" | "changes" | "memory";
-// One recent message of this chat, for the Memory tab: whose, and its text on one line.
+export type Tab = "roadmap" | "chat" | "messages";
+// One recent message of this chat, for the Messages tab: whose, and its text on one line.
 export type Excerpt = { role: "you" | "claude"; text: string };
 // The Chat tab: the run, the session's usage with the context by category, what it touched.
 export type Chat = {
@@ -76,17 +69,14 @@ export type Parts = {
   specs: Record<string, SpecState | null>;
   away: Record<string, string>; // open features running elsewhere: "runs on <branch>", …
   canWorktree: boolean; // the desktop app, which has the worktree chip (ccd_session)
-  git: Git | null;
   isSetUp: boolean;
-  hasDiff: boolean;
-  gitError: string; // /diff exists here (the CLI's built-in diff mod)
   note: string;
   adding: string | null;
   added: number;
   toggled: Set<string>;
   tab: Tab;
   chat: Chat | null;
-  memory: Excerpt[] | null; // the Memory tab's recent messages, newest first
+  messages: Excerpt[] | null; // the Messages tab's recent messages, newest first
   rows: number; // the docked pane's body rows, so the pad sits at the bottom; 0 inline
   act: Actions;
 };

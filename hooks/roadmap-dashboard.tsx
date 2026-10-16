@@ -3,12 +3,12 @@ import type { RenderChildren } from "claude-code";
 import { type Parts, phaseNames } from "./roadmap-parts";
 import { phases } from "./roadmap-phase";
 import { later } from "./roadmap-later";
-import { changesTab, chatTab, memoryTab, tabRow } from "./roadmap-tabs";
+import { chatTab, messagesTab, tabRow } from "./roadmap-tabs";
 
 // The dashboard pane (its title is the product): tabs (roadmap-tabs.tsx) over the shown one, and
 // at the bottom the pad, a bordered block of kit's skills by stage of work, under every tab.
 // Docked, the body is at least the pane's height and the tab fills it, so the pad sits at the
-// bottom; a longer tab pushes it down. Chat and Changes: roadmap-tabs.tsx. A draft (plan mode) shows the roadmap alone. Commit,
+// bottom; a longer tab pushes it down. Session and Messages: roadmap-tabs.tsx. A draft (plan mode) shows the roadmap alone. Commit,
 // compact and clear are also in the band above the prompt (kit-band.tsx). Pure, like
 // roadmap-parts.tsx.
 
@@ -27,8 +27,7 @@ export function body(p: Parts) {
       <Box flexDirection="column" flexGrow={1}>
         {p.draft || p.tab === "roadmap" ? roadmap(p) : null}
         {!p.draft && p.tab === "chat" ? chatTab(p) : null}
-        {!p.draft && p.tab === "changes" ? changesTab(p) : null}
-        {!p.draft && p.tab === "memory" ? memoryTab(p) : null}
+        {!p.draft && p.tab === "messages" ? messagesTab(p) : null}
       </Box>
       {p.draft ? null : pad(p)}
     </Box>
@@ -59,8 +58,8 @@ function roadmap(p: Parts) {
   );
 }
 
-// The pad: one row per stage, its name in a narrow column and its skills right beside it. Setup leads
-// while the project isn't set up. Git state, Diff and Launch are in the Changes tab.
+// The pad: the stages side by side (they wrap under each other when narrow), each with its name
+// above its skills. Setup leads while the project isn't set up.
 function pad(p: Parts) {
   const { Box, Text, Button } = p.el;
   const skill = (
@@ -82,20 +81,20 @@ function pad(p: Parts) {
     note: RenderChildren,
     skills: RenderChildren[],
   ) => (
-    <Box key={`pad-${name}`} gap={1} alignItems="center">
-      <Box width={6} flexShrink={0}>
+    <Box key={`pad-${name}`} flexDirection="column" flexGrow={1}>
+      <Box gap={1}>
         <Text dimColor>{name}</Text>
         {note}
       </Box>
-      <Box gap={1} flexWrap="wrap" flexGrow={1}>
+      <Box gap={1} flexWrap="wrap">
         {skills}
       </Box>
     </Box>
   );
   return (
     <Box
-      flexDirection="column"
-      gap={1}
+      gap={3}
+      flexWrap="wrap"
       borderStyle="round"
       borderColor="#334155"
       paddingX={1}

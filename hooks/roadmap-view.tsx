@@ -1,17 +1,16 @@
 import type { ElementTable, EngineInterface, On } from "claude-code";
 
-import { readChat, readMemory, remember } from "./chat-facts";
+import { readChat, readMessages, remember } from "./chat-facts";
 import * as file from "./roadmap-file";
-import { readGit } from "./roadmap-git";
 import { body } from "./roadmap-dashboard";
 import { pressOnFocus, tracked } from "./roadmap-press";
-import type { Card, Chat, Excerpt, Git, Tab } from "./roadmap-parts";
+import type { Card, Chat, Excerpt, Tab } from "./roadmap-parts";
 import * as wt from "./roadmap-worktree";
 import { inRoot, parseSpec, type SpecState } from "./spec";
 
 // The roadmap pane, opened by /product, /panel and the band's button (roadmap-open.ts): a
 // project dashboard, also where there is no docs/roadmap.md (then the dashboard alone). Live: reads docs/roadmap.md, the
-// open features' specs and git state, and edits open items in place (roadmap-file.ts keeps
+// open features' specs, and edits open items in place (roadmap-file.ts keeps
 // every other line as is); its buttons run kit's skills in the chat. Draft: /product in plan
 // mode passes items as data, read-only. Drawing: roadmap-dashboard.tsx + roadmap-parts.tsx; done and in-progress
 // state stays /build's.
@@ -25,13 +24,10 @@ let product = "Dashboard"; // docs/product.md's name, read when the pane opens (
 let live: file.Roadmap | null = null;
 let specs: Record<string, SpecState | null> = {};
 let away: Record<string, string> = {}; // open features running elsewhere (roadmap-worktree.ts)
-let git: Git | null = null;
 let isSetUp = true;
-let hasDiff = false;
-let gitError = ""; // why git state is missing, shown dim in the dashboard
 let tab: Tab = "roadmap"; // the pane's shown tab
 let chat: Chat | null = null; // the Chat tab's facts, read on each draw while it shows
-let memory: Excerpt[] | null = null; // the Memory tab's recent messages, likewise
+let messages: Excerpt[] | null = null; // the Messages tab's recent messages, likewise
 let needsLoad = true;
 let note = "";
 let added = 0;
@@ -112,7 +108,6 @@ export function roadmapView(on: On) {
           specs[i.slug] = parseSpec(
             await $.fs.read(inRoot(root, i.spec)).catch(() => null),
           );
-      ({ git, error: gitError } = await readGit($));
       const open = (live?.items ?? []).filter((i) => !i.done && !i.spec);
       const elsewhere = await readAway(
         $,
@@ -122,12 +117,9 @@ export function roadmapView(on: On) {
       away = elsewhere.lines;
       Object.assign(specs, elsewhere.specs); // their /build step, from the worktree
       isSetUp = await $.fs.exists(inRoot(root, "AGENTS.md")).catch(() => true);
-      hasDiff = (await $.command.list().catch(() => [])).some(
-        (c) => c.name === "diff",
-      );
     }
     chat = tab === "chat" && !draft ? await readChat($) : null;
-    memory = tab === "memory" && !draft ? await readMemory($) : null;
+    messages = tab === "messages" && !draft ? await readMessages($) : null;
     // No docs/roadmap.md: the dashboard alone, as an action pad.
     const view = draft ??
       (live && { product, cards: cards(live), later: live.later }) ?? {
@@ -223,10 +215,7 @@ export function roadmapView(on: On) {
       specs,
       away,
       canWorktree: e.surface === "desktop",
-      git,
       isSetUp,
-      hasDiff,
-      gitError,
       note,
       adding,
       added,
@@ -235,13 +224,13 @@ export function roadmapView(on: On) {
       toggled,
       tab,
       chat,
-      memory,
+      messages,
       rows: e.props.placement === "dock" ? e.props.scroll.bodyRows : 0,
       act: {
         remember: (text) => void remember($, text),
         tab: (next) => {
           tab = next;
-          needsLoad = true; // Changes shows git as it is now
+          needsLoad = true;
           redraw();
         },
         build: (slug) => void run("kit:build", slug, true),

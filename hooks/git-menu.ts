@@ -5,7 +5,7 @@ import type { EngineInterface } from "claude-code";
 // push, so a click on Push is a request, not a bypass. Branch needs a name: it fills the
 // prompt box for the person to finish.
 
-export const GIT_ITEMS = ["Push", "Pull", "PR", "Branch", "Diff"] as const;
+export const GIT_ITEMS = ["Diff", "Pull", "Push", "PR", "Branch"] as const;
 export type GitItem = (typeof GIT_ITEMS)[number];
 
 const PROMPTS: Record<Exclude<GitItem, "Branch">, string> = {
@@ -23,11 +23,15 @@ export async function gitAction($: EngineInterface, item: GitItem) {
   sent = now;
   $.clock.after(50, async () => {
     if (item === "Branch") {
-      await $.prompt.fill({ text: "Create a new branch for: " }).catch(() => {});
+      await $.prompt
+        .fill({ text: "Create a new branch for: " })
+        .catch(() => {});
       return;
     }
     await $.prompt
       .submit({ text: PROMPTS[item], asUser: true })
-      .catch((err) => $.ui.toast(`kit: could not send ${item} (${String(err)})`));
+      .catch((err) =>
+        $.ui.toast(`kit: could not send ${item} (${String(err)})`),
+      );
   });
 }

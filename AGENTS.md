@@ -18,7 +18,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   cache keep-alive (`hooks/limit-guard.ts` on the pure `hooks/limit-policy.ts`), keep-alive forks by hand or
   for the pause (`hooks/keep-warm.ts`, `/warm`), `/band` (the roadmap
   pane draws through the pure `roadmap-{dashboard,tabs,phase,card,later}.tsx` on `roadmap-parts.tsx`, with
-  git read by `roadmap-git.ts` and the Chat tab's facts by `hooks/chat-facts.ts`),
+  the Session tab's facts by `hooks/chat-facts.ts`),
   and `mcp__kit__fresh_start` (`hooks/fresh-start.ts`), which `/build`'s safe point calls to
   clear and resume. Only `register.tsx` registers events; `$` never crosses an import (the
   validator refuses it), so `hooks/spec.ts` stays pure
@@ -63,8 +63,8 @@ product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.m
 - Hooks and scripts must work on Windows too (e.g. `npx` is `npx.cmd` there)
 - The mod (`hooks/*.ts*`) costs no context (it runs as code), so no total line budget: one
   purpose per file, ≤ ~300 lines each (larger → split). It reads only specs (`Status` +
-  criteria), `docs/roadmap.md` and read-only git state (status, branch, commits not on
-  `origin/HEAD`, spec commits on other branches); it writes only through `roadmap-file.ts` and
+  criteria), `docs/roadmap.md` and read-only git state (spec commits and
+  worktrees on other branches); it writes only through `roadmap-file.ts` and
   `$.store` (worktree marks).
   Schema or roadmap format change → update `roadmap-file.ts` + its skill. `claude plugin test .`
 - A rule that needs a second paragraph of exceptions is a sign to cut it, not to extend it

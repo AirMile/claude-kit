@@ -828,7 +828,7 @@ tokens.
 | Permission mode              | What happens                                                                                                                       |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | default / acceptEdits / plan | the normal permission prompt appears                                                                                               |
-| auto                         | a plain push goes through (auto mode's own checks still apply); a force push (`-f`, `--force`, `--force-with-lease`) still asks   |
+| auto                         | a plain push goes through (auto mode's own checks still apply); a force push (`-f`, `--force`, `--force-with-lease`) still asks    |
 | bypassPermissions            | the push is **denied** with a message telling Claude to ask you in chat; after you confirm, Claude runs `KIT_PUSH_OK=1 git push …` |
 
 When you already said "push" (e.g. `/commit` and you answered Push, or "commit and push"),
@@ -859,8 +859,8 @@ versions skip it. It never writes files.
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt, two lines. On top, usage (`ctx 114k   session 55% · 2h 53m
-  week 75% · 4d 3h`) with, at the right, `⇲ Compact`, `⌫ Clear` and `▤ Dashboard` (`▤ Close
-  dashboard` closes it); Compact and Clear run at once, or when the running turn ends. Below,
+week 75% · 4d 3h`) with, at the right, `⇲ Compact`, `⌫ Clear` and `▤ Dashboard` (`▤ Close
+dashboard` closes it); Compact and Clear run at once, or when the running turn ends. Below,
   `◆ Opus 5.5 · medium` (the model requests go to and their effort, `▪` when locked), `✓ Commit`
   (runs `/kit:commit`), `⑂ Orchestrate` and `♨ Keep cache`. ◆ opens a menu in its own block
   above the band: **Profile**, **Model** (then **Keep context**, **Compact** or **Clear**
@@ -892,6 +892,7 @@ versions skip it. It never writes files.
   own: `Explore` as question work, `kit:verifier` as routine (effort only, its model is its
   own), other built-in agents classified on their task. An explicit `model` on the Agent call
   is kept.
+
 - **Plan limit pause**: when the 5-hour (or weekly) limit nears 100%, the chat pauses before
   its next model request. The pause point is 95%, lower when the percentage climbs fast
   between two readings (other chats and agents count too: the figure is account-wide), and
@@ -920,15 +921,13 @@ versions skip it. It never writes files.
 **Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
 columns, above the prompt otherwise):
 
-- **Dashboard**: titled with the product's name (`Dashboard` without `docs/product.md`), in four tabs (a row of
-  buttons on top, the shown one at full strength): **▤ Roadmap** (below), **◎ Chat** (model
+- **Dashboard**: titled with the product's name (`Dashboard` without `docs/product.md`), in three tabs (a row of
+  buttons on top, the shown one at full strength): **▤ Roadmap** (below), **◈ Messages** (this chat's latest messages, each with
+  **Remember**, which asks the model to keep it as a project lesson through `kit:lessons`:
+  only what a later session could not learn from the code ends up in `AGENTS.md`) and **◎ Session** (model
   and effort, turns, how long, cost where the host reports it, compactions, the context by
   category as a bar like `/context`, the files this chat wrote or edited and the subagents it
-  ran, counted since the mod loaded; a `/clear` starts over) and **± Changes** (branch, the
-  changed files, the commits not on `origin/HEAD`, with **Diff**, **✓ Commit** and **Launch**
-  when there is something for them) and **◈ Memory** (this chat's latest messages, each with
-  **Remember**, which asks the model to keep it as a project lesson through `kit:lessons`:
-  only what a later session could not learn from the code ends up in `AGENTS.md`). A draft
+  ran, counted since the mod loaded; a `/clear` starts over). A draft
   (plan mode) shows the roadmap alone. It never
   opens by itself: the band's **▤ Dashboard** button opens it (in any project), `/product`
   opens it too, and so does `/panel`. The Roadmap tab shows `docs/roadmap.md` live (below), or
@@ -937,8 +936,7 @@ columns, above the prompt otherwise):
   a longer tab pushes it down): kit's skills by
   stage, the stage name with its buttons right beside it. **Plan**: **Setup** (only when
   `AGENTS.md` is missing), **Brainstorm**, **Critique**, **Intake**, **SEO**, **Theme**.
-  **Make**: **Convert**, **Explain**, **Lessons**. **Ship**: **Audit** and **Scan** (git state
-  is in the Changes tab). Commit, compact, clear and
+  **Make**: **Convert**, **Explain**, **Lessons**. **Ship**: **Audit** and **Scan**. Commit, git, compact, clear and
   usage are in the band. One click on a button runs its command at once (a second click within
   2 seconds counts as a double click and is ignored; if running fails, the command lands in
   your prompt box); a done feature's **Explain** runs `/explain <slug>`. On the desktop app a

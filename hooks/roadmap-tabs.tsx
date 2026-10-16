@@ -1,13 +1,12 @@
 import type { Parts, Tab } from "./roadmap-parts";
 
 // The dashboard pane's tabs (no tab element exists: a row of buttons, the shown one at full
-// strength), and the Chat, Changes and Memory tabs. Pure, like roadmap-parts.tsx.
+// strength), and the Session and Messages tabs. Pure, like roadmap-parts.tsx.
 
 const TABS: [Tab, string][] = [
   ["roadmap", "▤ Roadmap"],
-  ["chat", "◎ Chat"],
-  ["changes", "± Changes"],
-  ["memory", "◈ Memory"],
+  ["messages", "◈ Messages"],
+  ["chat", "◎ Session"],
 ];
 
 export function tabRow(p: Parts) {
@@ -43,7 +42,7 @@ function duration(min: number): string {
   return h ? `${h}h ${min % 60}m` : `${min}m`;
 }
 
-// The Chat tab: the run, the context by category as a bar, what this chat touched.
+// The Session tab (id "chat"): the run, the context by category as a bar, what this chat touched.
 export function chatTab(p: Parts) {
   const { Box, Text } = p.el;
   const c = p.chat;
@@ -114,71 +113,18 @@ export function chatTab(p: Parts) {
   );
 }
 
-// The Changes tab: git state, the changed files and the commits not live, with what acts on them.
-export function changesTab(p: Parts) {
-  const { Box, Text, Button } = p.el;
-  const g = p.git;
-  if (!g)
-    return (
-      <Text dimColor wrap="wrap">
-        {p.gitError ? `git: ${p.gitError}` : "Not a git repository."}
-      </Text>
-    );
-  const run = (key: string, label: string, command: string) => (
-    <Button key={key} label={label} onPress={() => p.act.run(command)} />
-  );
-  return (
-    <Box flexDirection="column" gap={1}>
-      <Box justifyContent="space-between" gap={2} flexWrap="wrap">
-        <Text>
-          <Text bold>{g.branch}</Text>
-          <Text dimColor>
-            {`  ${g.changed ? `${g.changed} changed` : "clean"}${g.unpushed ? ` · ${g.unpushed} not live` : ""}`}
-          </Text>
-        </Text>
-        <Box gap={1} flexWrap="wrap">
-          {g.changed && p.hasDiff ? run("changes-diff", "Diff", "diff") : null}
-          {g.changed ? run("changes-commit", "✓ Commit", "kit:commit") : null}
-          {g.unpushed ? run("changes-launch", "Launch", "kit:launch") : null}
-        </Box>
-      </Box>
-      {g.files.length ? (
-        <Box flexDirection="column">
-          <Text dimColor>Changed</Text>
-          {g.files.slice(0, 30).map((f) => (
-            <Text
-              key={`chg-${f}`}
-              wrap="truncate-start"
-            >{`  ${f.trim()}`}</Text>
-          ))}
-          {g.files.length > 30 ? (
-            <Text dimColor>{`  +${g.files.length - 30} more`}</Text>
-          ) : null}
-        </Box>
-      ) : null}
-      {g.commits.length ? (
-        <Box flexDirection="column">
-          <Text dimColor>Not live</Text>
-          {g.commits.map((line) => (
-            <Text key={`cmt-${line}`} wrap="truncate-end">{`  ${line}`}</Text>
-          ))}
-        </Box>
-      ) : null}
-    </Box>
-  );
-}
-
-// The Memory tab: this chat's latest messages, each with Remember, which asks the model to
+// The Messages tab: this chat's latest messages, each with Remember, which asks the model to
 // keep it as a project lesson in AGENTS.md (kit:lessons: only what qualifies, nothing else).
-export function memoryTab(p: Parts) {
+export function messagesTab(p: Parts) {
   const { Box, Text, Button } = p.el;
-  const recent = p.memory;
+  const recent = p.messages;
   if (!recent) return <Text dimColor>Reading this chat…</Text>;
   return (
     <Box flexDirection="column" gap={1}>
       <Text dimColor wrap="wrap">
-        Remember sends a message to /kit:lessons, which keeps it in AGENTS.md only when a later
-        session could not learn it from the code.
+        Pick a message to keep as a project lesson. Remember hands it to
+        /kit:lessons, which writes it to AGENTS.md only when a later session
+        could not learn it from the code.
       </Text>
       {recent.length ? (
         recent.map((m, i) => (

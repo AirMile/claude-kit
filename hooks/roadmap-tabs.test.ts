@@ -84,21 +84,10 @@ test("the Chat tab shows the run, the context by category and the cost", async (
   expect(await ui.find({ key: "brainstorm" })).toBeTruthy(); // the pad, under every tab
 });
 
-test("the Changes tab lists changed files and commits not live", async ($, on) => {
-  world(on);
-  const ui = await pane($);
-  await ui.press({ key: "tab-changes" });
-  const texts = (await ui.findAll({ type: "Text" })).map((t) => t.text).join("\n");
-  expect(texts).toContain("M hooks/a.ts");
-  expect(texts).toContain("?? hooks/b.ts");
-  expect(texts).toContain("abc1234 feat: one");
-  expect(await ui.find({ key: "changes-commit" })).toBeTruthy();
-});
-
-test("the Memory tab lists this chat newest first and Remember asks kit:lessons", async ($, on) => {
+test("the Messages tab lists this chat newest first and Remember asks kit:lessons", async ($, on) => {
   const sent = world(on);
   const ui = await pane($);
-  await ui.press({ key: "tab-memory" });
+  await ui.press({ key: "tab-messages" });
   const texts = (await ui.findAll({ type: "Text" })).map((t) => t.text).join("\n");
   expect(texts).toContain("The CSV has a BOM; strip it first.");
   expect(texts).not.toContain("skip me");
