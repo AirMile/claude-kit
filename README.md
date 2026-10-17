@@ -860,7 +860,7 @@ versions skip it. It never writes files.
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt, one line (it wraps when narrow): usage at the left
   (`ctx 114k  5h 55% · 2h 53m  7d 75% · 4d 3h`), then the run, `⎇ Git`, `⚖ Ask` and `▤`
-  (the dashboard; `▤ Close` closes it). Each opens a menu in its own block above the band.
+  (the dashboard; `▤ Close` closes it). Each opens a menu in its own block above the band: hover to peek, press to keep it open.
   **ctx**: **Compact** and **Clear**, run at once, or when the running turn ends. The run reads
   `Auto · Opus 5.5 · medium` while a profile picks model and effort, or just the model with Auto
   off (`⑂` and `♨` while Orchestrate and Keep cache are on); its menu holds **Auto** (Lean,
@@ -870,7 +870,7 @@ versions skip it. It never writes files.
   the engine lowers a level the model lacks. **Git**: **Commit** (runs `/kit:commit`), Diff,
   Pull, Push, PR, Branch. The effort shown is what kit set for the last prompt, which can differ
   from the session setting in the app's model picker.
-- **Second opinion**: the band's `⚖ Ask` opens a menu with a row per ask: **Opinion** (on
+- **Second opinion**: the band's `⚖ Ask` (hover or press) opens a menu with a row per ask: **Opinion** (on
   what the chat is working on), **Review** (of the current changes) and **Stuck** (a diagnosis
   of the bug the chat is stuck on). Each row holds the models; one press sends it. GPT (Sol 6.1,
   Astra 6) runs through Codex, read-only, as the GPT delegation section of your
