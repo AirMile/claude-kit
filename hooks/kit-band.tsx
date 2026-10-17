@@ -103,7 +103,7 @@ export function kitBand(on: On) {
     if (menu === "run") {
       const modes: Mode[] = [...PROFILES, "off"];
       body = (
-        <Box flexDirection="column" flexGrow={1}>
+        <Box flexDirection="column" flexGrow={1} gap={1}>
           {line(
             "Auto",
             modes.map((m) => (
@@ -142,7 +142,7 @@ export function kitBand(on: On) {
     } else if (menu === "effort") {
       const levels = ["default", ...EFFORTS] as const;
       body = (
-        <Box flexDirection="column" flexGrow={1}>
+        <Box flexDirection="column" flexGrow={1} gap={1}>
           {line(
             "Effort",
             levels.map((l) => (
@@ -162,7 +162,7 @@ export function kitBand(on: On) {
       );
     } else if (menu === "ctx") {
       body = (
-        <Box flexDirection="column" flexGrow={1}>
+        <Box flexDirection="column" flexGrow={1} gap={1}>
           {line("Context", [
             <Button
               key="kit-compact"
@@ -185,7 +185,7 @@ export function kitBand(on: On) {
       );
     } else if (menu === "git") {
       body = (
-        <Box flexDirection="column" flexGrow={1}>
+        <Box flexDirection="column" flexGrow={1} gap={1}>
           {line("Git", [
             <Button
               key="kit-git-Commit"
@@ -225,7 +225,7 @@ export function kitBand(on: On) {
         />
       );
       body = (
-        <Box flexDirection="column" flexGrow={1}>
+        <Box flexDirection="column" flexGrow={1} gap={1}>
           {ASKS.map((a) =>
             line(a, [
               ...GPT.map((g) => sendTo(a, g)),
@@ -292,7 +292,7 @@ export function kitBand(on: On) {
             />
             <Button
               key="kit-opinion"
-              label="⚖ Opinion"
+              label="⚖ Ask"
               onPress={() => unfold($, "opinion")}
             />
             <Button
