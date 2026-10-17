@@ -20,5 +20,9 @@
 - `$.clock.after`/`every` return a `{ cancel }` object, not a function. In tests, a bottom
   hook that resolves fires the timer at once; return a never-settling promise to hold it.
 - In tests, a bottom `session.measure` hook must return `{ changed }`, or it is skipped.
+- In tests, the test's `$` passed to a module function arrives `undefined`: drive the code
+  through `$.ui.mount` + `ui.press` or a command. A bottom `clock.after` returns
+  `{ value: undefined }` (a `{ cancel }` object is not plain data and the timer is refused).
+  Don't stub `ui.invalidate` around a mount: the mount redraws on it.
 - Typecheck with `npx -y -p typescript@5.6.3 tsc --noEmit -p .`; `claude plugin test` does not
   type-check (test inputs are partial by design, so ignore errors in `*.test.ts`).

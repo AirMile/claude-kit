@@ -18,13 +18,15 @@ import { isOrchestrating, setOrchestrating } from "./orchestrate";
 import { openRoadmap } from "./roadmap-open";
 import type { Usage } from "./roadmap-parts";
 import { PANE } from "./roadmap-view";
+import { type Ask, ASKS, askOpinion, GPT } from "./second-opinion";
 
 // The band above the prompt, top to bottom: an open menu (a bordered block), then context and
 // plan usage (register.tsx measures it after each turn) with what acts on the chat at its right:
 // compact (⇲) and clear (⌫), run at once. Below, in three groups:
 // the model main requests go to and its effort (▪ when locked), each opening only its own
 // menu (the profile from auto-model.ts; the models, then keep the context,
-// compact or clear; the effort's the levels, a pick locks it, Auto unlocks); /commit (✓) with a Git menu (⎇, git-menu.ts) and the dashboard pane (▤);
+// compact or clear; the effort's the levels, a pick locks it, Auto unlocks); /commit (✓) with a Git menu (⎇, git-menu.ts),
+// a second opinion (⚖, second-opinion.ts: Opinion or Review, then a GPT or Claude model) and the dashboard pane (▤);
 // orchestrate (⑂, orchestrate.ts) with keep cache (♨, keep-warm.ts). The plan-limit pause with
 // Resume now (limit-guard.ts) follows on its own line. Each icon carries a short word.
 // It yields to a survey. /band draws it again; /warm toggles keep warm.
@@ -36,9 +38,10 @@ export const bandCommand: CommandSpec = {
   immediate: true,
 };
 
-type Menu = "profile" | "model" | "effort" | "git" | "way";
+type Menu = "profile" | "model" | "effort" | "git" | "way" | "opinion";
 
 let menu: Menu | null = null; // the unfolded menu row
+let ask: Ask = "Opinion"; // what the second-opinion menu asks the model it sends to
 let usage: Usage[] = []; // context and plan limits, from register.tsx
 
 // Context and plan limits, as register.tsx measures them after each turn.
@@ -148,6 +151,43 @@ export function kitBand(on: On) {
           )}
         </Box>
       );
+    } else if (menu === "opinion") {
+      const sendTo = (who: string, label: string) => (
+        <Button
+          key={`kit-opinion-${who}`}
+          label={label}
+          onPress={() => {
+            done();
+            void askOpinion($, who, ask);
+          }}
+        />
+      );
+      body = (
+        <Box flexDirection="column" flexGrow={1}>
+          {line(
+            "Ask",
+            ASKS.map((a) => (
+              <Button
+                key={`kit-ask-${a}`}
+                label={a}
+                dimColor={ask !== a}
+                onPress={() => {
+                  ask = a;
+                  $.ui.invalidate("ui.render");
+                }}
+              />
+            )),
+          )}
+          {line(
+            "GPT",
+            GPT.map((g) => sendTo(g, g)),
+          )}
+          {line(
+            "Claude",
+            MODELS.map((m) => sendTo(m, displayName(m))),
+          )}
+        </Box>
+      );
     } else if (menu === "effort") {
       const levels = ["auto", ...EFFORTS] as const;
       body = (
@@ -160,7 +200,9 @@ export function kitBand(on: On) {
                 label={l === "auto" ? "Auto" : l}
                 dimColor={run.locked ? run.effort !== l : l !== "auto"}
                 onPress={() => {
-                  void setEffortLock($, l === "auto" ? undefined : l).then(done);
+                  void setEffortLock($, l === "auto" ? undefined : l).then(
+                    done,
+                  );
                 }}
               />
             )),
@@ -205,14 +247,17 @@ export function kitBand(on: On) {
             {close}
           </Box>
         ) : null}
-        <Box justifyContent="space-between" gap={2} flexWrap="wrap" marginBottom={1}>
+        <Box
+          justifyContent="space-between"
+          gap={2}
+          flexWrap="wrap"
+          marginBottom={1}
+        >
           <Box key="kit-usage" gap={3} flexWrap="wrap">
             {usage.map((u) => (
               <Text key={`kit-usage-${u.label}`}>
                 <Text dimColor>{`${u.label} `}</Text>
-                <Text bold>
-                  {u.value}
-                </Text>
+                <Text bold>{u.value}</Text>
                 {u.note ? <Text dimColor>{` · ${u.note}`}</Text> : null}
               </Text>
             ))}
@@ -266,10 +311,17 @@ export function kitBand(on: On) {
               onPress={() => unfold($, "git")}
             />
             <Button
+              key="kit-opinion"
+              label="⚖ Opinion"
+              onPress={() => unfold($, "opinion")}
+            />
+            <Button
               key="kit-roadmap"
               label={isOpen ? "▤ Close dashboard" : "▤ Dashboard"}
               onPress={() => {
-                const toggle = isOpen ? $.ui.close({ id: PANE }) : openRoadmap($);
+                const toggle = isOpen
+                  ? $.ui.close({ id: PANE })
+                  : openRoadmap($);
                 void toggle.then(() => $.ui.invalidate("ui.render"));
               }}
             />
