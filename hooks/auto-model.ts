@@ -26,7 +26,6 @@ import {
   dropSwitch,
   effortLock,
   override,
-  reset,
   restoreSwitch,
   running,
   switchTo,
@@ -39,10 +38,8 @@ import { isOrchestrating, orchestrateNote } from "./orchestrate";
 //   before the prompt is sent; when it differs from the session's, the user is asked to
 //   switch or stay, and a switch rewrites every main request;
 // - every prompt picks the effort (a short reply like "ja" keeps the kind of work it continues);
-//   a later prompt that needs a stronger model than the one running escalates (model-policy.ts
-//   `escalation`): one tier short it runs at the stretch effort, further short the user picks:
-//   switch now (light context only), compact or clear and then switch and send it again, or
-//   stay at the stretch effort (not asked again this chat);
+//   the model stays for the whole chat: a later prompt that needs a stronger model than the one
+//   running runs at the stretch effort (model-policy.ts `escalation`), never a switch;
 // - a subagent the engine defines gets its own model and effort for its task, unless its Agent
 //   call asked for an effort (agent-effort.ts).
 // The profile (lean, balanced, quality, off) is kept in $.store across sessions, a switch per
@@ -61,7 +58,6 @@ const CLASSIFY_CHARS = 4000;
 
 let mode: Mode | undefined; // read from $.store on first use
 let decided = false; // the session's model question was settled
-let stayed = false; // the user chose to stay on a weaker model: no more asking this chat
 let effort: Effort | undefined; // the effort for the current prompt's requests
 let lastKind: Kind | undefined; // the kind of work the last typed prompt ran as
 const agentEffort = new Map<string, Effort>(); // subagent id → its effort
@@ -115,75 +111,13 @@ async function showStatus($: EngineInterface) {
   $.ui.invalidate("ui.render");
 }
 
-type Way = "now" | "compact" | "clear" | "stay";
-
-// A later prompt that needs `want`, above the model running. One tier short, or after the user
-// chose to stay, it runs at the stretch effort; further short the user picks how to go on. Returns
-// why the prompt is held when a clear or compact runs first and sends it again.
-async function escalate(
-  $: EngineInterface,
-  text: string,
-  want: string,
-  mayAsk: boolean,
-): Promise<string | undefined> {
+// A later prompt that needs `want`, above the model running: the chat keeps its model (a switch
+// mid-chat reads the whole chat again without the cache) and runs it at the stretch effort.
+async function escalate($: EngineInterface, want: string) {
   const have = await running($);
   const usage = await $.session.usage().catch(() => undefined);
-  const step = escalation(have, want, usage?.context?.percent);
-  if (step.step === "none") return undefined;
-  if (step.step === "effort" || stayed || !mayAsk) {
+  if (escalation(have, want, usage?.context?.percent).step !== "none")
     effort = stretch(have);
-    return undefined;
-  }
-  const to = displayName(step.want);
-  const from = displayName(have);
-  const ways = new Map<string, Way>();
-  if (step.switchNow) ways.set(`Switch to ${to} now`, "now");
-  ways.set(`Compact, then ${to}`, "compact");
-  ways.set(`Clear, then ${to}`, "clear");
-  ways.set(`Stay on ${from} at ${stretch(have)} effort`, "stay");
-  const answer = await $.ui
-    .ask(`This prompt needs ${to}; ${from} is running. How to go on?`, {
-      header: "Model",
-      options: [...ways.keys()],
-    })
-    .catch(() => undefined);
-  const way = (answer !== undefined && ways.get(answer)) || "stay";
-  if (way === "now") {
-    await switchTo($, step.want);
-    return undefined;
-  }
-  if (way === "stay") {
-    stayed = true;
-    effort = stretch(have);
-    return undefined;
-  }
-  const level = effort;
-  // Outside the hook: a clear or compact rejects inside the hook the prompt waits on.
-  $.clock.after(300, () => resend($, way, step.want, text, level));
-  return `kit: ${way === "clear" ? "clearing" : "compacting"}, then ${to} runs your prompt`;
-}
-
-// Clears or compacts, switches to `want` and sends the held prompt again. On a failure the
-// prompt goes back into the input box, so nothing typed is lost.
-async function resend(
-  $: EngineInterface,
-  way: "compact" | "clear",
-  want: string,
-  text: string,
-  level: Effort | undefined,
-) {
-  if (!(await reset($, way))) {
-    await $.prompt.fill({ text }).catch(() => {}); // the prompt is back in the input box
-    return;
-  }
-  decided = true;
-  await switchTo($, want);
-  effort = level;
-  await showStatus($);
-  await $.prompt.submit({ text, asUser: true }).catch(async (err) => {
-    $.ui.toast(`kit: could not send your prompt (${String(err)})`);
-    await $.prompt.fill({ text }).catch(() => {});
-  });
 }
 
 export function autoModel(on: On) {
@@ -195,7 +129,6 @@ export function autoModel(on: On) {
       const started = await next(e);
       if (e.agent_type) return started;
       decided = false;
-      stayed = false;
       dropSwitch(true); // a new chat: nothing stored to pick up
       effort = undefined;
       lastKind = undefined;
@@ -222,20 +155,15 @@ export function autoModel(on: On) {
       lastKind = ran;
       const p = pick(now, ran);
       if (await restoreSwitch($)) decided = true; // a reload kept the switch
-      let asked = false;
       if (!decided) {
         decided = true;
         // An orchestrator keeps its model: handing work off is what makes it cheaper.
-        asked = !orchestrating && (await askFirstModel($, p.model));
+        if (!orchestrating) await askFirstModel($, p.model);
       }
       effort = p.effort;
-      // The first prompt's question just settled the model: no second one for it.
-      const parked = await escalate($, e.text, p.model, !asked);
+      // A model weaker than the pick (kept from the first prompt) runs at the stretch effort.
+      await escalate($, p.model);
       await showStatus($);
-      if (parked) {
-        $.ui.toast(parked, { timeoutMs: 10_000 });
-        return { drop: parked };
-      }
     }
     // Orchestrate (the band's ⑂): a note for this kind of work rides along with the prompt.
     const note = orchestrating ? orchestrateNote(kind) : undefined;
