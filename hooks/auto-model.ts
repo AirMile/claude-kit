@@ -10,6 +10,7 @@ import {
   displayName,
   type Effort,
   escalation,
+  family,
   isMode,
   type Kind,
   kindOfLabel,
@@ -26,6 +27,7 @@ import {
   dropSwitch,
   effortLock,
   override,
+  reset,
   restoreSwitch,
   running,
   switchTo,
@@ -38,8 +40,8 @@ import { isOrchestrating, orchestrateNote } from "./orchestrate";
 //   before the prompt is sent; when it differs from the session's, the user is asked to
 //   switch or stay, and a switch rewrites every main request;
 // - every prompt picks the effort (a short reply like "ja" keeps the kind of work it continues);
-//   the model stays for the whole chat: a later prompt that needs a stronger model than the one
-//   running runs at the stretch effort (model-policy.ts `escalation`), never a switch;
+//   a later prompt that needs a stronger model than the one running escalates (model-policy.ts
+//   `escalation`, `escalate` below): never a switch without asking;
 // - a subagent the engine defines gets its own model and effort for its task, unless its Agent
 //   call asked for an effort (agent-effort.ts).
 // The profile (lean, balanced, quality, off) is kept in $.store across sessions, a switch per
@@ -58,6 +60,8 @@ const CLASSIFY_CHARS = 4000;
 
 let mode: Mode | undefined; // read from $.store on first use
 let decided = false; // the session's model question was settled
+let kept: "agent" | "stay" | undefined; // how this chat goes on when a prompt needs a far stronger model
+let escalated: string | undefined; // the subagent note for the prompt being sent
 let effort: Effort | undefined; // the effort for the current prompt's requests
 let lastKind: Kind | undefined; // the kind of work the last typed prompt ran as
 const agentEffort = new Map<string, Effort>(); // subagent id → its effort
@@ -111,13 +115,88 @@ async function showStatus($: EngineInterface) {
   $.ui.invalidate("ui.render");
 }
 
-// A later prompt that needs `want`, above the model running: the chat keeps its model (a switch
-// mid-chat reads the whole chat again without the cache) and runs it at the stretch effort.
-async function escalate($: EngineInterface, want: string) {
+type Way = "agent" | "now" | "compact" | "clear" | "stay";
+
+// What a later prompt that needs `want`, above the model running, does. One tier short it runs at
+// the stretch effort. Further short the user picks: a subagent on `want` for the hard part (the
+// chat keeps its model and cache), switch now (light context only: a switch reads the whole
+// chat again without the cache), compact or clear and then switch and send it again, or stay at
+// the stretch effort. A subagent or stay holds for the rest of the chat, without asking again.
+// Returns why the prompt is held (`drop`) or a note that rides along with it.
+async function escalate(
+  $: EngineInterface,
+  text: string,
+  want: string,
+  mayAsk: boolean,
+): Promise<{ drop?: string; note?: string }> {
   const have = await running($);
   const usage = await $.session.usage().catch(() => undefined);
-  if (escalation(have, want, usage?.context?.percent).step !== "none")
+  const step = escalation(have, want, usage?.context?.percent);
+  if (step.step === "none") return {};
+  if (step.step === "effort" || kept === "stay" || !mayAsk) {
     effort = stretch(have);
+    return {};
+  }
+  const to = displayName(step.want);
+  const from = displayName(have);
+  const note = `kit: this prompt needs ${to}; ${from} runs this chat. Hand its hard part (the diagnosis, the design, the tricky change) to a subagent with the Agent tool, model "${family(step.want)}": give it the goal, the constraints and the relevant files, then carry out its answer here. Do the rest yourself.`;
+  if (kept === "agent") return { note };
+  const ways = new Map<string, Way>();
+  ways.set(`Ask a ${to} subagent (Recommended)`, "agent");
+  // A question holds four options: with a light context a switch now beats compacting first.
+  if (step.switchNow) ways.set(`Switch to ${to} now`, "now");
+  else ways.set(`Compact, then ${to}`, "compact");
+  ways.set(`Clear, then ${to}`, "clear");
+  ways.set(`Stay on ${from} at ${stretch(have)} effort`, "stay");
+  const answer = await $.ui
+    .ask(`This prompt needs ${to}; ${from} is running. How to go on?`, {
+      header: "Model",
+      options: [...ways.keys()],
+    })
+    .catch(() => undefined);
+  const way = (answer !== undefined && ways.get(answer)) || "stay";
+  if (way === "agent") {
+    kept = "agent";
+    return { note };
+  }
+  if (way === "now") {
+    await switchTo($, step.want);
+    return {};
+  }
+  if (way === "stay") {
+    kept = "stay";
+    effort = stretch(have);
+    return {};
+  }
+  const level = effort;
+  // Outside the hook: a clear or compact rejects inside the hook the prompt waits on.
+  $.clock.after(300, () => resend($, way, step.want, text, level));
+  return {
+    drop: `kit: ${way === "clear" ? "clearing" : "compacting"}, then ${to} runs your prompt`,
+  };
+}
+
+// Clears or compacts, switches to `want` and sends the held prompt again. On a failure the
+// prompt goes back into the input box, so nothing typed is lost.
+async function resend(
+  $: EngineInterface,
+  way: "compact" | "clear",
+  want: string,
+  text: string,
+  level: Effort | undefined,
+) {
+  if (!(await reset($, way))) {
+    await $.prompt.fill({ text }).catch(() => {}); // the prompt is back in the input box
+    return;
+  }
+  decided = true;
+  await switchTo($, want);
+  effort = level;
+  await showStatus($);
+  await $.prompt.submit({ text, asUser: true }).catch(async (err) => {
+    $.ui.toast(`kit: could not send your prompt (${String(err)})`);
+    await $.prompt.fill({ text }).catch(() => {});
+  });
 }
 
 export function autoModel(on: On) {
@@ -129,6 +208,7 @@ export function autoModel(on: On) {
       const started = await next(e);
       if (e.agent_type) return started;
       decided = false;
+      kept = undefined;
       dropSwitch(true); // a new chat: nothing stored to pick up
       effort = undefined;
       lastKind = undefined;
@@ -155,19 +235,31 @@ export function autoModel(on: On) {
       lastKind = ran;
       const p = pick(now, ran);
       if (await restoreSwitch($)) decided = true; // a reload kept the switch
+      let asked = false;
       if (!decided) {
         decided = true;
         // An orchestrator keeps its model: handing work off is what makes it cheaper.
-        if (!orchestrating) await askFirstModel($, p.model);
+        asked = !orchestrating && (await askFirstModel($, p.model));
       }
       effort = p.effort;
-      // A model weaker than the pick (kept from the first prompt) runs at the stretch effort.
-      await escalate($, p.model);
+      // The first prompt's question just settled the model: no second one for it.
+      const step = await escalate($, e.text, p.model, !asked);
       await showStatus($);
+      if (step.drop) {
+        $.ui.toast(step.drop, { timeoutMs: 10_000 });
+        return { drop: step.drop };
+      }
+      if (step.note) escalated = step.note;
     }
     // Orchestrate (the band's ⑂): a note for this kind of work rides along with the prompt.
-    const note = orchestrating ? orchestrateNote(kind) : undefined;
-    return next(note ? { ...e, context: [...(e.context ?? []), note] } : e);
+    const notes = [
+      escalated,
+      orchestrating ? orchestrateNote(kind) : undefined,
+    ].filter((n): n is string => n !== undefined);
+    escalated = undefined;
+    return next(
+      notes.length ? { ...e, context: [...(e.context ?? []), ...notes] } : e,
+    );
   });
 
   // A streaming event: the hook is a generator that forwards the chunks beneath.

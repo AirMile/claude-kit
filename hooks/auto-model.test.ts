@@ -112,18 +112,61 @@ test("a new chat after /clear asks again; a resume does not", async ($, on) => {
   expect(w.asked.length).toBe(2);
 });
 
-test("mid-chat the model stays: a heavier prompt neither asks nor switches", async ($, on) => {
+test("two tiers short asks; a subagent keeps the model and rides along as a note", async ($, on) => {
   const w = world(on, {
     model: "claude-haiku-5-5",
     label: HEAVY,
     turns: 5,
     percent: 10,
-    answer: "Switch to Opus 5.5 now",
+    answer: "Ask a Opus 5.5 subagent (Recommended)",
   });
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
-  expect(w.asked).toEqual([]);
-  expect(w.sent.map((s) => s.text)).toEqual(["refactor the auth layer"]);
+  await $.prompt.submit({ text: "and the billing layer", origin: TYPED });
+  expect(w.asked.length).toBe(1); // the choice holds for the chat
+  expect(w.offered[0]).toContain("Switch to Opus 5.5 now");
   expect(w.store.switches).toBeUndefined();
+  expect(w.sent.map((s) => s.text)).toEqual([
+    "refactor the auth layer",
+    "and the billing layer",
+  ]);
+  for (const s of w.sent)
+    expect(String(s.context)).toContain('model "opus"');
+});
+
+test("a full context offers no switch now; staying is not asked again", async ($, on) => {
+  const w = world(on, {
+    model: "claude-haiku-5-5",
+    label: HEAVY,
+    turns: 5,
+    percent: 60,
+    answer: "Stay on Haiku 5.5 at high effort",
+  });
+  await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
+  await $.prompt.submit({ text: "and the billing layer", origin: TYPED });
+  expect(w.asked.length).toBe(1);
+  expect(w.offered[0]).not.toContain("now");
+  expect(w.sent.length).toBe(2);
+});
+
+test("clear, then switch: the prompt is held, the chat cleared, and sent again", async ($, on) => {
+  const w = world(on, {
+    model: "claude-haiku-5-5",
+    label: HEAVY,
+    turns: 5,
+    percent: 60,
+    answer: "Clear, then Opus 5.5",
+  });
+  const r = await $.prompt.submit({
+    text: "refactor the auth layer",
+    origin: TYPED,
+  });
+  expect(String((r as { drop?: string }).drop)).toContain("clearing");
+  await settle();
+  expect(w.cleared).toEqual(["clear"]);
+  expect(w.sent.map((s) => s.text)).toEqual(["refactor the auth layer"]);
+  expect(w.store.switches).toEqual({
+    s1: { chosen: "claude-opus-5-5", base: "claude-haiku-5-5" },
+  });
 });
 
 test("one tier short runs without a question", async ($, on) => {

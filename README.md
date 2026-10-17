@@ -898,10 +898,14 @@ versions skip it. It never writes files.
   before it is sent: when it differs from the session's, you are asked to switch or stay (a switch sends every request to that model; the model picker keeps
   showing the old one, the band shows the real one with the effort, e.g. `Opus 5.5 · medium`; picking another
   model with `/model` ends the switch; a switch is kept per session over a restart). Every
-  prompt sets the effort, unless one is locked. The model then stays for the whole chat: a later prompt that needs a
-  stronger one runs on it at xhigh (Haiku: high, since Haiku's xhigh can end a turn with no
-  answer; never max, which costs up to 3 times xhigh for no better coding), never a switch,
-  which would read the whole chat again without the cache. Subagents get their own: `Explore` as question work, `kit:verifier` as planning work
+  prompt sets the effort, unless one is locked. The model is never switched without asking: a later prompt that
+  needs a stronger one runs one tier short (Sonnet for Opus work) at xhigh (Haiku: high, since
+  Haiku's xhigh can end a turn with no answer; never max, which costs up to 3 times xhigh for no
+  better coding). Two or more short you pick: a subagent on the stronger model for the hard part
+  (recommended: the chat keeps its model, context and cache; the choice holds for the chat),
+  switch now (only below 30% context, since a switch reads the whole chat again without the
+  cache; otherwise compact, then switch), clear and then switch (the prompt is sent again), or
+  stay at that effort (not asked again in that chat). Subagents get their own: `Explore` as question work, `kit:verifier` as planning work
   (a review: effort high, its model is its own), other built-in agents classified on their
   task. An explicit `model` or `effort` on the Agent call is kept.
 
