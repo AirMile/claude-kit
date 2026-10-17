@@ -80,8 +80,8 @@ async function refresh($: EngineInterface, figures?: Figures) {
     },
   ];
   for (const [kind, label] of [
-    ["five_hour", "session"],
-    ["seven_day", "week"],
+    ["five_hour", "5h"],
+    ["seven_day", "7d"],
   ] as const) {
     const rl = usage.rateLimits.find((r) => r.kind === kind);
     if (rl)

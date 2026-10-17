@@ -205,11 +205,11 @@ test("an effort picked in the band is locked until Auto unlocks it", async ($, o
     drawn: true,
   });
   const ui = await band($, on);
-  await ui.press({ key: "kit-effort" });
+  await ui.press({ key: "kit-run" });
   await ui.press({ key: "kit-effort-high" });
   expect(w.store.effortLock).toBe("high");
-  expect((await ui.find({ key: "kit-effort" }))?.text).toBe("high ▪");
-  await ui.press({ key: "kit-effort" });
+  expect((await ui.find({ key: "kit-run" }))?.text).toBe("Haiku 5.5 · high ▪");
+  await ui.press({ key: "kit-run" });
   await ui.press({ key: "kit-effort-auto" });
   expect(w.store.effortLock).toBe(undefined);
 });
@@ -223,7 +223,8 @@ test("a thin reply keeps the effort of the work it continues", async ($, on) => 
     drawn: true,
   });
   const ui = await band($, on);
-  const shown = async () => (await ui.find({ key: "kit-effort" }))?.text;
+  const shown = async () =>
+    (await ui.find({ key: "kit-run" }))?.text?.split(" · ")[1];
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
   expect(await shown()).toBe("xhigh");
   await $.prompt.submit({ text: "ja", origin: TYPED });
@@ -239,9 +240,9 @@ test("/build runs at high, a plain heavy prompt at xhigh", async ($, on) => {
   world(on, { model: "claude-opus-5-5", label: HEAVY, turns: 5, drawn: true });
   const ui = await band($, on);
   await $.prompt.submit({ text: "/build login-form", origin: TYPED });
-  expect((await ui.find({ key: "kit-effort" }))?.text).toBe("high");
+  expect((await ui.find({ key: "kit-run" }))?.text).toBe("Opus 5.5 · high");
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
-  expect((await ui.find({ key: "kit-effort" }))?.text).toBe("xhigh");
+  expect((await ui.find({ key: "kit-run" }))?.text).toBe("Opus 5.5 · xhigh");
 });
 
 test("the band's model switch clears first when asked, and keeps the switch", async ($, on) => {
@@ -252,7 +253,7 @@ test("the band's model switch clears first when asked, and keeps the switch", as
     drawn: true,
   });
   const ui = await band($, on);
-  await ui.press({ key: "kit-model" });
+  await ui.press({ key: "kit-run" });
   await ui.press({ key: "kit-model-claude-opus-5-5" });
   await ui.press({ key: "kit-way-clear" });
   await settle();
@@ -260,22 +261,23 @@ test("the band's model switch clears first when asked, and keeps the switch", as
   expect(w.store.switches).toEqual({
     s1: { chosen: "claude-opus-5-5", base: "claude-haiku-5-5" },
   });
-  expect((await ui.find({ key: "kit-model" }))?.text).toContain("Opus 5.5");
+  expect((await ui.find({ key: "kit-run" }))?.text).toContain("Opus 5.5");
 });
 
-test("clear in the band clears at once, just after the press", async ($, on) => {
+test("clear behind the band's context figure clears just after the press", async ($, on) => {
   const w = world(on, {
     model: "claude-haiku-5-5",
     label: QUESTION,
     drawn: true,
   });
   const ui = await band($, on);
+  await ui.press({ key: "kit-ctx" });
   await ui.press({ key: "kit-clear" });
   await settle();
   expect(w.cleared).toEqual(["clear"]);
 });
 
-test("Commit in the band starts /kit:commit", async ($, on) => {
+test("Commit, first in the band's Git menu, starts /kit:commit", async ($, on) => {
   world(on, { model: "claude-haiku-5-5", label: QUESTION, drawn: true });
   const ran: string[] = [];
   on("command.run", { command: "kit:commit" }, async () => {
@@ -283,7 +285,8 @@ test("Commit in the band starts /kit:commit", async ($, on) => {
     return { text: "" };
   });
   const ui = await band($, on);
-  await ui.press({ key: "kit-commit" });
+  await ui.press({ key: "kit-git" });
+  await ui.press({ key: "kit-git-Commit" });
   expect(ran).toEqual(["kit:commit"]);
 });
 
@@ -329,13 +332,15 @@ test("without Orchestrate a prompt carries no note", async ($, on) => {
   expect(w.sent[0]?.context ?? []).toEqual([]);
 });
 
-test("the band's Orchestrate button turns it on and keeps it", async ($, on) => {
+test("Orchestrate in the band's run menu turns it on and marks the run", async ($, on) => {
   const w = world(on, {
     model: "claude-opus-5-5",
     label: QUESTION,
     drawn: true,
   });
   const ui = await band($, on);
+  await ui.press({ key: "kit-run" });
   await ui.press({ key: "kit-orchestrate" });
   expect(w.store.orchestrate).toBe(true);
+  expect((await ui.find({ key: "kit-run" }))?.text).toContain("⑂");
 });

@@ -858,15 +858,17 @@ versions skip it. It never writes files.
   disk, not from the summary, so it is always right.
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
-- **The band** above the prompt, two lines. On top, usage (`ctx 114k   session 55% · 2h 53m
-week 75% · 4d 3h`) with, at the right, `⇲ Compact`, `⌫ Clear` and `▤ Dashboard` (`▤ Close
-dashboard` closes it); Compact and Clear run at once, or when the running turn ends. Below,
-  `◆ Opus 5.5 · medium` (the model requests go to and their effort, `▪` when locked), `✓ Commit`
-  (runs `/kit:commit`), `⑂ Orchestrate` and `♨ Keep cache`. ◆ opens a menu in its own block
-  above the band: **Profile**, **Model** (then **Keep context**, **Compact** or **Clear**
-  before the switch) and **Effort** (a pick locks it until **Auto**, over new chats and
-  restarts; the engine lowers a level the model lacks). The effort shown is what kit set for
-  the last prompt, which can differ from the session setting in the app's model picker.
+- **The band** above the prompt, one line (it wraps when narrow): usage at the left
+  (`ctx 114k  5h 55% ↻2h 53m  7d 75% ↻4d 3h`), then `Opus 5.5 · medium`, `⎇ Git`, `⚖ Opinion`
+  and `▤` (the dashboard; `▤ Close` closes it). Each opens a menu in its own block above the
+  band. **ctx**: **Compact** and **Clear**, run at once, or when the running turn ends. The
+  run (the model requests go to and their effort; `▪` when the effort is locked, `⑂` and `♨`
+  while Orchestrate and Keep cache are on): **Model** (then **Keep context**, **Compact** or
+  **Clear** before the switch), **Profile**, **Effort** (a pick locks it until **Auto**, over
+  new chats and restarts; the engine lowers a level the model lacks) and **Mode** (the
+  Orchestrate and Keep cache toggles). **Git**: **Commit** (runs `/kit:commit`), Diff, Pull,
+  Push, PR, Branch. The effort shown is what kit set for the last prompt, which can differ from
+  the session setting in the app's model picker.
 - **Second opinion**: the band's `⚖ Opinion` opens a menu with a row per ask: **Opinion** (on
   what the chat is working on), **Review** (of the current changes) and **Stuck** (a diagnosis
   of the bug the chat is stuck on). Each row holds the models; one press sends it. GPT (Sol 6.1,
@@ -912,7 +914,7 @@ dashboard` closes it); Compact and Clear run at once, or when the running turn e
   band shows `paused until 14:05`, and **Resume now** ends the pause by hand. The prompt
   cache is kept warm meanwhile (see Keep warm), only when the reset is under 5 hours away:
   further out, a cold start is cheaper. At the reset a cut-off turn continues by itself.
-- **Orchestrate**: the band's `⑂ Orchestrate` (off by default, kept across sessions) makes
+- **Orchestrate**: `⑂ Orchestrate` in the band's run menu (off by default, kept across sessions) makes
   this chat the orchestrator. Each typed prompt carries a note by its kind of work: a question
   none; routine work stays here unless it means searching many files (then an Explore
   subagent); planning sends the research to subagents and keeps the decision here; heavy work
@@ -920,15 +922,14 @@ dashboard` closes it); Compact and Clear run at once, or when the running turn e
   with this chat coordinating and verifying. Every note says to keep work here when it depends
   on this conversation, is small or needs your answers: a subagent starts cold and reads again.
   It works with the profile off too.
-- **Keep warm**: the band's `♨ Keep cache` button (or `/warm`, `/warm on|off`) keeps a long
+- **Keep warm**: `♨ Keep cache` in the band's run menu (or `/warm`, `/warm on|off`) keeps a long
   chat's prompt cache alive while you are away. After 50 idle minutes (the cache lives an
   hour) a tiny request, a fork of the chat that replies "ok", reads the cached context again
   and so renews it. Not free: each ping costs a cache read of the whole context, far less
   than rebuilding the cache, but it counts toward your limits. A failed ping turns it off.
 - **`/band`** draws the band above the prompt again; folded (`[+]`)? `ctrl+x ctrl+a` unfolds it.
-- **Usage**: `ctx 114k   session 55% · 2h 53m   week 75% · 4d 3h` on the band's top line,
-  each limit with the time until it resets (amber from 60%, red from 85%); updated after
-  every turn.
+- **Usage**: `ctx 114k  5h 55% ↻2h 53m  7d 75% ↻4d 3h` at the band's left: context, then the
+  5-hour and 7-day limits, each with the time until it resets (`↻`); updated after every turn.
 
 **Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
 columns, above the prompt otherwise):
@@ -941,7 +942,7 @@ columns, above the prompt otherwise):
   category as a bar like `/context`, the files this chat wrote or edited and the subagents it
   ran, counted since the mod loaded; a `/clear` starts over). A draft
   (plan mode) shows the roadmap alone. It never
-  opens by itself: the band's **▤ Dashboard** button opens it (in any project), `/product`
+  opens by itself: the band's **▤** button opens it (in any project), `/product`
   opens it too, and so does `/panel`. The Roadmap tab shows `docs/roadmap.md` live (below), or
   **Make a roadmap** (`/product`) without one. At the bottom of the pane, under every tab, in
   its own block, the **pad** (docked, at the bottom of the screen while the tab is shorter;

@@ -12,6 +12,7 @@ import {
   type Mode,
   PROFILES,
   profileName,
+  runLine,
 } from "./model-policy";
 import { reset, setEffortLock } from "./model-switch";
 import { isOrchestrating, setOrchestrating } from "./orchestrate";
@@ -27,25 +28,25 @@ import {
   whoName,
 } from "./second-opinion";
 
-// The band above the prompt, top to bottom: an open menu (a bordered block), then context and
-// plan usage (register.tsx measures it after each turn) with what acts on the chat at its right:
-// compact (⇲) and clear (⌫), run at once. Below, in three groups:
-// the model main requests go to and its effort (▪ when locked), each opening only its own
-// menu (the profile from auto-model.ts; the models, then keep the context,
-// compact or clear; the effort's the levels, a pick locks it, Auto unlocks); /commit (✓) with a Git menu (⎇, git-menu.ts),
-// a second opinion (⚖, second-opinion.ts: a row per Opinion, Review, Stuck, a press per model) and the dashboard pane (▤);
-// orchestrate (⑂, orchestrate.ts) with keep cache (♨, keep-warm.ts). The plan-limit pause with
-// Resume now (limit-guard.ts) follows on its own line. Each icon carries a short word.
+// The band above the prompt, one line that wraps when narrow, an open menu (a bordered block)
+// above it. Left: context and plan usage (register.tsx measures it after each turn); the
+// context figure is a button opening Compact and Clear, run just after the press. Right: the run
+// (model · effort, ▪ when the effort is locked, ⑂ and ♨ while orchestrate and keep cache are
+// on) opening Model (then keep the context, compact or clear), Profile (auto-model.ts), Effort
+// (a pick locks it, Auto unlocks) and the Orchestrate (orchestrate.ts) and Keep cache
+// (keep-warm.ts) toggles; Git (⎇, git-menu.ts) with /commit first; a second opinion (⚖,
+// second-opinion.ts: a row per Opinion, Review, Stuck, a press per model); the dashboard pane
+// (▤). The plan-limit pause with Resume now (limit-guard.ts) follows on its own line.
 // It yields to a survey. /band draws it again; /warm toggles keep warm.
 
 export const bandCommand: CommandSpec = {
   name: "band",
   description:
-    "Show kit's band above the prompt (profile, model, effort, compact, clear, roadmap)",
+    "Show kit's band above the prompt (usage, run, git, second opinion, dashboard)",
   immediate: true,
 };
 
-type Menu = "profile" | "model" | "effort" | "git" | "way" | "opinion";
+type Menu = "run" | "ctx" | "git" | "way" | "opinion";
 
 let menu: Menu | null = null; // the unfolded menu row
 let usage: Usage[] = []; // context and plan limits, from register.tsx
@@ -82,6 +83,8 @@ export function kitBand(on: On) {
     const warm = isWarm();
     const orch = await isOrchestrating($);
     const warmed = warmInfo();
+    const ctx = usage.find((u) => u.label === "ctx");
+    const meters = usage.filter((u) => u !== ctx);
     const done = () => unfold($, null);
     const close = (
       <Button key="kit-menu-close" label="×" dimColor onPress={done} />
@@ -100,26 +103,9 @@ export function kitBand(on: On) {
     );
 
     let body = null;
-    if (menu === "profile") {
+    if (menu === "run") {
       const modes: Mode[] = [...PROFILES, "off"];
-      body = (
-        <Box flexDirection="column" flexGrow={1}>
-          {line(
-            "Profile",
-            modes.map((m) => (
-              <Button
-                key={`kit-mode-${m}`}
-                label={profileName(m)}
-                dimColor={now !== m}
-                onPress={() => {
-                  void setMode($, m).then(done);
-                }}
-              />
-            )),
-          )}
-        </Box>
-      );
-    } else if (menu === "model") {
+      const levels = ["auto", ...EFFORTS] as const;
       body = (
         <Box flexDirection="column" flexGrow={1}>
           {line(
@@ -137,14 +123,96 @@ export function kitBand(on: On) {
               />
             )),
           )}
+          {line(
+            "Profile",
+            modes.map((m) => (
+              <Button
+                key={`kit-mode-${m}`}
+                label={profileName(m)}
+                dimColor={now !== m}
+                onPress={() => {
+                  void setMode($, m).then(done);
+                }}
+              />
+            )),
+          )}
+          {line(
+            "Effort",
+            levels.map((l) => (
+              <Button
+                key={`kit-effort-${l}`}
+                label={l === "auto" ? "Auto" : l}
+                dimColor={run.locked ? run.effort !== l : l !== "auto"}
+                onPress={() => {
+                  void setEffortLock($, l === "auto" ? undefined : l).then(
+                    done,
+                  );
+                }}
+              />
+            )),
+          )}
+          {line("Mode", [
+            <Button
+              key="kit-orchestrate"
+              label="⑂ Orchestrate"
+              dimColor={!orch}
+              onPress={() => {
+                void setOrchestrating($, !orch).then(() =>
+                  $.ui.invalidate("ui.render"),
+                );
+              }}
+            />,
+            <Button
+              key="kit-warm"
+              label="♨ Keep cache"
+              dimColor={!warm}
+              onPress={() => {
+                void setWarm($, !warm);
+              }}
+            />,
+          ])}
+        </Box>
+      );
+    } else if (menu === "ctx") {
+      body = (
+        <Box flexDirection="column" flexGrow={1}>
+          {line("Context", [
+            <Button
+              key="kit-compact"
+              label="⇲ Compact"
+              onPress={() => {
+                done();
+                soon($, () => reset($, "compact"));
+              }}
+            />,
+            <Button
+              key="kit-clear"
+              label="⌫ Clear"
+              onPress={() => {
+                done();
+                soon($, () => reset($, "clear"));
+              }}
+            />,
+          ])}
         </Box>
       );
     } else if (menu === "git") {
       body = (
         <Box flexDirection="column" flexGrow={1}>
-          {line(
-            "Git",
-            GIT_ITEMS.map((g) => (
+          {line("Git", [
+            <Button
+              key="kit-git-Commit"
+              label="✓ Commit"
+              onPress={() => {
+                done();
+                void $.command
+                  .run({ command: "kit:commit" })
+                  .catch((err) =>
+                    $.ui.toast(`kit: could not start /commit: ${String(err)}`),
+                  );
+              }}
+            />,
+            ...GIT_ITEMS.map((g) => (
               <Button
                 key={`kit-git-${g}`}
                 label={g}
@@ -154,7 +222,7 @@ export function kitBand(on: On) {
                 }}
               />
             )),
-          )}
+          ])}
         </Box>
       );
     } else if (menu === "opinion") {
@@ -179,27 +247,6 @@ export function kitBand(on: On) {
               </Text>,
               ...CLAUDE.map((c) => sendTo(a, c)),
             ]),
-          )}
-        </Box>
-      );
-    } else if (menu === "effort") {
-      const levels = ["auto", ...EFFORTS] as const;
-      body = (
-        <Box flexDirection="column" flexGrow={1}>
-          {line(
-            "Effort",
-            levels.map((l) => (
-              <Button
-                key={`kit-effort-${l}`}
-                label={l === "auto" ? "Auto" : l}
-                dimColor={run.locked ? run.effort !== l : l !== "auto"}
-                onPress={() => {
-                  void setEffortLock($, l === "auto" ? undefined : l).then(
-                    done,
-                  );
-                }}
-              />
-            )),
           )}
         </Box>
       );
@@ -241,63 +288,28 @@ export function kitBand(on: On) {
             {close}
           </Box>
         ) : null}
-        <Box
-          justifyContent="space-between"
-          gap={2}
-          flexWrap="wrap"
-          marginBottom={1}
-        >
-          <Box key="kit-usage" gap={3} flexWrap="wrap">
-            {usage.map((u) => (
+        <Box justifyContent="space-between" gap={2} flexWrap="wrap">
+          <Box key="kit-usage" gap={2} flexWrap="wrap">
+            <Button
+              key="kit-ctx"
+              label={ctx ? `ctx ${ctx.value}` : "ctx"}
+              onPress={() => unfold($, "ctx")}
+            />
+            {meters.map((u) => (
               <Text key={`kit-usage-${u.label}`}>
                 <Text dimColor>{`${u.label} `}</Text>
                 <Text bold>{u.value}</Text>
-                {u.note ? <Text dimColor>{` · ${u.note}`}</Text> : null}
+                {u.note ? <Text dimColor>{` ↻${u.note}`}</Text> : null}
               </Text>
             ))}
           </Box>
-          <Box gap={1} flexWrap="wrap">
+          <Box key="kit-actions" gap={1} flexWrap="wrap">
             <Button
-              key="kit-compact"
-              label="⇲ Compact"
-              onPress={() => soon($, () => reset($, "compact"))}
-            />
-            <Button
-              key="kit-clear"
-              label="⌫ Clear"
-              onPress={() => soon($, () => reset($, "clear"))}
-            />
-          </Box>
-        </Box>
-        <Box justifyContent="space-between" gap={1} flexWrap="wrap">
-          <Box key="kit-group-model" gap={1}>
-            <Button
-              key="kit-model"
-              label={displayName(run.model)}
-              onPress={() => unfold($, "model")}
-            />
-            <Button
-              key="kit-profile"
-              label={profileName(now)}
-              onPress={() => unfold($, "profile")}
-            />
-            <Button
-              key="kit-effort"
-              label={`${run.effort ?? "auto"}${run.locked ? " ▪" : ""}`}
-              onPress={() => unfold($, "effort")}
-            />
-          </Box>
-          <Box key="kit-group-project" gap={1}>
-            <Button
-              key="kit-commit"
-              label="✓ Commit"
-              onPress={() => {
-                void $.command
-                  .run({ command: "kit:commit" })
-                  .catch((err) =>
-                    $.ui.toast(`kit: could not start /commit: ${String(err)}`),
-                  );
-              }}
+              key="kit-run"
+              label={`${runLine(run.model, run.effort)}${run.locked ? " ▪" : ""}${
+                orch || warm ? ` ${orch ? "⑂" : ""}${warm ? "♨" : ""}` : ""
+              }`}
+              onPress={() => unfold($, "run")}
             />
             <Button
               key="kit-git"
@@ -311,32 +323,12 @@ export function kitBand(on: On) {
             />
             <Button
               key="kit-roadmap"
-              label={isOpen ? "▤ Close dashboard" : "▤ Dashboard"}
+              label={isOpen ? "▤ Close" : "▤"}
               onPress={() => {
                 const toggle = isOpen
                   ? $.ui.close({ id: PANE })
                   : openRoadmap($);
                 void toggle.then(() => $.ui.invalidate("ui.render"));
-              }}
-            />
-          </Box>
-          <Box key="kit-group-keep" gap={1}>
-            <Button
-              key="kit-orchestrate"
-              label="⑂ Orchestrate"
-              dimColor={!orch}
-              onPress={() => {
-                void setOrchestrating($, !orch).then(() =>
-                  $.ui.invalidate("ui.render"),
-                );
-              }}
-            />
-            <Button
-              key="kit-warm"
-              label="♨ Keep cache"
-              dimColor={!warm}
-              onPress={() => {
-                void setWarm($, !warm);
               }}
             />
           </Box>
