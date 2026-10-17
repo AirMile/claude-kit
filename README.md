@@ -867,12 +867,14 @@ dashboard` closes it); Compact and Clear run at once, or when the running turn e
   before the switch) and **Effort** (a pick locks it until **Auto**, over new chats and
   restarts; the engine lowers a level the model lacks). The effort shown is what kit set for
   the last prompt, which can differ from the session setting in the app's model picker.
-- **Second opinion**: the band's `⚖ Opinion` opens a menu: **Ask** (**Opinion** on what the chat
-  is working on, or **Review** of the current changes), then a model: GPT (Astra 6, Sol 6.1,
-  Luna 6, Terra 5.6, through Codex, read-only, as the GPT delegation section of your
-  `~/.claude/CLAUDE.md` says) or Claude (a fresh read-only subagent on that model). The pick is
-  sent as your prompt; this chat writes the brief and shows the other model's findings next to
-  its own judgment. A new GPT name goes in `GPT` in `hooks/second-opinion.ts` and in that table.
+- **Second opinion**: the band's `⚖ Opinion` opens a menu with a row per ask: **Opinion** (on
+  what the chat is working on), **Review** (of the current changes) and **Stuck** (a diagnosis
+  of the bug the chat is stuck on). Each row holds the models; one press sends it. GPT (Sol 6.1,
+  Astra 6) runs through Codex, read-only, as the GPT delegation section of your
+  `~/.claude/CLAUDE.md` says; Claude (Opus 5.5, Sonnet 5.5) runs as a fresh read-only subagent
+  on that model. The pick is sent as your prompt; this chat writes the brief and shows the other
+  model's findings next to its own judgment. Models live in `GPT` and `CLAUDE` in
+  `hooks/second-opinion.ts`; a new GPT name also goes in that `CLAUDE.md` table.
 - **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (◆'s menu in the band,
   or `/mode lean|balanced|quality|off`). The choice is kept across sessions. Each prompt is sorted (kit's own skills by name, the rest by a Haiku
   classifier) into question, routine, planning or heavy work, and the profile maps that to a

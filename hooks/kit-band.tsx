@@ -18,7 +18,14 @@ import { isOrchestrating, setOrchestrating } from "./orchestrate";
 import { openRoadmap } from "./roadmap-open";
 import type { Usage } from "./roadmap-parts";
 import { PANE } from "./roadmap-view";
-import { type Ask, ASKS, askOpinion, GPT } from "./second-opinion";
+import {
+  type Ask,
+  ASKS,
+  askOpinion,
+  CLAUDE,
+  GPT,
+  whoName,
+} from "./second-opinion";
 
 // The band above the prompt, top to bottom: an open menu (a bordered block), then context and
 // plan usage (register.tsx measures it after each turn) with what acts on the chat at its right:
@@ -26,7 +33,7 @@ import { type Ask, ASKS, askOpinion, GPT } from "./second-opinion";
 // the model main requests go to and its effort (▪ when locked), each opening only its own
 // menu (the profile from auto-model.ts; the models, then keep the context,
 // compact or clear; the effort's the levels, a pick locks it, Auto unlocks); /commit (✓) with a Git menu (⎇, git-menu.ts),
-// a second opinion (⚖, second-opinion.ts: Opinion or Review, then a GPT or Claude model) and the dashboard pane (▤);
+// a second opinion (⚖, second-opinion.ts: a row per Opinion, Review, Stuck, a press per model) and the dashboard pane (▤);
 // orchestrate (⑂, orchestrate.ts) with keep cache (♨, keep-warm.ts). The plan-limit pause with
 // Resume now (limit-guard.ts) follows on its own line. Each icon carries a short word.
 // It yields to a survey. /band draws it again; /warm toggles keep warm.
@@ -41,7 +48,6 @@ export const bandCommand: CommandSpec = {
 type Menu = "profile" | "model" | "effort" | "git" | "way" | "opinion";
 
 let menu: Menu | null = null; // the unfolded menu row
-let ask: Ask = "Opinion"; // what the second-opinion menu asks the model it sends to
 let usage: Usage[] = []; // context and plan limits, from register.tsx
 
 // Context and plan limits, as register.tsx measures them after each turn.
@@ -152,39 +158,27 @@ export function kitBand(on: On) {
         </Box>
       );
     } else if (menu === "opinion") {
-      const sendTo = (who: string, label: string) => (
+      // One row per ask, GPT then Claude: a press sends at once.
+      const sendTo = (a: Ask, who: string) => (
         <Button
-          key={`kit-opinion-${who}`}
-          label={label}
+          key={`kit-opinion-${a}-${who}`}
+          label={whoName(who)}
           onPress={() => {
             done();
-            void askOpinion($, who, ask);
+            void askOpinion($, who, a);
           }}
         />
       );
       body = (
         <Box flexDirection="column" flexGrow={1}>
-          {line(
-            "Ask",
-            ASKS.map((a) => (
-              <Button
-                key={`kit-ask-${a}`}
-                label={a}
-                dimColor={ask !== a}
-                onPress={() => {
-                  ask = a;
-                  $.ui.invalidate("ui.render");
-                }}
-              />
-            )),
-          )}
-          {line(
-            "GPT",
-            GPT.map((g) => sendTo(g, g)),
-          )}
-          {line(
-            "Claude",
-            MODELS.map((m) => sendTo(m, displayName(m))),
+          {ASKS.map((a) =>
+            line(a, [
+              ...GPT.map((g) => sendTo(a, g)),
+              <Text key={`kit-opinion-${a}-sep`} dimColor>
+                │
+              </Text>,
+              ...CLAUDE.map((c) => sendTo(a, c)),
+            ]),
           )}
         </Box>
       );
