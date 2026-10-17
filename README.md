@@ -859,16 +859,17 @@ versions skip it. It never writes files.
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt, one line (it wraps when narrow): usage at the left
-  (`ctx 114k  5h 55% ↻2h 53m  7d 75% ↻4d 3h`), then `Opus 5.5 · medium`, `⎇ Git`, `⚖ Opinion`
-  and `▤` (the dashboard; `▤ Close` closes it). Each opens a menu in its own block above the
-  band. **ctx**: **Compact** and **Clear**, run at once, or when the running turn ends. The
-  run (the model requests go to and their effort; `▪` when the effort is locked, `⑂` and `♨`
-  while Orchestrate and Keep cache are on): **Model** (then **Keep context**, **Compact** or
-  **Clear** before the switch), **Profile**, **Effort** (a pick locks it until **Auto**, over
-  new chats and restarts; the engine lowers a level the model lacks) and **Mode** (the
-  Orchestrate and Keep cache toggles). **Git**: **Commit** (runs `/kit:commit`), Diff, Pull,
-  Push, PR, Branch. The effort shown is what kit set for the last prompt, which can differ from
-  the session setting in the app's model picker.
+  (`ctx 114k  5h 55% · 2h 53m  7d 75% · 4d 3h`), then the run, `⎇ Git`, `⚖ Opinion` and `▤`
+  (the dashboard; `▤ Close` closes it). Each opens a menu in its own block above the band.
+  **ctx**: **Compact** and **Clear**, run at once, or when the running turn ends. The run reads
+  `Auto · Opus 5.5 · medium` while a profile picks model and effort, or just the model with Auto
+  off (`⑂` and `♨` while Orchestrate and Keep cache are on); its menu holds **Auto** (Lean,
+  Balanced, Quality or Off) and **Mode** (the Orchestrate and Keep cache toggles). With Auto off
+  you pick the model in the app's own model picker, and an effort button appears next to the
+  run: a level holds over new chats and restarts until **Default** (the session's own effort);
+  the engine lowers a level the model lacks. **Git**: **Commit** (runs `/kit:commit`), Diff,
+  Pull, Push, PR, Branch. The effort shown is what kit set for the last prompt, which can differ
+  from the session setting in the app's model picker.
 - **Second opinion**: the band's `⚖ Opinion` opens a menu with a row per ask: **Opinion** (on
   what the chat is working on), **Review** (of the current changes) and **Stuck** (a diagnosis
   of the bug the chat is stuck on). Each row holds the models; one press sends it. GPT (Sol 6.1,
@@ -928,8 +929,8 @@ versions skip it. It never writes files.
   and so renews it. Not free: each ping costs a cache read of the whole context, far less
   than rebuilding the cache, but it counts toward your limits. A failed ping turns it off.
 - **`/band`** draws the band above the prompt again; folded (`[+]`)? `ctrl+x ctrl+a` unfolds it.
-- **Usage**: `ctx 114k  5h 55% ↻2h 53m  7d 75% ↻4d 3h` at the band's left: context, then the
-  5-hour and 7-day limits, each with the time until it resets (`↻`); updated after every turn.
+- **Usage**: `ctx 114k  5h 55% · 2h 53m  7d 75% · 4d 3h` at the band's left: context, then the
+  5-hour and 7-day limits, each with the time until it resets; updated after every turn.
 
 **Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
 columns, above the prompt otherwise):

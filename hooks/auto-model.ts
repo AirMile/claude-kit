@@ -99,28 +99,16 @@ async function kindOf(
   return kindOfLabel(label);
 }
 
-// What the band shows: the model main requests really go to (the picker keeps the
-// session's), and the effort they run at, `locked` when set from the band.
+// What the band shows: whether kit picks (auto), the model main requests really go to (the
+// picker keeps the session's) and the effort they run at: kit's pick, or with the profile off
+// the band's effort (undefined: the session's own).
 export async function runState($: EngineInterface) {
-  const locked = await effortLock($);
-  const off = (await getMode($)) === "off";
+  const auto = (await getMode($)) !== "off";
   return {
+    auto,
     model: await running($),
-    effort: locked ?? (off ? undefined : effort),
-    locked: !!locked,
+    effort: auto ? effort : await effortLock($),
   };
-}
-
-// The band's model switch: keep the context, or compact or clear it first.
-export async function switchModel(
-  $: EngineInterface,
-  model: string,
-  way: "keep" | "compact" | "clear",
-) {
-  if (way !== "keep" && !(await reset($, way))) return;
-  decided = true; // picked by hand: a new chat asks nothing about it
-  await switchTo($, model);
-  await showStatus($);
 }
 
 async function showStatus($: EngineInterface) {
@@ -264,9 +252,9 @@ export function autoModel(on: On) {
       const own = agentEffort.get(e.agentId);
       if (isOn && own && e.effort !== undefined) step = { ...e, effort: own };
     } else {
-      // An effort locked from the band holds even with the profile off.
+      // Auto picks the effort; with the profile off the band's effort holds, if one is set.
       const model = isOn ? ((await override($)) ?? e.model) : e.model;
-      const want = (await effortLock($)) ?? (isOn ? effort : undefined);
+      const want = isOn ? effort : await effortLock($);
       const level = want && e.effort !== undefined ? want : e.effort;
       step = { ...e, model, effort: level };
     }

@@ -13,8 +13,8 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   the kit mod (Claude Code 2.1.287+): compaction note, usage figures, and the tools
   `mcp__kit__roadmap_view` / `mcp__kit__theme_view` (`hooks/roadmap-open.ts`,
   `hooks/theme-view.tsx`) that `/product` and `/theme` call to open their panes (plus the `/panel` command), the band
-  above the prompt (`hooks/kit-band.tsx`: one line of usage, the run menu (model, profile, effort lock,
-  orchestrate, keep cache), git, second opinion via `hooks/second-opinion.ts`, dashboard), model/effort per prompt and subagent
+  above the prompt (`hooks/kit-band.tsx`: one line of usage, the run menu (auto profile or off,
+  orchestrate, keep cache), an effort button with auto off, git, second opinion via `hooks/second-opinion.ts`, dashboard), model/effort per prompt and subagent
   (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, switches kept by `hooks/model-switch.ts`, `/mode`), orchestrate notes per prompt (`hooks/orchestrate.ts`), a pause before the plan limit with
   cache keep-alive (`hooks/limit-guard.ts` on the pure `hooks/limit-policy.ts`), keep-alive forks by hand or
   for the pause (`hooks/keep-warm.ts`, `/warm`), `/band` (the roadmap

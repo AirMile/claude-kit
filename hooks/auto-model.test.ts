@@ -198,20 +198,26 @@ function band($: Parameters<Parameters<typeof test>[1]>[0], on: On) {
   });
 }
 
-test("an effort picked in the band is locked until Auto unlocks it", async ($, on) => {
+test("with Auto off the band's effort holds until Default; with Auto on it hides", async ($, on) => {
   const w = world(on, {
     model: "claude-haiku-5-5",
     label: QUESTION,
     drawn: true,
+    store: { mode: "off" },
   });
   const ui = await band($, on);
-  await ui.press({ key: "kit-run" });
+  expect((await ui.find({ key: "kit-run" }))?.text).toBe("Haiku 5.5");
+  await ui.press({ key: "kit-effort" });
   await ui.press({ key: "kit-effort-high" });
   expect(w.store.effortLock).toBe("high");
-  expect((await ui.find({ key: "kit-run" }))?.text).toBe("Haiku 5.5 · high ▪");
-  await ui.press({ key: "kit-run" });
-  await ui.press({ key: "kit-effort-auto" });
+  expect((await ui.find({ key: "kit-effort" }))?.text).toBe("high");
+  await ui.press({ key: "kit-effort" });
+  await ui.press({ key: "kit-effort-default" });
   expect(w.store.effortLock).toBe(undefined);
+  await ui.press({ key: "kit-run" });
+  await ui.press({ key: "kit-mode-balanced" });
+  expect(await ui.find({ key: "kit-effort" })).toBeFalsy();
+  expect((await ui.find({ key: "kit-run" }))?.text).toContain("Auto · Haiku 5.5");
 });
 
 test("a thin reply keeps the effort of the work it continues", async ($, on) => {
@@ -224,7 +230,7 @@ test("a thin reply keeps the effort of the work it continues", async ($, on) => 
   });
   const ui = await band($, on);
   const shown = async () =>
-    (await ui.find({ key: "kit-run" }))?.text?.split(" · ")[1];
+    (await ui.find({ key: "kit-run" }))?.text?.split(" · ").at(-1);
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
   expect(await shown()).toBe("xhigh");
   await $.prompt.submit({ text: "ja", origin: TYPED });
@@ -240,28 +246,9 @@ test("/build runs at high, a plain heavy prompt at xhigh", async ($, on) => {
   world(on, { model: "claude-opus-5-5", label: HEAVY, turns: 5, drawn: true });
   const ui = await band($, on);
   await $.prompt.submit({ text: "/build login-form", origin: TYPED });
-  expect((await ui.find({ key: "kit-run" }))?.text).toBe("Opus 5.5 · high");
+  expect((await ui.find({ key: "kit-run" }))?.text).toBe("Auto · Opus 5.5 · high");
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
-  expect((await ui.find({ key: "kit-run" }))?.text).toBe("Opus 5.5 · xhigh");
-});
-
-test("the band's model switch clears first when asked, and keeps the switch", async ($, on) => {
-  const w = world(on, {
-    model: "claude-haiku-5-5",
-    label: QUESTION,
-    turns: 5,
-    drawn: true,
-  });
-  const ui = await band($, on);
-  await ui.press({ key: "kit-run" });
-  await ui.press({ key: "kit-model-claude-opus-5-5" });
-  await ui.press({ key: "kit-way-clear" });
-  await settle();
-  expect(w.cleared).toEqual(["clear"]);
-  expect(w.store.switches).toEqual({
-    s1: { chosen: "claude-opus-5-5", base: "claude-haiku-5-5" },
-  });
-  expect((await ui.find({ key: "kit-run" }))?.text).toContain("Opus 5.5");
+  expect((await ui.find({ key: "kit-run" }))?.text).toBe("Auto · Opus 5.5 · xhigh");
 });
 
 test("clear behind the band's context figure clears just after the press", async ($, on) => {

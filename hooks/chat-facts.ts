@@ -42,7 +42,7 @@ export async function readChat($: EngineInterface): Promise<Chat> {
   return {
     model: run.model,
     effort: run.effort,
-    locked: run.locked,
+    locked: !run.auto && run.effort !== undefined, // the band's effort, Auto off
     turns: await $.session.turns().catch(() => 0),
     minutes: usage
       ? Math.max(0, Math.round((now - usage.startedAt) / 60000))

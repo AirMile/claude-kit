@@ -78,7 +78,7 @@ export async function restoreSwitch($: EngineInterface): Promise<boolean> {
   }
 }
 
-// The effort locked from the band: every main request runs at it until unlocked.
+// The band's effort, with Auto off: every main request runs at it until set to Default.
 export async function effortLock(
   $: EngineInterface,
 ): Promise<Effort | undefined> {
