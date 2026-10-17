@@ -260,6 +260,7 @@ export function kitBand(on: On) {
           borderStyle="round"
           borderColor="#334155"
           paddingX={1}
+          marginBottom={1}
           display={open ? "flex" : "none"}
           hover={open ? undefined : { scope: `kit-${m}`, display: "flex" }}
         >
@@ -270,7 +271,7 @@ export function kitBand(on: On) {
     });
     // A trigger button in a Box that joins its menu's hover scope.
     const trigger = (m: Menu, button: unknown) => (
-      <Box key={`kit-trigger-${m}`} hover={{ scope: `kit-${m}` }}>
+      <Box key={`kit-trigger-${m}`} hover={{ scope: `kit-${m}`, backgroundColor: "#1e293b" }}>
         {button as never}
       </Box>
     );
