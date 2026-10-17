@@ -118,7 +118,7 @@ test("two tiers short asks; a subagent keeps the model and rides along as a note
     label: HEAVY,
     turns: 5,
     percent: 10,
-    answer: "Ask a Opus 5.5 subagent (Recommended)",
+    answer: "Ask a Opus 5.5 subagent",
   });
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
   await $.prompt.submit({ text: "and the billing layer", origin: TYPED });

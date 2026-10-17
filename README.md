@@ -902,7 +902,7 @@ versions skip it. It never writes files.
   needs a stronger one runs one tier short (Sonnet for Opus work) at xhigh (Haiku: high, since
   Haiku's xhigh can end a turn with no answer; never max, which costs up to 3 times xhigh for no
   better coding). Two or more short you pick: a subagent on the stronger model for the hard part
-  (recommended: the chat keeps its model, context and cache; the choice holds for the chat),
+  (the chat keeps its model, context and cache; the choice holds for the chat),
   switch now (only below 30% context, since a switch reads the whole chat again without the
   cache; otherwise compact, then switch), clear and then switch (the prompt is sent again), or
   stay at that effort (not asked again in that chat). Subagents get their own: `Explore` as question work, `kit:verifier` as planning work

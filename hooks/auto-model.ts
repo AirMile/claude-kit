@@ -118,8 +118,8 @@ async function showStatus($: EngineInterface) {
 type Way = "agent" | "now" | "compact" | "clear" | "stay";
 
 // What a later prompt that needs `want`, above the model running, does. One tier short it runs at
-// the stretch effort. Further short the user picks: a subagent on `want` for the hard part (the
-// chat keeps its model and cache), switch now (light context only: a switch reads the whole
+// the stretch effort. Further short the user picks, none marked as recommended: a subagent on
+// `want` for the hard part (the chat keeps its model and cache), switch now (light context only: a switch reads the whole
 // chat again without the cache), compact or clear and then switch and send it again, or stay at
 // the stretch effort. A subagent or stay holds for the rest of the chat, without asking again.
 // Returns why the prompt is held (`drop`) or a note that rides along with it.
@@ -142,7 +142,7 @@ async function escalate(
   const note = `kit: this prompt needs ${to}; ${from} runs this chat. Hand its hard part (the diagnosis, the design, the tricky change) to a subagent with the Agent tool, model "${family(step.want)}": give it the goal, the constraints and the relevant files, then carry out its answer here. Do the rest yourself.`;
   if (kept === "agent") return { note };
   const ways = new Map<string, Way>();
-  ways.set(`Ask a ${to} subagent (Recommended)`, "agent");
+  ways.set(`Ask a ${to} subagent`, "agent");
   // A question holds four options: with a light context a switch now beats compacting first.
   if (step.switchNow) ways.set(`Switch to ${to} now`, "now");
   else ways.set(`Compact, then ${to}`, "compact");
