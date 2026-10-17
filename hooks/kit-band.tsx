@@ -253,25 +253,29 @@ export function kitBand(on: On) {
       const body = bodyOf(m);
       if (!body) return null;
       const open = menu === m;
+      // The blank line below the block belongs to the hovered Box (padding, not margin), so the
+      // pointer crossing it from the button keeps the menu shown.
       return (
         <Box
           key={`kit-menu-${m}`}
-          gap={1}
-          borderStyle="round"
-          borderColor="#334155"
-          paddingX={1}
-          marginBottom={1}
+          flexDirection="column"
+          paddingBottom={1}
           display={open ? "flex" : "none"}
           hover={open ? undefined : { scope: `kit-${m}`, display: "flex" }}
         >
-          {body}
-          {open ? close : null}
+          <Box gap={1} borderStyle="round" borderColor="#334155" paddingX={1}>
+            {body}
+            {open ? close : null}
+          </Box>
         </Box>
       );
     });
     // A trigger button in a Box that joins its menu's hover scope.
     const trigger = (m: Menu, button: unknown) => (
-      <Box key={`kit-trigger-${m}`} hover={{ scope: `kit-${m}`, backgroundColor: "#1e293b" }}>
+      <Box
+        key={`kit-trigger-${m}`}
+        hover={{ scope: `kit-${m}`, backgroundColor: "#1e293b" }}
+      >
         {button as never}
       </Box>
     );
