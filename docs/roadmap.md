@@ -8,6 +8,6 @@
 
 ## v0.15.25
 
-- [ ] **native-compaction** · preserve task continuity through native compaction · spec: docs/specs/native-compaction.md
+- [x] **native-compaction** · preserve task continuity through native compaction · spec: docs/specs/native-compaction.md
 
 ## Later

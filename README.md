@@ -851,11 +851,20 @@ A [mod](https://code.claude.com/docs/en/plugins/mods/overview) (`hooks/register.
 files next to it): code that runs inside Claude Code. **Requires Claude Code 2.1.287+**; older
 versions skip it. It never writes files.
 
-**Context** (reads the spec of the current `feat/<slug>` or `fix/<slug>` branch):
+**Context** (reads the spec selected by the latest explicit `/build <slug>` or expanded kit
+build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch):
 
+- **Before native compaction** (auto, `/compact`, plugin or precompute), it adds preservation
+  priorities: the current request and user corrections, decisions and reasons, failed attempts,
+  test evidence, blockers, next steps and developments since the spec's last `Handoff`. Explicit
+  `/compact <instructions>` take priority. It does not prune history or call a second summarizer.
 - **After a compaction** (auto or `/compact`) it adds one line to the new context: slug,
   `Status`, criteria done, and "re-read the spec, `## Handoff` first". That line comes from
-  disk, not from the summary, so it is always right.
+  disk, not from the summary. Missing specs do not block compaction; subagents are left alone.
+  Precompute receives the same priorities but appends no recovery note until compaction applies.
+- **Diagnostics**: the debug log records `kit compact:` with native token counts before/after,
+  summarizer usage and duration when available. A reused precomputed summary may have no usage.
+  These figures measure the integration, not summary quality or guaranteed dollar savings.
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt, one line (it wraps when narrow): usage at the left

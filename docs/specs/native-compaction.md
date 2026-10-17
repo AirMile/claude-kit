@@ -3,7 +3,7 @@ Criteria are checked [x] when built AND verified. -->
 
 # native-compaction
 
-Status: defined
+Status: done
 Design: —
 
 ## Goal
@@ -14,17 +14,17 @@ existing Compact button and improve recovery from specs outside feature branches
 
 ## Acceptance criteria
 
-- [ ] Happy: manual, automatic, plugin and precomputed main-session compactions pass
+- [x] Happy: manual, automatic, plugin and precomputed main-session compactions pass
       preservation instructions to the native summarizer, alongside any user instructions.
-- [ ] Happy: the instructions prioritize the current task, user corrections, decisions and
+- [x] Happy: the instructions prioritize the current task, user corrections, decisions and
       reasons, failed attempts, test evidence, pending work and changes since the Handoff.
-- [ ] Edge: input messages and native output messages retain their handles, tool data and
+- [x] Edge: input messages and native output messages retain their handles, tool data and
       metadata; only the existing spec recovery note may be appended after compaction.
-- [ ] Happy: an explicit /build <slug> (including expanded kit skill commands) selects its
+- [x] Happy: an explicit /build <slug> (including expanded kit skill commands) selects its
       existing spec on any branch; without one, feat/ and fix/ branch discovery still works.
-- [ ] Error: missing specs or unavailable git do not block native compaction; skips and
+- [x] Error: missing specs or unavailable git do not block native compaction; skips and
       subagent compactions pass through, and precompute adds no recovery note or counter.
-- [ ] Happy: completed compactions log native before/after token counts, summarizer usage
+- [x] Happy: completed compactions log native before/after token counts, summarizer usage
       and duration when available, without extra model calls or estimated dollar savings.
 
 ## Out of scope
@@ -51,13 +51,16 @@ existing Compact button and improve recovery from specs outside feature branches
 
 ## Handoff
 
-User approved the proposal in chat and requested implementation and a local plugin update.
-Continue in this chat; preserve native summarization and do not edit skills or push remotely.
-Baseline: 62 mod tests, 20 push-guard checks, 10 Codex hook checks and SEO helper checks pass.
-Next: write regression tests, implement the hook, verify independently and update installs.
+Independent verifier passed all six criteria on 2026-10-17; no manual items or later notes.
+Native priorities, spec recovery and diagnostics are ready in version 0.15.25.
+User requested local plugin updates; no skill changes or remote publication are needed.
 
 ## Verify
 
-Pending.
+Independent verifier: 6/6 criteria pass; no manual items or improvement notes.
+Native mod suite: 75 passed, 0 failed; push-guard: 20; Codex hooks: 10; SEO helper passed.
+Scratch plugin validation passed without warnings; production TypeScript passed.
+Full tsc: 35 pre-existing partial-fixture diagnostics in older tests, 0 new diagnostics.
+Deterministic checks verify integration and passthrough, not LLM summary quality or savings.
 
 ## Fixes

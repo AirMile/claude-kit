@@ -1,28 +1,19 @@
-import type {
-  EngineInterface,
-  Register,
-  SessionMessage,
-  SessionUsage,
-} from "claude-code";
+import type { EngineInterface, Register, SessionUsage } from "claude-code";
 
 import { autoModel, modeCommand } from "./auto-model";
 import { freshStart, freshTool } from "./fresh-start";
-import { noteCompact, noteFile, resetChat } from "./chat-facts";
+import { noteFile, resetChat } from "./chat-facts";
+import { compaction } from "./compaction";
 import { bandCommand, bandUsage, kitBand } from "./kit-band";
 import { warmCommand } from "./keep-warm";
 import { noteLimits } from "./limit-guard";
 import { panelCommand, roadmapOpen, roadmapTool } from "./roadmap-open";
-import {
-  roadmapEdited,
-  roadmapStale,
-  roadmapView,
-} from "./roadmap-view";
+import { roadmapEdited, roadmapStale, roadmapView } from "./roadmap-view";
 import type { Usage } from "./roadmap-parts";
-import { branchSlug, inRoot, parseSpec, type SpecState } from "./spec";
 import { themeTool, themeView } from "./theme-view";
 
-// kit's context mod. Reads the active spec (slug from the feat/ or fix/ branch); never writes.
-// - After a compaction: appends the spec's state, so the next turn re-reads it from disk.
+// kit's context mod. Reads the active spec; never writes.
+// - Native compaction priorities and spec recovery (compaction.ts).
 // - Context and plan limits as the band's second line (kit-band.tsx).
 // - The roadmap and theme panes: tools the skills call with data (roadmap-view, theme-view);
 //   the roadmap pane also opens on /panel (roadmap-open) and the band's button (kit-band).
@@ -32,29 +23,12 @@ import { themeTool, themeView } from "./theme-view";
 //   (limit-guard), and keep warm by hand for an idle chat (keep-warm, the band, /warm).
 // - fresh_start: /build's safe point clears the chat and resumes (fresh-start).
 
-type Spec = SpecState & { slug: string };
 type Figures = Pick<SessionUsage, "context" | "rateLimits">;
 type Meter = Usage;
 
 const SPEC_PATH = /docs\/specs\/[^/]+\.md$/;
 
 let meters: Meter[] = [];
-
-async function activeSpec($: EngineInterface): Promise<Spec | null> {
-  const git = await $.process
-    .run(["git", "symbolic-ref", "--short", "HEAD"], {
-      cwd: await $.session.root(),
-    })
-    .catch(() => null);
-  const slug = git?.exitCode === 0 ? branchSlug(git.stdout) : null;
-  const text = slug
-    ? await $.fs
-        .read(inRoot(await $.session.root(), `docs/specs/${slug}.md`))
-        .catch(() => null)
-    : null;
-  const state = parseSpec(text);
-  return slug && state ? { slug, ...state } : null;
-}
 
 function untilReset(iso: string | undefined, now: number): string {
   const min = iso
@@ -103,6 +77,7 @@ export const register: Register = (on) => {
   freshStart(on);
   autoModel(on);
   kitBand(on);
+  compaction(on);
 
   on("session.start", async ($, e, next) => {
     const started = await next(e);
@@ -142,23 +117,5 @@ export const register: Register = (on) => {
     if (SPEC_PATH.test(e.file_path.replace(/\\/g, "/"))) await refresh($);
     if (roadmapEdited(e.file_path)) $.ui.invalidate("ui.render");
     return ran;
-  });
-
-  on("session.compact", async ($, e, next) => {
-    const compacted = await next(e);
-    if (e.trigger === "precompute" || e.agentId || !compacted.messages)
-      return compacted;
-    noteCompact();
-    const now = await activeSpec($);
-    if (!now) return compacted;
-    const note: SessionMessage = {
-      role: "user",
-      toolUses: [],
-      text:
-        `kit: building ${now.slug} · Status: ${now.status} · criteria ${now.done}/${now.total}. ` +
-        `Re-read docs/specs/${now.slug}.md (## Handoff first) before continuing; ` +
-        `if the /build procedure is no longer in context, run /build ${now.slug}.`,
-    };
-    return { ...compacted, messages: [...compacted.messages, note] };
   });
 };

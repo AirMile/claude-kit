@@ -10,7 +10,8 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
 - `agents/verifier.md`: fresh-context verify subagent used by `build`
 - `hooks/hooks.json`: push-guard (PreToolUse) + format-on-save (PostToolUse);
   `hooks/push-guard.test.cjs` is its regression test. Its `modules` names `hooks/register.tsx`,
-  the kit mod (Claude Code 2.1.287+): compaction note, usage figures, and the tools
+  the kit mod (Claude Code 2.1.287+): native compaction priorities and recovery note
+  (`hooks/compaction.ts`), usage figures, and the tools
   `mcp__kit__roadmap_view` / `mcp__kit__theme_view` (`hooks/roadmap-open.ts`,
   `hooks/theme-view.tsx`) that `/product` and `/theme` call to open their panes (plus the `/panel` command), the band
   above the prompt (`hooks/kit-band.tsx`: one line of usage, the run menu (auto profile or off,
