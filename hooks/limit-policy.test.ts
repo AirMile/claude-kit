@@ -1,6 +1,7 @@
 import { expect, test } from "claude-code/testing";
 
 import {
+  ALWAYS_FOR_MS,
   clockTime,
   holdOf,
   nextHold,
@@ -8,6 +9,7 @@ import {
   rise,
   shouldPing,
   stopAt,
+  wantsPing,
   withHold,
 } from "./limit-policy";
 
@@ -79,4 +81,24 @@ test("the limit button cycles off, pause, warm; each chat keeps its own", async 
   const trimmed = withHold(many, "new", "warm");
   expect(Object.keys(trimmed).length).toBe(20);
   expect(trimmed.new).toBe("warm");
+});
+
+test("Limit pings while work is open, Always for a day, Off never", async () => {
+  const idle = {
+    hold: "pause" as const,
+    openWork: false,
+    pauseUntil: null,
+    pauseRefused: false,
+    lastTurn: NOW - 60 * 60_000,
+  };
+  expect(wantsPing(idle, NOW)).toBe(false); // nothing open: let it cool
+  expect(wantsPing({ ...idle, openWork: true }, NOW)).toBe(true);
+  expect(wantsPing({ ...idle, hold: "off", openWork: true }, NOW)).toBe(false);
+  expect(wantsPing({ ...idle, hold: "warm" }, NOW)).toBe(true);
+  const dayAgo = NOW - ALWAYS_FOR_MS - 1;
+  expect(wantsPing({ ...idle, hold: "warm", lastTurn: dayAgo }, NOW)).toBe(false);
+  // A pause decides by its reset alone.
+  const paused = { ...idle, pauseUntil: Date.parse(IN_2H) };
+  expect(wantsPing(paused, NOW)).toBe(true);
+  expect(wantsPing({ ...paused, pauseRefused: true }, NOW)).toBe(false);
 });

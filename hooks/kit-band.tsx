@@ -39,8 +39,8 @@ import {
 // (`Auto · model · effort` while a profile picks them, else the model; ⑂ while orchestrate is
 // on) opening Auto (the profile from auto-model.ts, or Off) and the Orchestrate toggle
 // (orchestrate.ts); with Auto off, the effort (Default: the session's own); the limit button,
-// a press cycling this chat's hold (limit-guard.ts): off, pause at the limit, or pause and keep
-// the cache warm while idle (keep-warm.ts); Git (⎇, git-menu.ts) with /commit first; a second opinion (⚖,
+// a press cycling this chat's hold (limit-guard.ts): off, Limit (pause at the plan limit, the
+// cache warm while work is open) or Always (also warm while idle, keep-warm.ts); Git (⎇, git-menu.ts) with /commit first; a second opinion (⚖,
 // second-opinion.ts: a row per Opinion, Review, Stuck, a press per model); the dashboard pane
 // (▤). With Auto off the model is the app's own picker's. The plan-limit pause with Resume now
 // (limit-guard.ts) follows on its own line. It yields to a survey. /band draws it again; /warm
@@ -56,9 +56,9 @@ export const bandCommand: CommandSpec = {
 type Menu = "run" | "effort" | "ctx" | "git" | "opinion";
 
 const HOLD_LABEL: Record<Hold, string> = {
-  off: "⏸ Limit off",
+  off: "⏸ Off",
   pause: "⏸ Limit",
-  warm: "⏸♨ Limit+cache",
+  warm: "⏸♨ Always",
 };
 
 let menu: Menu | null = null; // the unfolded menu row

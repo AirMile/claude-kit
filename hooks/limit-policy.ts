@@ -49,6 +49,26 @@ export function rise(before: Reading | undefined, now: Reading): number | null {
 export const shouldPing = (until: number, now: number): boolean =>
   until - now <= PING_HORIZON_MS && until - now > PING_EVERY_MS / 5;
 
+export const ALWAYS_FOR_MS = 24 * 60 * 60_000; // Always stops after this long without a turn
+
+// What keep-warm.ts knows when an idle tick asks whether to ping.
+export type WarmState = {
+  hold: Hold;
+  openWork: boolean; // the last turn ended with background work or a wake-up pending
+  pauseUntil: number | null; // a plan-limit pause, until its reset
+  pauseRefused: boolean; // a ping during the pause hit the limit
+  lastTurn: number; // when the chat last ended a turn
+};
+
+// Pause: warm while the reset is near. Otherwise Limit keeps it warm while work is still
+// open, Always until a day without a turn, Off never.
+export function wantsPing(s: WarmState, now: number): boolean {
+  if (s.pauseUntil !== null)
+    return !s.pauseRefused && shouldPing(s.pauseUntil, now);
+  if (s.hold === "warm") return now - s.lastTurn < ALWAYS_FOR_MS;
+  return s.hold === "pause" && s.openWork;
+}
+
 // `14:05` for today, `Fri 14:05` further away: when work resumes.
 export function clockTime(at: number, now: number): string {
   const d = new Date(at);
@@ -59,9 +79,9 @@ export function clockTime(at: number, now: number): string {
     : `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()]} ${hm}`;
 }
 
-// The band's limit button, a setting per chat: no pause, a pause (the cache kept warm near the
-// reset), or a pause and the cache kept warm whenever the chat is idle. Kept in $.store per
-// session id, the newest MAX_HOLDS.
+// The band's limit button, a setting per chat: off (no pause, no pings), pause (the cache kept
+// warm while work is open: a pause, background work, a wake-up), or warm (also whenever the
+// chat is idle, up to ALWAYS_FOR_MS). Kept in $.store per session id, the newest MAX_HOLDS.
 export type Hold = "off" | "pause" | "warm";
 export const HOLDS: readonly Hold[] = ["off", "pause", "warm"];
 export const DEFAULT_HOLD: Hold = "pause";

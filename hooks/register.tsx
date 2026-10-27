@@ -5,7 +5,7 @@ import { freshStart, freshTool } from "./fresh-start";
 import { noteFile, resetChat } from "./chat-facts";
 import { compaction } from "./compaction";
 import { bandCommand, bandUsage, kitBand } from "./kit-band";
-import { warmCommand } from "./keep-warm";
+import { noteStop, warmCommand } from "./keep-warm";
 import { noteLimits } from "./limit-guard";
 import { panelCommand, roadmapOpen, roadmapTool } from "./roadmap-open";
 import { roadmapEdited, roadmapStale, roadmapView } from "./roadmap-view";
@@ -19,8 +19,8 @@ import { themeTool, themeView } from "./theme-view";
 //   the roadmap pane also opens on /panel (roadmap-open) and the band's button (kit-band).
 // - Model and effort picked per prompt and per subagent from a profile (auto-model), chosen
 //   in the band above the prompt or with /mode.
-// - A pause before the plan limit runs out, with the cache kept warm until the reset
-//   (limit-guard), and keep warm for an idle chat (keep-warm); the band's limit button or
+// - A pause before the plan limit runs out (limit-guard), and the cache kept warm while work
+//   is open or, on Always, while the chat is idle (keep-warm); the band's limit button or
 //   /warm sets both per chat.
 // - fresh_start: /build's safe point clears the chat and resumes (fresh-start).
 
@@ -110,6 +110,16 @@ export const register: Register = (on) => {
     await refresh($, e);
     await noteLimits($, e.rateLimits);
     return next(e);
+  });
+
+  // A main-chat turn ended: background work or a wake-up still to come keeps the cache warm.
+  on("classic.Stop", async ($, e, next) => {
+    const ran = await next(e);
+    if (!e.agent_id) {
+      const open = !!e.background_tasks?.length || !!e.session_crons?.length;
+      await noteStop($, open);
+    }
+    return ran;
   });
 
   on("tool.call", { tool: ["Edit", "Write"] }, async ($, e, next) => {

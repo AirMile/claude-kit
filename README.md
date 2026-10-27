@@ -874,8 +874,9 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   `Auto · Opus 5.5 · medium` while a profile picks model and effort, or just the model with Auto
   off (`⑂` while Orchestrate is on); its menu holds **Auto** (Lean, Balanced, Quality or Off)
   and **Mode** (the Orchestrate toggle). The limit button needs no menu: each press cycles this
-  chat's setting, `⏸ Limit` (pause at the plan limit, the default) → `⏸♨ Limit+cache` (also
-  keep the cache warm while idle) → `⏸ Limit off` (no pause). It is kept per chat, over a
+  chat's setting, `⏸ Limit` (pause at the plan limit, the cache warm while work is open; the
+  default) → `⏸♨ Always` (also keep the cache warm while idle) → `⏸ Off` (no pause, no
+  pings); see Keep warm. It is kept per chat, over a
   reload or restart; a new chat starts at `⏸ Limit`. With Auto off
   you pick the model in the app's own model picker, and an effort button appears next to the
   run: a level holds over new chats and restarts until **Default** (the session's own effort);
@@ -921,7 +922,7 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   (a review: effort high, its model is its own), other built-in agents classified on their
   task. An explicit `model` or `effort` on the Agent call is kept.
 
-- **Plan limit pause**: on unless the band's limit button reads `⏸ Limit off` for this chat.
+- **Plan limit pause**: on unless the band's limit button reads `⏸ Off` for this chat.
   When the 5-hour limit nears 100%, the chat pauses before
   its next model request. The pause point is 95%, lower when the percentage climbs fast
   between two readings (other chats and agents count too: the figure is account-wide), and
@@ -937,12 +938,21 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   with this chat coordinating and verifying. Every note says to keep work here when it depends
   on this conversation, is small or needs your answers: a subagent starts cold and reads again.
   It works with the profile off too.
-- **Keep warm**: `⏸♨ Limit+cache` on the band's limit button (or `/warm`, `/warm on|off`) keeps a long
-  chat's prompt cache alive while you are away. After 50 idle minutes (the cache lives an
-  hour) a tiny request, a fork of the chat that replies "ok", reads the cached context again
-  and so renews it. Not free: each ping costs a cache read of the whole context, far less
-  than rebuilding the cache, but it counts toward your limits. A failed ping turns it off
-  (the button drops back to `⏸ Limit`).
+- **Keep warm**: keeps a chat's prompt cache alive while it waits. After 50 idle minutes (the
+  cache lives an hour) a tiny request, a fork of the chat that replies "ok", reads the cached
+  context again and so renews it. The band's limit button decides when:
+  - `⏸ Limit` (default): only while work is open: a plan-limit pause (when the reset is under
+    5 hours away), or a turn that ended with background work still running (subagents,
+    shells, workflows) or a wake-up or `/loop` still to come. A turn that ends with nothing
+    open stops it.
+  - `⏸♨ Always` (or `/warm`, `/warm on|off`): also whenever the chat is idle, for a chat whose
+    context you want to keep; it stops after 24 hours without a turn.
+  - `⏸ Off`: never.
+
+  Each ping costs a cache read of the whole context (0.05× the input price on Opus 5.5)
+  where a rebuild costs a cache write (2× for the 1-hour cache), so warm is cheaper when you
+  return within about 33 hours; pings count toward your limits. A failed ping stops it
+  (`⏸♨ Always` drops back to `⏸ Limit`).
 - **`/band`** draws the band above the prompt again; folded (`[+]`)? `ctrl+x ctrl+a` unfolds it.
 - **Usage**: `ctx 114k  5h 55% · 2h 53m  7d 75% · 4d 3h` at the band's left: context, then the
   5-hour and 7-day limits, each with the time until it resets; updated after every turn.

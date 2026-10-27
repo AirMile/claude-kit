@@ -1,13 +1,19 @@
 import type { CommandSpec, EngineInterface } from "claude-code";
 
-import { PING_EVERY_MS, shouldPing } from "./limit-policy";
+import {
+  DEFAULT_HOLD,
+  type Hold,
+  PING_EVERY_MS,
+  wantsPing,
+} from "./limit-policy";
 
 // Keeps this chat's prompt cache warm: after 50 idle minutes (the cache lives an hour) a
 // tiny fork of the chat ("reply with only ok") reads the whole cached prefix again, which
-// renews it. Each ping costs a cache read of the context, never zero.
-// - On by hand: the band's limit button (its third setting, limit-guard.ts) or /warm, for a
-//   long chat you return to later.
-// - During a plan-limit pause (limit-guard.ts): while the reset is near.
+// renews it. Each ping costs a cache read of the context, never zero. When, the band's limit
+// button decides (limit-guard.ts mirrors it here with syncHold; wantsPing in limit-policy.ts):
+// - Limit: while work is open, a plan-limit pause near its reset (limit-guard.ts) or a turn
+//   that ended with background work or a wake-up pending (noteStop, from classic.Stop);
+// - Always (or /warm): whenever the chat is idle, until a day without a turn.
 
 export const warmCommand: CommandSpec = {
   name: "warm",
@@ -23,7 +29,9 @@ const TICK_MS = 5 * 60_000; // a ping lands within 55 idle minutes
 
 type Timer = ReturnType<EngineInterface["clock"]["after"]>;
 
-let warm = false;
+let hold: Hold = DEFAULT_HOLD; // this chat's, set by limit-guard.ts
+let openWork = false;
+let lastTurn = 0; // when the chat last ended a turn
 let pauseUntil: number | null = null; // set while limit-guard holds the chat
 let pauseRefused = false; // a ping during the pause hit the limit: no more
 let lastActive = 0; // when the chat last made a request
@@ -35,13 +43,19 @@ export async function noteActive($: EngineInterface) {
   lastActive = await $.clock.now();
 }
 
-export const isWarm = () => warm;
+// A main-chat turn ended (classic.Stop): is work still open that will wake it?
+export async function noteStop($: EngineInterface, open: boolean) {
+  lastTurn = await $.clock.now();
+  openWork = open;
+  if (open) ensureTicker($);
+}
 
-export async function setWarm($: EngineInterface, on: boolean) {
-  warm = on;
-  if (on && !lastActive) lastActive = await $.clock.now();
-  ensureTicker($);
-  $.ui.invalidate("ui.render");
+export const warmHold = () => hold;
+
+// Limit starts the ticker once work is open (noteStop, warmForPause); Always at once.
+export function syncHold($: EngineInterface, next: Hold) {
+  hold = next;
+  if (next === "warm") ensureTicker($);
 }
 
 export function warmForPause($: EngineInterface, until: number) {
@@ -63,21 +77,23 @@ function ensureTicker($: EngineInterface) {
 
 async function tick($: EngineInterface) {
   const now = await $.clock.now();
+  lastActive ||= now; // no request or turn yet since a reload: count from here
+  lastTurn ||= now;
   if (now - lastActive < PING_EVERY_MS) return;
-  const wanted =
-    pauseUntil !== null ? !pauseRefused && shouldPing(pauseUntil, now) : warm;
-  if (!wanted) return;
+  const state = { hold, openWork, pauseUntil, pauseRefused, lastTurn };
+  if (!wantsPing(state, now)) return;
   const r = await $.model.fork({ prompt: PING_PROMPT }).catch(() => null);
   if (r?.isAnswered) {
     lastActive = now;
     pings += 1;
   } else if (r?.reason === "api-error") {
     // The limit (or the API) refused it: retrying every 5 minutes would not help.
+    // Always drops back to Limit; limit-guard.ts sees that and stores it.
     if (pauseUntil !== null) pauseRefused = true;
-    else {
-      warm = false;
+    else if (hold === "warm") {
+      hold = "pause";
       $.ui.toast("kit: keep warm stopped, a ping failed (api error).");
-    }
+    } else openWork = false;
   }
   $.ui.invalidate("ui.render");
 }

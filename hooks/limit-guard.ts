@@ -6,10 +6,10 @@ import type {
 
 import {
   endPauseWarm,
-  isWarm,
   noteActive,
-  setWarm,
+  syncHold,
   warmForPause,
+  warmHold,
 } from "./keep-warm";
 import {
   clockTime,
@@ -29,7 +29,8 @@ import {
 // - auto-model.ts asks limitStep before each model request (main and subagents) and
 //   limitPrompt before a prompt enters; a paused prompt is queued and sent at the reset;
 // - the band shows limitInfo and offers resumeNow, and its limit button cycles the chat's
-//   hold (getHold/setHold): off, pause, or pause with keep warm (/warm sets the last).
+//   hold (getHold/setHold): off, pause (warm while work is open) or warm (also while idle;
+//   /warm sets it). keep-warm.ts follows the hold.
 
 const RESUME_PROMPT =
   "kit: the plan limit has reset. Continue where you stopped before the pause.";
@@ -65,8 +66,8 @@ export async function getHold($: EngineInterface): Promise<Hold> {
       ? await $.store.get(HOLD_KEY).catch(() => undefined)
       : undefined;
     hold = id ? holdOf(stored, id) : DEFAULT_HOLD;
-    if (isWarm() !== (hold === "warm")) await setWarm($, hold === "warm");
-  } else if (hold === "warm" && !isWarm()) {
+    syncHold($, hold);
+  } else if (hold === "warm" && warmHold() !== "warm") {
     await setHold($, "pause"); // a failed ping turned keep warm off
   }
   return hold;
@@ -75,7 +76,7 @@ export async function getHold($: EngineInterface): Promise<Hold> {
 export async function setHold($: EngineInterface, next: Hold) {
   if (holdFor === undefined) await getHold($);
   hold = next;
-  if (isWarm() !== (next === "warm")) await setWarm($, next === "warm");
+  syncHold($, next);
   if (holdFor) {
     const stored = await $.store.get(HOLD_KEY).catch(() => undefined);
     await $.store.set(HOLD_KEY, withHold(stored, holdFor, next)).catch(() => {});
