@@ -1,5 +1,7 @@
 import type { On, ToolSpec } from "claude-code";
 
+import { flowAnswer } from "./flow";
+
 // /build's safe point, automated: the model calls fresh_start after the user picked
 // "Fresh start"; when that turn ends, the chat clears and /kit:build <slug> resumes from the
 // spec in the fresh one. Same chain as the roadmap pane's Pick up, but run from turn.complete.
@@ -36,6 +38,8 @@ export function freshStart(on: On) {
 
   on("turn.complete", async ($, e, next) => {
     const done = await next(e);
+    // A subagent's answer: flow reads the verifier's PASS or FAIL (flow.ts).
+    if (e.agentId) await flowAnswer($, e.agentId, e.answer);
     if (!armed || e.agentId) return done;
     const slug = armed;
     armed = null;

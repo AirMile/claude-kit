@@ -1,6 +1,7 @@
 import type { EngineInterface, On, SessionMessage } from "claude-code";
 
 import { noteCompact } from "./chat-facts";
+import { flowRecovery } from "./flow";
 import { branchSlug, inRoot, parseSpec } from "./spec";
 
 // Add priorities to the native summarizer, never rebuild its input or its summary.
@@ -104,17 +105,22 @@ export function compaction(on: On) {
       // Diagnostic failures cannot discard a completed native summary.
     }
 
-    if (!spec) return compacted;
-    const now = await activeSpec($, e.messages);
-    if (!now) return compacted;
-    const note: SessionMessage = {
-      role: "user",
-      toolUses: [],
-      text:
-        `kit: building ${now.slug} · Status: ${now.status} · criteria ${now.done}/${now.total}. ` +
-        `Re-read docs/specs/${now.slug}.md (## Handoff first) before continuing; ` +
-        `if the /build procedure is no longer in context, run /build ${now.slug}.`,
-    };
-    return { ...compacted, messages: [...compacted.messages, note] };
+    const notes: SessionMessage[] = [];
+    const now = spec ? await activeSpec($, e.messages) : null;
+    if (now)
+      notes.push({
+        role: "user",
+        toolUses: [],
+        text:
+          `kit: building ${now.slug} · Status: ${now.status} · criteria ${now.done}/${now.total}. ` +
+          `Re-read docs/specs/${now.slug}.md (## Handoff first) before continuing; ` +
+          `if the /build procedure is no longer in context, run /build ${now.slug}.`,
+      });
+    // Flow's open task, which the summary may have lost (flow.ts).
+    const open = flowRecovery();
+    if (open) notes.push({ role: "user", toolUses: [], text: open });
+    return notes.length
+      ? { ...compacted, messages: [...compacted.messages, ...notes] }
+      : compacted;
   });
 }

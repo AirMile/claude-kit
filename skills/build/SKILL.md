@@ -9,7 +9,9 @@ argument-hint: '[slug | "what to change or fix"]'
 For features and real bugs. It keeps progress in `docs/specs/<slug>.md` so any new chat can
 resume with `/build <slug>`. No checkpoints or background workflows: the spec file is the state.
 Small changes don't need this skill (a plain request + `/commit` is fine); `/build` handles them
-gracefully when it gets one anyway.
+gracefully when it gets one anyway. kit's flow (the mod) sends heavy change tasks here by itself:
+started that way (a `kit flow (heavy)` note, not `/build`), commit and push nothing (4a's spec
+commit included) until the user asks, and end with the report after 5. Verify or 6. Manual.
 
 **Phase boundaries**: before every `Status:` change, rewrite the spec's `## Handoff` (template
 rule). A fresh chat gets nothing else back, so anything learned only in this chat goes there.
@@ -83,13 +85,16 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
    `${CLAUDE_SKILL_DIR}/references/spec-template.md`: criteria per happy/edge/error,
    Approach with files, ASCII wireframe for UI, Tests mapping. More than 6 criteria → propose a
    split first. Also check: does this make another roadmap item obsolete? Say so in the plan.
+   Blind second plan, when `mcp__kit__delegate` exists: after your draft, send it role `plan`
+   with the feature, the roadmap line, the non-goals and the files, never your draft. Take what
+   holds up; where the two differ, list it under Open points in the plan for the user.
    `Design:` set → Approach lists the sections; on a Payload project also convert's CMS table
    (`${CLAUDE_SKILL_DIR}/../convert/references/payload.md` § 3) and a criterion "every visible text, image and list
    item is editable in the CMS".
 3. `ExitPlanMode`. Reject → revise. Accept →
    - write the plan text as `docs/specs/<slug>.md` (`Status: defined`); no slug yet → derive one
-     and add a roadmap line (in the first phase that still has open items);
-   - add `· spec: docs/specs/<slug>.md` to the roadmap line;
+     and, when `docs/roadmap.md` exists, add a roadmap line (first phase with open items);
+   - a roadmap line → add `· spec: docs/specs/<slug>.md` to it;
    - a decision with a rejected alternative → append to `docs/decisions.md`;
    - commit just these docs right away (`docs(<slug>): add spec`): that commit is the claim
      other sessions see, and the resume point if this chat dies. With a remote, the plan says
@@ -106,18 +111,22 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
 
 1. `Status: building`. Spec has `Design:` → follow the `convert` skill's procedure for that UI.
    Run the full suite once before the first edit; its failures are the baseline.
-2. Per criterion: test first when testable (it must fail before the code exists; mock only
+2. `mcp__kit__delegate` exists → a criterion group that stands alone (its files and tests named
+   in the spec) goes to it, role `build` (`build+` when hard), one at a time: brief = spec path,
+   those criteria, files, test first. Read its diff; steps 4-5 stay yours. "build it here" (no
+   GPT), the rest, or no tool: per criterion as below.
+3. Per criterion: test first when testable (it must fail before the code exists; mock only
    external boundaries: network, third-party APIs, time, file system), then the code. Already
    met by earlier code → its test may pass at once; say so. Follow `AGENTS.md` conventions.
    Library API you're unsure of → context7, don't guess.
-3. A criterion, an Out-of-scope line or a file in Approach must change → stop, `EnterPlanMode`
+4. A criterion, an Out-of-scope line or a file in Approach must change → stop, `EnterPlanMode`
    with the revised Approach (keep built work that still fits); accept → update the spec, commit
    it alone (`docs(<slug>): revise spec`) so a resume sees it, continue.
-4. Run the full test suite + typecheck/lint once at the end. Fix until green; change a test's
+5. Run the full test suite + typecheck/lint once at the end. Fix until green; change a test's
    expectation only when this spec changes that behaviour. A failure already in the baseline is
    pre-existing: list it under `## Verify` and in the report, don't fix it.
-5. Don't check criteria yet: verify does that.
-6. User chose Build, then stop → `Status: verifying` (Handoff: what verify should look at
+6. Don't check criteria yet: verify does that.
+7. User chose Build, then stop → `Status: verifying` (Handoff: what verify should look at
    first), report, end the turn. Changes stay uncommitted: Finish makes the one commit.
 
 ## 5. Verify
@@ -125,7 +134,9 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
 `Status: verifying`. Spawn the plugin's `verifier` agent (fresh context, it did not build this)
 with: the spec path, the dev server URL (rule below), the list of changed files, and the
 pre-existing failures. It returns: per-criterion pass/fail/unclear with evidence, manual items,
-and at most 3 improvement notes.
+and at most 3 improvement notes. With `mcp__kit__delegate`, also run role `review` (author: `gpt` when
+the code came from delegate, else `claude`): its P0/P1 findings count as fails, the rest join the
+improvement notes.
 
 - Fails → fix each using `debug.md`'s tier table only (not its Finish: the feature gets one
   commit); fails sharing a changed file → investigate together. Then re-run the failing checks

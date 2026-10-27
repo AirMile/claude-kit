@@ -15,8 +15,15 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   `mcp__kit__roadmap_view` / `mcp__kit__theme_view` (`hooks/roadmap-open.ts`,
   `hooks/theme-view.tsx`) that `/product` and `/theme` call to open their panes (plus the `/panel` command), the band
   above the prompt (`hooks/kit-band.tsx`: one line of usage, the run menu (auto profile or off,
-  orchestrate), the limit button (Limit: pause + warm while work is open, Always, Off; per chat), an effort button with auto off, git, second opinion via `hooks/second-opinion.ts`, dashboard), model/effort per prompt and subagent
-  (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, switches kept by `hooks/model-switch.ts`, `/mode`), orchestrate notes per prompt (`hooks/orchestrate.ts`), a pause before the plan limit with
+  GPT on or off, flow observe/on/off), the limit button (Limit: pause + warm while work is open, Always, Off; per chat), an effort button with auto off, git, dashboard), model/effort per prompt and subagent
+  (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, switches kept by `hooks/model-switch.ts`, `/mode`), flow (`hooks/flow.ts` on the pure `hooks/flow-policy.ts`, `hooks/flow-check.ts` and
+  `hooks/flow-log.ts`, storage and git fingerprint in `hooks/flow-store.ts`: each change task's
+  track light/medium/heavy, its note at the start or on growth, the verify gate on `classic.Stop`
+  from the worktree's git fingerprint, the checks it saw and the verifier's answer, `/flow`),
+  `mcp__kit__delegate` (`hooks/delegate.ts` on the pure `hooks/delegate-policy.ts`: work handed
+  to Claude or GPT by role and by which plan has room, the newest GPT model per family; the
+  Codex side, its catalog, the ChatGPT meters, the GPT switch and a run, in `hooks/codex-run.ts`;
+  `/gpt`), a pause before the plan limit with
   cache keep-alive (`hooks/limit-guard.ts` on the pure `hooks/limit-policy.ts`), keep-alive forks by hand or
   for the pause (`hooks/keep-warm.ts`, `/warm`), `/band` (the roadmap
   pane draws through the pure `roadmap-{dashboard,tabs,phase,card,later}.tsx` on `roadmap-parts.tsx`, with
@@ -32,7 +39,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
 - Skill Feedback inbox: `~/.agents/kit/feedback.md`, one Markdown line per point (format in its
   header), written by the model in any project and read by `/improve`. No script
 - `skills/<name>/scripts/`: deterministic helpers (commit: `staging-check.js`, setup:
-  `migrate-v1.js`, scan: `seo-facts.js`), called via `${CLAUDE_SKILL_DIR}` and allowed in the
+  `migrate-v1.js`, scan: `seo-facts.js`, codex: `codex-status.js`), called via `${CLAUDE_SKILL_DIR}` and allowed in the
   skill's `allowed-tools`
 - `rules/frontend.md`: path-scoped user rule; plugins can't ship rules, so it is symlinked to
   `~/.claude/rules/frontend.md` (see README)
@@ -67,7 +74,11 @@ product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.m
   purpose per file, ≤ ~300 lines each (larger → split). It reads only specs (`Status` +
   criteria), `docs/roadmap.md` and read-only git state (spec commits and
   worktrees on other branches); it writes only through `roadmap-file.ts` and
-  `$.store` (worktree marks).
+  `$.store` (worktree marks, pins). It starts Codex only for `mcp__kit__delegate`: what a
+  writing run changes is Codex's work, in Codex's sandbox, reviewed by the chat. Flow reads the
+  chat's own tool calls (Edit/Write, Bash), subagents' answers and read-only git state (diff,
+  status, `hash-object` without `-w`), and holds a turn's end; it writes only `$.store` (its
+  mode, the open task per session, a 14-day log).
   Schema or roadmap format change → update `roadmap-file.ts` + its skill. `claude plugin test .`
 - A rule that needs a second paragraph of exceptions is a sign to cut it, not to extend it
 - Check: `wc -l skills/*/SKILL.md`

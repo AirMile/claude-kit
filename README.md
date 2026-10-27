@@ -677,20 +677,19 @@ you approve → `/improve` applies it and ticks the line off.
 ### /codex
 
 Hands a task to a GPT model through the Codex CLI, so it runs on your ChatGPT plan instead of
-Claude's limits. Claude uses it by itself when you ask for GPT (Sol, Astra, Luna, Terra), for the
-band's second opinion and for Orchestrate's `⑂ Codex`; you can also call it yourself.
+Claude's limits. Claude uses it when you ask for GPT (Sol, Terra, Luna, Astra, e.g. "vraag Sol
+wat hij van dit plan vindt") and for delegated work; you can also call it yourself.
 
 ```
 /codex Sol: review the current diff
 ```
 
-It finds the `codex` CLI on the device, checks `codex login status` (ChatGPT, never an API key),
-writes a brief that stands alone, runs `codex exec` read-only (workspace-write only for an
-implementation you asked for, or with `⑂ Codex` on) and reads only Codex's final message; its
-log stays in a file. After an implementation Claude reviews the diff and runs the checks. The
-name → model ID table lives in the skill, so every device with kit has it: a new GPT model goes
-there, then bump the version. Needed per device: the Codex CLI installed and `codex login` done
-once.
+The usual way is the mod's tool `mcp__kit__delegate` (see Delegation under [kit mod](#kit-mod)):
+it picks the model, runs Codex and returns only its final message and the changed files.
+Without the tool (in Codex itself, or an older kit) the skill runs `codex exec` by hand, with
+the models from `scripts/codex-status.js`. GPT models are named by family and the newest version
+in Codex's own catalog is used, so a new release (Terra 6.1, say) is picked up without a kit
+update. Needed per device: the Codex CLI installed and `codex login` done once, with ChatGPT.
 
 ### /launch
 
@@ -887,30 +886,24 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt, one line (it wraps when narrow): usage at the left
-  (`ctx 114k  5h 55% · 2h 53m  7d 75% · 4d 3h`), then the run, the limit button, `⎇ Git`, `⚖ Ask` and `▤`
+  (`ctx 114k  5h 55% · 2h 53m  7d 75% · 4d 3h`, then `gpt 5h 1%` and `gpt 7d 6%` for ChatGPT once
+  Codex is found and GPT is on), then the run, the limit button, `⎇ Git` and `▤`
   (the dashboard; `▤ Close` closes it). Each opens a menu in its own block above the band: hover to peek, press to keep it open.
   **ctx**: **Compact** and **Clear**, run at once, or when the running turn ends. The run reads
-  `Auto · Opus 5.5 · medium` while a profile picks model and effort, or just the model with Auto
-  off (`⑂` while orchestrating, `⑂ Codex` with Codex); its menu holds **Auto** (Lean, Balanced,
-  Quality or Off) and **Mode** (Off, ⑂ Subagents, ⑂ Codex). The limit button needs no menu: each press cycles this
+  `Balanced · Opus 5.5 · medium + GPT` while a profile picks model and effort (`+ GPT` while GPT
+  may take delegated work), or just the model with the profile off; its menu holds **Profile**
+  (Lean, Balanced, Quality or Off), **GPT** (On or Off) and **Flow** (Observe, On or Off): three
+  switches, none depends on another. The limit button needs no menu: each press cycles this
   chat's setting, `⏸ Limit` (pause at the plan limit, the cache warm while work is open; the
   default) → `⏸♨ Always` (also keep the cache warm while idle) → `⏸ Off` (no pause, no
   pings); see Keep warm. It is kept per chat, over a
-  reload or restart; a new chat starts at `⏸ Limit`. With Auto off
+  reload or restart; a new chat starts at `⏸ Limit`. With the profile off
   you pick the model in the app's own model picker, and an effort button appears next to the
   run: a level holds over new chats and restarts until **Default** (the session's own effort);
   the engine lowers a level the model lacks. **Git**: **Commit** (runs `/kit:commit`), Diff,
   Pull, Push, PR, Branch. The effort shown is what kit set for the last prompt, which can differ
   from the session setting in the app's model picker.
-- **Second opinion**: the band's `⚖ Ask` (hover or press) opens a menu with a row per ask: **Opinion** (on
-  what the chat is working on), **Review** (of the current changes) and **Stuck** (a diagnosis
-  of the bug the chat is stuck on). Each row holds the models; one press sends it. GPT (Sol 6.1,
-  Astra 6) runs through Codex, read-only, with the `codex` skill; Claude (Opus 5.5, Sonnet 5.5)
-  runs as a fresh read-only subagent
-  on that model. The pick is sent as your prompt; this chat writes the brief and shows the other
-  model's findings next to its own judgment. Models live in `GPT` and `CLAUDE` in
-  `hooks/second-opinion.ts`; a new GPT name also goes in the `codex` skill's table.
-- **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (◆'s menu in the band,
+- **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (Profile in the band's run menu,
   or `/mode lean|balanced|quality|off`). The choice is kept across sessions. Each prompt is sorted (kit's own skills by name, the rest by a Haiku
   classifier) into question, routine, planning or heavy work, and the profile maps that to a
   model and effort. `/build` counts as planning work, not heavy: it starts from a spec and ends
@@ -949,25 +942,78 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   band shows `paused until 14:05`, and **Resume now** ends the pause by hand. The prompt
   cache is kept warm meanwhile (see Keep warm), only when the reset is under 5 hours away:
   further out, a cold start is cheaper. At the reset a cut-off turn continues by itself.
-- **Orchestrate**: **Mode** in the band's run menu (Off by default, kept across sessions) makes
-  this chat the orchestrator. Each typed prompt carries a note by its kind of work: a question
-  none. With `⑂ Subagents`, routine work stays here unless it means searching many files (then an Explore
-  subagent); planning sends the research to subagents and keeps the decision here; heavy work
-  is split into independent pieces for subagents or, on the desktop app, their own sessions,
-  with this chat coordinating and verifying. Every note says to keep work here when it depends
-  on this conversation, is small or needs your answers: a subagent starts cold and reads again.
-  It works with the profile off too.
-- **Orchestrate with Codex**: `⑂ Codex` hands the work to Codex instead, which runs on your
-  ChatGPT plan, so Claude's limits are spared. Claude plans, writes the brief, reviews the diff
-  and runs the checks; Codex reads (read-only) and changes code (workspace-write, it commits
-  nothing). Routine work stays here when small and goes to Codex when it spans several files;
-  planning sends the research to Codex and keeps the decision here; heavy work is split into
-  pieces Codex carries out one at a time. Once Claude's 5h or 7d meter reaches 70%, routine
-  changes go to Codex too. Codex's log goes to a file and only its final message is read: its
-  log holds every command it ran. It runs with the `codex` skill (model `CODEX` in
-  `hooks/orchestrate.ts`, Sol 6.1, threshold `PRESSURE`); if Codex fails (not logged in, its own limit), Claude says why and does it
-  here. Not free: the brief, Codex's report and the diff review still cost Claude tokens, so
-  it pays off for work with many steps, not for a one-line fix.
+- **Flow**: the change workflow, for every request and without `/build`. Each change task gets
+  a track, from a Haiku classifier that judges the change's risk (not the model it needs):
+
+  ```
+  light   a small local change: make it, run a check that covers it
+  medium  a bounded behaviour change: 2-4 criteria in the chat, test first, the checks
+          that cover it (the full suite when shared code changed)
+  heavy   a new capability, a shared interface, a migration, unclear scope: the build
+          skill up to and including Verify (spec, plan mode, the verifier), committing
+          and pushing nothing unless you ask; /build is always heavy
+  ```
+
+  One note goes out at the start and when the task grows, never on every prompt. It grows by
+  what the work shows (more than 3 code files → medium; more than 8, or a migration or schema
+  path → heavy) and never shrinks within a task. A short reply ("ja"), a question, or your
+  answer to the question the last turn ended on keeps the task; any other request ends it (in
+  the log as unresolved when its changes were never checked) and starts a new one. Code
+  changed outside any task (an edit, a shell command, a subagent) starts a light one. No
+  roadmap needed.
+
+  **The verify gate**: a turn that ends with changed code (not docs) is held until a passing
+  check ran on the code as it is now. Flow judges by what it sees itself: git's fingerprint
+  of the worktree (so edits through the shell, a subagent or GPT count too), compared with the
+  one the last passing check started on; without git, the order of the edits and checks.
+  Only real runs count (a test, typecheck, lint or build command, not `echo test`); a failing
+  check wipes earlier evidence; a piped check (`npm test | tail`) passes only when its output
+  names no failure. Heavy work with a spec also needs the `kit:verifier`'s PASS on that code,
+  read from its own answer; a Fix needs only its check. It holds at most once per round of
+  changes and twice per task, never when the turn ends on a question to you or you said to
+  skip verifying ("skip the checks", "zonder te testen"; "stop" alone is a request); after
+  that the task shows as `unverified`. The open task is kept per session (a reload or restart
+  keeps it), and after a compaction a note says what it still needs.
+
+  **Flow** in the run menu: **Observe** (the default: it runs everything, the hold budget
+  included, but sends no note and holds nothing), **On**, **Off**. It never turns itself on.
+  `/flow` reports 14 days: tasks per first pick, how many grew after it (too light?) or ended
+  heavy with two files or fewer and no spec (too heavy?), holds, how tasks ended (verified,
+  unresolved, unverified), and the last ten picks and holds, numbered. `/flow mark 3
+  too-light` (or `too-heavy`, `hold-right`, `hold-wrong`) adds your judgment, which counts
+  alone can't give. `/flow on|observe|off` sets it. After seven days of observing the band
+  says so. The open task's track shows below the band (`flow medium · observe`).
+- **Delegation**: flow's notes (and `/build`) hand self-contained work to the tool
+  `mcp__kit__delegate` with a role. The mod picks Claude or GPT by role and by which plan has
+  room, on the newest model per family:
+
+  ```
+  role      both have room          Claude tight     no GPT (tight, off, no Codex)
+  search    Claude Haiku (Explore)  GPT Luna         Claude Haiku
+  research  GPT Sol, read-only      GPT Sol          Claude Sonnet
+  build     GPT Terra, writes       GPT Terra        built here
+  build+    GPT Sol, writes         GPT Sol          built here
+  review    GPT Sol of Claude's code; Claude Sonnet of GPT's; no GPT → the checks and verifier
+  plan      GPT Sol: a blind second plan (no GPT → none)
+  ```
+
+  Claude is tight at 70% of its 5h window, or when its week runs 10 points ahead of the time
+  gone by; ChatGPT at 80% (5h) or 90% (7d), read from Codex at most every 10 minutes. Astra
+  never runs by itself: only when you name it. A change is built here without GPT: a Claude
+  subagent would start cold on what this chat already knows. **GPT Off** in the run menu (or
+  `/gpt off`) keeps all delegated work on Claude (the right column), reads nothing from Codex
+  and hides its meters; a GPT model you name still runs. While GPT is on, a GPT run may write
+  without asking (that switch is the standing request); with it off, a write asks first. A GPT run returns its final message, the files
+  it changed and a `thread` for a follow-up without a new brief; its whole log stays in Codex's
+  session file. Writing runs one at a time, commit nothing, and Claude reviews the diff and runs
+  the checks. A Claude route comes back as "run this as an Agent subagent on model X". With
+  the tool there, `/build` also gets a blind second plan for each spec (differences become Open points
+  for you), hands self-contained criteria to `build`, and adds a review by the other family to
+  its verify step. Not free: the brief, the report and the diff review still cost Claude
+  tokens, so it pays off for work with many steps, not for a one-line fix.
+- **/gpt**: the newest model per family and the ChatGPT meters; `/gpt on` and `/gpt off` set
+  the GPT switch. `/gpt pin terra gpt-5.6-terra`
+  holds a family on a version (a new release that disappoints); `/gpt unpin terra` lets go.
 - **Keep warm**: keeps a chat's prompt cache alive while it waits. After 50 idle minutes (the
   cache lives an hour) a tiny request, a fork of the chat that replies "ok", reads the cached
   context again and so renews it. The band's limit button decides when:

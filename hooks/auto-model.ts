@@ -17,6 +17,7 @@ import {
   LABELS,
   type Mode,
   pick,
+  type Profile,
   profileName,
   PROFILES,
   stretch,
@@ -33,7 +34,7 @@ import {
   switchTo,
 } from "./model-switch";
 import { noteAgent } from "./chat-facts";
-import { limitsUsed, orchestrateNote, orchestration } from "./orchestrate";
+import { flowMode, flowPrompt, flowSpawned } from "./flow";
 
 // Picks model and effort before the model runs (it cannot change its own turn's effort):
 // - the first prompt of a chat (a new session or after /clear) picks a model from the profile,
@@ -199,6 +200,34 @@ async function resend(
   });
 }
 
+// The profile's part of a typed prompt: the model and effort for its kind of work, the first
+// prompt's model question, and the escalation when it needs a stronger model. Returns why the
+// prompt is held, if it is.
+async function profilePick(
+  $: EngineInterface,
+  profile: Profile,
+  kind: Kind,
+  text: string,
+): Promise<{ drop?: string }> {
+  // A command's kind is explicit; a thin reply keeps the work's kind.
+  const ran = commandKind(text) ? kind : carry(kind, lastKind, text);
+  lastKind = ran;
+  const p = pick(profile, ran);
+  if (await restoreSwitch($)) decided = true; // a reload kept the switch
+  let asked = false;
+  if (!decided) {
+    decided = true;
+    asked = await askFirstModel($, p.model);
+  }
+  effort = p.effort;
+  // The first prompt's question just settled the model: no second one for it.
+  const step = await escalate($, text, p.model, !asked);
+  await showStatus($);
+  if (step.drop) return { drop: step.drop };
+  if (step.note) escalated = step.note;
+  return {};
+}
+
 export function autoModel(on: On) {
   // A new chat (startup or /clear) asks again; a resume keeps the model it ran on.
   on(
@@ -225,40 +254,25 @@ export function autoModel(on: On) {
       return { drop: held };
     }
     const now = await getMode($);
-    const typed = e.origin.kind === "composer" || e.origin.kind === "bridge";
-    const to = typed ? await orchestration($) : "off";
-    const orchestrating = to !== "off";
-    if (!typed || (now === "off" && !orchestrating)) return next(e);
+    // Typed, or started by kit on the user's own click (the roadmap pane, Fresh start).
+    const typed =
+      e.origin.kind === "composer" ||
+      e.origin.kind === "bridge" ||
+      (e.origin.kind === "plugin" && e.origin.name === "kit");
+    const flowing = (await flowMode($)) !== "off";
+    if (!typed || (now === "off" && !flowing)) return next(e);
     const kind = (await kindOf($, e.text)) ?? "routine";
-    if (now !== "off") {
-      // A command's kind is explicit; a thin reply keeps the work's kind.
-      const ran = commandKind(e.text) ? kind : carry(kind, lastKind, e.text);
-      lastKind = ran;
-      const p = pick(now, ran);
-      if (await restoreSwitch($)) decided = true; // a reload kept the switch
-      let asked = false;
-      if (!decided) {
-        decided = true;
-        // An orchestrator keeps its model: handing work off is what makes it cheaper.
-        asked = !orchestrating && (await askFirstModel($, p.model));
-      }
-      effort = p.effort;
-      // The first prompt's question just settled the model: no second one for it.
-      const step = await escalate($, e.text, p.model, !asked);
-      await showStatus($);
-      if (step.drop) {
-        $.ui.toast(step.drop, { timeoutMs: 10_000 });
-        return { drop: step.drop };
-      }
-      if (step.note) escalated = step.note;
+    // The profile picks the model and effort; flow (flow.ts) the workflow. Neither needs the
+    // other.
+    const step: { drop?: string } =
+      now === "off" ? {} : await profilePick($, now, kind, e.text);
+    if (step.drop) {
+      $.ui.toast(step.drop, { timeoutMs: 10_000 });
+      return { drop: step.drop };
     }
-    // Orchestrate (the band's ⑂): a note for this kind of work rides along with the prompt;
-    // with Codex, how much of this plan's limits is used decides how much goes there.
     const notes = [
       escalated,
-      to !== "off"
-        ? orchestrateNote(kind, to, to === "codex" ? await limitsUsed($) : 0)
-        : undefined,
+      flowing ? await flowPrompt($, e.text, kind) : undefined,
     ].filter((n): n is string => n !== undefined);
     escalated = undefined;
     return next(
@@ -276,7 +290,7 @@ export function autoModel(on: On) {
       const own = agentEffort.get(e.agentId);
       if (isOn && own && e.effort !== undefined) step = { ...e, effort: own };
     } else {
-      // Auto picks the effort; with the profile off the band's effort holds, if one is set.
+      // A profile picks the effort; with it off the band's effort holds, if one is set.
       const model = isOn ? ((await override($)) ?? e.model) : e.model;
       const want = isOn ? effort : await effortLock($);
       const level = want && e.effort !== undefined ? want : e.effort;
@@ -288,16 +302,25 @@ export function autoModel(on: On) {
   on("agent.spawn", async ($, e, next) => {
     noteAgent(e.subagentType);
     const now = await getMode($);
-    if (now === "off" || e.fork) return next(e);
+    if (now === "off" || e.fork) {
+      const started = await next(e);
+      flowSpawned(started.agentId, e.subagentType); // flow reads the verifier's answer
+      return started;
+    }
     const isEngine = e.provider.plugin === "engine";
     const known = agentKind(e.subagentType);
     // A plugin's or user's agent keeps its own definition unless kit knows its work.
-    if (!isEngine && !known) return next(e);
+    if (!isEngine && !known) {
+      const started = await next(e);
+      flowSpawned(started.agentId, e.subagentType);
+      return started;
+    }
     const kind = known ?? (await kindOf($, e.prompt)) ?? "routine";
     const p = pick(now, kind);
     const spawned = await next(
       isEngine && !e.model ? { ...e, model: p.model } : e,
     );
+    flowSpawned(spawned.agentId, e.subagentType);
     const own = subagentEffort(askedEffort(e.tool_use_id), p.effort);
     if (spawned.agentId && own) agentEffort.set(spawned.agentId, own);
     return spawned;

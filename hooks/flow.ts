@@ -1,0 +1,303 @@
+import type { CommandSpec, EngineInterface, On } from "claude-code";
+
+import { checkOf, checkPassed } from "./flow-check";
+import {
+  endEntry,
+  type Ending,
+  type Mark,
+  MARKS,
+  marked,
+  report,
+  weekDone,
+} from "./flow-log";
+import {
+  CHANGE_LABELS,
+  type Change,
+  changed,
+  changeOfLabel,
+  FLOW_MODES,
+  type FlowMode,
+  newTask,
+  onCheck,
+  onEdit,
+  onPrompt,
+  onVerifier,
+  stopVerdict,
+  type Task,
+  verified,
+  verifierPassed,
+} from "./flow-policy";
+import {
+  loadTask,
+  log,
+  readLog,
+  saveTask,
+  worktreePrint,
+  writeLog,
+} from "./flow-store";
+import { isThin, type Kind } from "./model-policy";
+
+// Flow (the band's Flow row, /flow): this chat's open change task, fed by its prompts
+// (auto-model.ts), edits, turn ends and compactions (register.tsx, compaction.ts), shell
+// checks (below), the verifier's answer (fresh-start.ts's turn.complete) and GPT's changes
+// (delegate.ts). The worktree's git fingerprint is the evidence; the task is kept per session
+// in $.store, so a reload or restart keeps it. `observe`, the default, runs everything (the
+// hold budget included) but sends no note and holds nothing, and logs it all for 14 days;
+// `on` sends the notes and holds; `off` does nothing. It never turns itself on.
+
+export const flowCommand: CommandSpec = {
+  name: "flow",
+  description:
+    "kit: the change workflow (observe, on, off), its report, and marking a pick",
+  argumentHint: "[on | observe | off | mark <n> too-heavy|too-light|hold-right|hold-wrong]",
+  immediate: true,
+};
+
+const MODE_KEY = "flow";
+const SINCE_KEY = "flowSince";
+const CLASSIFY_CHARS = 4000;
+const BUILD = /^\s*\/(kit:)?build\b|<command-name>\/?(kit:)?build<\/command-name>/;
+
+let mode: FlowMode | undefined; // read from $.store on first use
+let loadedFor: string | undefined; // the session whose task is in memory
+let task: Task | undefined; // this chat's open change task
+let promptPrint: string | undefined; // the worktree when the last prompt came in
+let endedOnQuestion = false; // the last turn ended on a question to the user
+const spawned = new Map<string, string>(); // subagent id → its type, until it answers
+
+export async function flowMode($: EngineInterface): Promise<FlowMode> {
+  if (mode === undefined) {
+    const stored = await $.store.get(MODE_KEY).catch(() => undefined);
+    mode = FLOW_MODES.includes(stored as FlowMode)
+      ? (stored as FlowMode)
+      : "observe";
+  }
+  return mode;
+}
+
+export async function setFlowMode($: EngineInterface, next: FlowMode) {
+  mode = next;
+  await $.store.set(MODE_KEY, next).catch(() => {});
+  if (next === "observe")
+    await $.store.set(SINCE_KEY, await $.clock.now()).catch(() => {});
+}
+
+// When the observe week began: the first time flow ran here.
+async function since($: EngineInterface): Promise<number> {
+  const stored = await $.store.get(SINCE_KEY).catch(() => undefined);
+  if (typeof stored === "number") return stored;
+  const now = await $.clock.now();
+  await $.store.set(SINCE_KEY, now).catch(() => {});
+  return now;
+}
+
+// The task of this session, from $.store the first time (a reload or restart keeps it).
+async function load($: EngineInterface) {
+  const id = await $.session.id().catch(() => "");
+  if (loadedFor === id) return;
+  loadedFor = id;
+  task = await loadTask($, id);
+}
+
+async function save($: EngineInterface) {
+  await saveTask($, loadedFor ?? (await $.session.id().catch(() => "")), task);
+}
+
+const ending = (t: Task, p: string | undefined): Ending =>
+  !changed(t, p)
+    ? "no change"
+    : verified(t, p)
+      ? "verified"
+      : t.unverified
+        ? "unverified"
+        : "unresolved";
+
+async function classifyChange($: EngineInterface, text: string): Promise<Change | undefined> {
+  const label = await $.model
+    .classify(text.slice(0, CLASSIFY_CHARS), Object.values(CHANGE_LABELS), {
+      model: "haiku",
+    })
+    .catch(() => undefined);
+  return changeOfLabel(label);
+}
+
+// A typed prompt, already sorted into its kind: the note to send with it, while flow is on.
+export async function flowPrompt($: EngineInterface, text: string, kind: Kind): Promise<string | undefined> {
+  const m = await flowMode($);
+  if (m === "off") return undefined;
+  await load($);
+  await since($);
+  const now = await $.clock.now();
+  const p = await worktreePrint($);
+  promptPrint = p;
+  const build = BUILD.test(text);
+  // A short reply ("ja") continues an open task; without one it is a request of its own.
+  const thin = !!task && isThin(text);
+  const change =
+    build || thin || kind === "question" ? undefined : await classifyChange($, text);
+  const step = onPrompt({
+    task,
+    kind,
+    change,
+    build,
+    thin,
+    answering: endedOnQuestion,
+    text,
+    id: now,
+    print: p,
+  });
+  endedOnQuestion = false;
+  if (step.ended) await log($, endEntry(step.ended, ending(step.ended, p), now));
+  task = step.task;
+  await save($);
+  if (step.event === "start" || step.event === "escalate")
+    await log($, {
+      task: task?.id,
+      event: step.event,
+      text: text.trim().slice(0, 60),
+      track: task?.track,
+      kind,
+      change: build ? "heavy" : change,
+      reason: step.event === "escalate" ? "the prompt asked for more" : undefined,
+    });
+  return m === "on" ? step.note : undefined;
+}
+
+// A file written or edited, by this chat or one of its subagents: the note for the tool's
+// result when the task grew (the main chat's only: a subagent's note would reach the wrong
+// reader).
+export async function flowEdit(
+  $: EngineInterface,
+  path: string,
+  fromAgent = false,
+): Promise<string | undefined> {
+  const m = await flowMode($);
+  if (m === "off") return undefined;
+  await load($);
+  const now = await $.clock.now();
+  const step = onEdit(task, path, now, now, promptPrint);
+  if (!step) return undefined;
+  task = step.task;
+  await save($);
+  if (step.started)
+    await log($, { task: task.id, event: "start", text: path, track: task.track, reason: "an edit outside any task" });
+  if (!step.note) return undefined;
+  await log($, { task: task.id, event: "escalate", text: path, track: task.track, reason: `${task.files.length} files` });
+  return m === "on" && !fromAgent ? step.note : undefined;
+}
+
+// GPT changed files through mcp__kit__delegate: they count as this chat's changes.
+export async function flowDelegated($: EngineInterface, files: string[]) {
+  for (const f of files) await flowEdit($, f, true);
+}
+
+// The turn wants to end: why it should go on, while flow is on. Observe runs the same budget,
+// so its log shows what On would have done.
+export async function flowStop($: EngineInterface, lastMessage: string | undefined): Promise<string | undefined> {
+  const m = await flowMode($);
+  if (m === "off") return undefined;
+  await load($);
+  const p = await worktreePrint($);
+  // Code changed this turn with no task open (a shell edit, a subagent): git saw it.
+  if (!task && p !== undefined && promptPrint !== undefined && p !== promptPrint) {
+    const now = await $.clock.now();
+    task = newTask(now, "light", promptPrint);
+    await log($, { task: task.id, event: "start", text: "", track: "light", reason: "changes git saw" });
+  }
+  const before = task;
+  const v = stopVerdict(task, lastMessage, p);
+  endedOnQuestion = (lastMessage ?? "").trim().endsWith("?");
+  promptPrint = p; // the next turn's changes count from here
+  task = v.task;
+  await save($);
+  const now = await $.clock.now();
+  if (v.ended) await log($, endEntry(v.ended, "verified", now));
+  else if (before && v.outcome !== "none")
+    await log($, {
+      task: before.id,
+      event: v.outcome,
+      text: before.files.slice(0, 3).join(", "),
+      track: before.track,
+      reason: v.block ? v.block.split(":")[1]?.trim().slice(0, 80) : undefined,
+    });
+  return m === "on" ? v.block : undefined;
+}
+
+// A subagent this chat started (auto-model.ts's agent.spawn), until its answer comes.
+export function flowSpawned(agentId: string | undefined, type: string) {
+  if (agentId && type === "kit:verifier") spawned.set(agentId, type);
+}
+
+// A subagent's turn ended (turn.complete): the verifier's PASS or FAIL counts for the task.
+export async function flowAnswer($: EngineInterface, agentId: string, answer: string) {
+  if (!spawned.delete(agentId) || (await flowMode($)) === "off") return;
+  await load($);
+  if (!task) return;
+  task = onVerifier(task, verifierPassed(answer), await $.clock.now(), await worktreePrint($));
+  await save($);
+}
+
+// After a compaction: what the open task still needs, for the recovery note.
+export function flowRecovery(): string | undefined {
+  if (!task || task.lastEditAt === 0) return undefined;
+  const files = task.files.slice(0, 5).join(", ") || "code";
+  const verifier = task.track === "heavy" && task.spec ? " and the kit:verifier on its spec" : "";
+  return `kit flow: an open ${task.track} task changed ${files}; before you finish, run the check that covers it${verifier}.`;
+}
+
+// /clear: the open task ends here.
+export async function resetFlow($: EngineInterface) {
+  await load($);
+  if (task) await log($, endEntry(task, "reset", await $.clock.now()));
+  task = undefined;
+  promptPrint = undefined;
+  endedOnQuestion = false;
+  await save($);
+}
+
+// The band's line: the open task's track, or the end of the observe week.
+export async function flowBand($: EngineInterface): Promise<string | undefined> {
+  const m = await flowMode($);
+  if (m === "off") return undefined;
+  await load($);
+  if (task)
+    return `flow ${task.track}${m === "observe" ? " · observe" : ""}${task.unverified ? " · unverified" : ""}`;
+  if (m === "observe" && weekDone(await since($), await $.clock.now()))
+    return "flow: observe week done · /flow";
+  return undefined;
+}
+
+export function flow(on: On) {
+  // A check counts for the worktree it started on, whoever ran it (a subagent's too).
+  on("tool.call", { tool: "Bash" }, async ($, e, next) => {
+    const check = checkOf(e.command);
+    const m = check ? await flowMode($) : "off";
+    if (m !== "off") await load($);
+    const watch = check && m !== "off" && task;
+    const startedAt = watch ? await $.clock.now() : 0;
+    const startPrint = watch ? await worktreePrint($) : undefined;
+    const ran = await next(e);
+    if (!watch || !check || ran.deny !== undefined || !task) return ran;
+    task = onCheck(task, checkPassed(check, ran.isError === true, ran.text ?? ""), startedAt, startPrint);
+    await save($);
+    return ran;
+  });
+
+  on("command.run", { command: "flow" }, async ($, e) => {
+    const [verb, n, what] = e.args.trim().toLowerCase().split(/\s+/);
+    let note = "";
+    if (FLOW_MODES.includes(verb as FlowMode)) {
+      await setFlowMode($, verb as FlowMode);
+      $.ui.invalidate("ui.render");
+    } else if (verb === "mark") {
+      const next = MARKS.includes(what as Mark)
+        ? marked(await readLog($), Number(n), what as Mark)
+        : undefined;
+      if (next) await writeLog($, next);
+      note = next ? `Marked ${n} as ${what}.\n` : `No mark: /flow mark <n> ${MARKS.join("|")}.\n`;
+    }
+    return {
+      text: note + report(await readLog($), await flowMode($), await since($), await $.clock.now()),
+    };
+  });
+}

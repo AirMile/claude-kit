@@ -20,4 +20,5 @@ kit on Codex: kit's skills are written for Claude Code. Read their terms this wa
 - `/simplify`, `/security-review` → suggest `/review`; skip `/doctor` suggestions.
 - "Desktop worktree session" = a Codex app worktree. Never create worktrees yourself.
 - Editing UI (components, CSS, layout) → first read `<kit root>/rules/frontend.md`.
-- The `codex` skill (GPT through the Codex CLI) is for Claude Code: here, do that work yourself.
+- The `codex` skill and `mcp__kit__delegate` (GPT through the Codex CLI) are for Claude Code:
+  here, do that work yourself.

@@ -1,6 +1,8 @@
 import type { On } from "claude-code";
 import { expect, test } from "claude-code/testing";
 
+import { CHANGE_LABELS } from "./flow-policy";
+
 // kit's own mod is loaded around the test; these hooks only answer what is beneath it.
 function world(
   on: On,
@@ -9,9 +11,9 @@ function world(
     label: string;
     answer?: string;
     labels?: string[]; // classifier answers in order, then `label`
+    change?: string; // flow's change classifier answer
     turns?: number;
     percent?: number;
-    limits?: { kind: string; percentUsed: number }[]; // this plan's meters
     store?: Record<string, unknown>;
     drawn?: true; // a mounted band redraws on ui.invalidate: leave it to the engine
   },
@@ -29,17 +31,22 @@ function world(
   on("session.usage", async () => ({
     value: {
       context: { window: 200_000, percent: opts.percent },
-      rateLimits: opts.limits ?? [],
+      rateLimits: [],
     },
   }));
   on("clock.after", async () => ({ value: undefined }));
+  on("clock.now", async () => ({ value: Date.parse("2026-10-27T12:00:00Z") }));
   on("ui.toast", async () => ({ value: undefined }));
   on("command.run", { command: "clear" }, async () => {
     cleared.push("clear");
     return { text: "" };
   });
   const queue = [...(opts.labels ?? [])];
-  on("model.classify", async () => ({ value: queue.shift() ?? opts.label }));
+  on("model.classify", async (_$, e) => ({
+    value: e.labels.includes(CHANGE_LABELS.none)
+      ? opts.change
+      : (queue.shift() ?? opts.label),
+  }));
   // $.ui.ask is a tool.call of AskUserQuestion beneath; answered by question text.
   on("tool.call", { tool: "AskUserQuestion" }, async (_$, e) => {
     const { questions } = e as unknown as { questions: { question: string }[] };
@@ -50,6 +57,7 @@ function world(
     return { result: { questions, answers: { [question]: opts.answer } } };
   });
   if (!opts.drawn) on("ui.invalidate", async () => ({ value: undefined }));
+  on("ui.log", async () => ({ value: undefined }));
   on("store.get", async (_$, e) => ({ value: store[e.key] }));
   on("store.set", async (_$, e) => {
     store[e.key] = e.value;
@@ -195,7 +203,6 @@ test("a stored switch survives a reload: no question on the stronger model", asy
 // The band as the terminal draws it; a press acts as a click does.
 function band($: Parameters<Parameters<typeof test>[1]>[0], on: On) {
   on("ui.panes", async () => ({ value: [] }));
-  on("clock.now", async () => ({ value: Date.parse("2026-10-16T12:00:00Z") }));
   on("clock.every", () => new Promise<never>(() => {}));
   return $.ui.mount({
     plugin: "kit",
@@ -225,7 +232,7 @@ test("with Auto off the band's effort holds until Default; with Auto on it hides
   await ui.press({ key: "kit-mode-balanced" });
   expect(await ui.find({ key: "kit-effort" })).toBeFalsy();
   expect((await ui.find({ key: "kit-run" }))?.text).toContain(
-    "Auto · Haiku 5.5",
+    "Balanced · Haiku 5.5",
   );
 });
 
@@ -239,7 +246,7 @@ test("a thin reply keeps the effort of the work it continues", async ($, on) => 
   });
   const ui = await band($, on);
   const shown = async () =>
-    (await ui.find({ key: "kit-run" }))?.text?.split(" · ").at(-1);
+    (await ui.find({ key: "kit-run" }))?.text?.replace(" + GPT", "").split(" · ").at(-1);
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
   expect(await shown()).toBe("xhigh");
   await $.prompt.submit({ text: "ja", origin: TYPED });
@@ -256,11 +263,11 @@ test("/build runs at high, a plain heavy prompt at xhigh", async ($, on) => {
   const ui = await band($, on);
   await $.prompt.submit({ text: "/build login-form", origin: TYPED });
   expect((await ui.find({ key: "kit-run" }))?.text).toBe(
-    "Auto · Opus 5.5 · high",
+    "Balanced · Opus 5.5 · high + GPT",
   );
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
   expect((await ui.find({ key: "kit-run" }))?.text).toBe(
-    "Auto · Opus 5.5 · xhigh",
+    "Balanced · Opus 5.5 · xhigh + GPT",
   );
 });
 
@@ -304,90 +311,66 @@ test("the band's Git menu sends its item as a prompt", async ($, on) => {
   ]);
 });
 
-test("Orchestrate adds a note by kind of work: none for a question", async ($, on) => {
-  const w = world(on, {
-    model: "claude-opus-5-5",
-    label: HEAVY,
-    turns: 5,
-    store: { orchestrate: true },
-  });
-  await $.prompt.submit({ text: "rebuild the importer", origin: TYPED });
-  expect(String(w.sent[0]?.context)).toContain("kit orchestrate: split this");
-});
-
-test("Orchestrate leaves a question alone, and works with the profile off", async ($, on) => {
+test("flow on sends a track note with a change task; a question gets none", async ($, on) => {
   const w = world(on, {
     model: "claude-opus-5-5",
     label: QUESTION,
+    labels: [HEAVY],
+    change: CHANGE_LABELS.heavy,
     turns: 5,
-    store: { orchestrate: true, mode: "off" },
+    store: { flow: "on" },
   });
+  await $.prompt.submit({ text: "rebuild the importer", origin: TYPED });
+  expect(String(w.sent[0]?.context)).toContain("kit flow (heavy)");
   await $.prompt.submit({ text: "what does this do?", origin: TYPED });
-  expect(w.sent[0]?.context ?? []).toEqual([]);
+  expect(w.sent[1]?.context ?? []).toEqual([]);
 });
 
-test("without Orchestrate a prompt carries no note", async ($, on) => {
-  const w = world(on, { model: "claude-opus-5-5", label: HEAVY, turns: 5 });
-  await $.prompt.submit({ text: "rebuild the importer", origin: TYPED });
-  expect(w.sent[0]?.context ?? []).toEqual([]);
-});
-
-test("Orchestrate in the band's run menu turns it on and marks the run", async ($, on) => {
+test("flow works with the profile off", async ($, on) => {
   const w = world(on, {
     model: "claude-opus-5-5",
-    label: QUESTION,
+    label: ROUTINE,
+    change: CHANGE_LABELS.light,
+    turns: 5,
+    store: { mode: "off", flow: "on" },
+  });
+  await $.prompt.submit({ text: "add a submit button", origin: TYPED });
+  expect(String(w.sent[0]?.context)).toContain("kit flow (light)");
+});
+
+test("a /build kit started on the user's click gets the profile's model and effort", async ($, on) => {
+  world(on, { model: "claude-opus-5-5", label: HEAVY, turns: 5, drawn: true });
+  const ui = await band($, on);
+  await $.prompt.submit({
+    text: "/kit:build login-form",
+    origin: { kind: "plugin", name: "kit" } as never,
+  });
+  expect((await ui.find({ key: "kit-run" }))?.text).toContain("Opus 5.5 · high");
+});
+
+test("the band's GPT switch turns GPT off and the run drops its + GPT", async ($, on) => {
+  const w = world(on, {
+    model: "claude-opus-5-5",
+    label: ROUTINE,
+    turns: 5,
     drawn: true,
   });
   const ui = await band($, on);
-  await ui.press({ key: "kit-run" });
-  await ui.press({ key: "kit-orchestrate-claude" });
-  expect(w.store.orchestrate).toBe("claude");
-  expect((await ui.find({ key: "kit-run" }))?.text).toContain("⑂");
-  await ui.press({ key: "kit-run" });
-  await ui.press({ key: "kit-orchestrate-codex" });
-  expect(w.store.orchestrate).toBe("codex");
-  expect((await ui.find({ key: "kit-run" }))?.text).toContain("⑂ Codex");
-});
-
-test("Orchestrate with Codex sends heavy work there and keeps its log out of the chat", async ($, on) => {
-  const w = world(on, {
-    model: "claude-opus-5-5",
-    label: HEAVY,
-    turns: 5,
-    store: { orchestrate: "codex" },
-  });
-  await $.prompt.submit({ text: "rebuild the importer", origin: TYPED });
-  const note = String(w.sent[0]?.context);
-  expect(note).toContain("kit orchestrate (Codex): plan this here");
-  expect(note).toContain("model Sol 6.1");
-  expect(note).toContain("kit:codex skill");
-});
-
-test("Orchestrate with Codex keeps a small routine change here until this plan's limits run high", async ($, on) => {
-  const calm = world(on, {
-    model: "claude-opus-5-5",
-    label: ROUTINE,
-    turns: 5,
-    store: { orchestrate: "codex" },
-    limits: [{ kind: "five_hour", percentUsed: 40 }],
-  });
   await $.prompt.submit({ text: "add a submit button", origin: TYPED });
-  expect(String(calm.sent[0]?.context)).toContain(
-    "do this here when it is small",
-  );
+  expect((await ui.find({ key: "kit-run" }))?.text).toContain("+ GPT");
+  await ui.press({ key: "kit-run" });
+  await ui.press({ key: "kit-gpt-off" });
+  expect(w.store.gpt).toBe(false);
+  expect((await ui.find({ key: "kit-run" }))?.text).not.toContain("GPT");
+  expect(await ui.find({ key: "kit-opinion" })).toBeFalsy();
 });
 
-test("Orchestrate with Codex gives routine changes to Codex once a plan meter passes 70%", async ($, on) => {
-  const w = world(on, {
-    model: "claude-opus-5-5",
-    label: ROUTINE,
-    turns: 5,
-    store: { orchestrate: "codex" },
-    limits: [
-      { kind: "five_hour", percentUsed: 40 },
-      { kind: "seven_day", percentUsed: 82.4 },
-    ],
-  });
-  await $.prompt.submit({ text: "add a submit button", origin: TYPED });
-  expect(String(w.sent[0]?.context)).toContain("this plan's limit is at 82%");
+
+test("the band's Flow row sets the workflow mode, observe by default", async ($, on) => {
+  const w = world(on, { model: "claude-opus-5-5", label: QUESTION, drawn: true });
+  const ui = await band($, on);
+  await ui.press({ key: "kit-run" });
+  expect((await ui.find({ key: "kit-flow-observe" }))?.text).toBe("Observe");
+  await ui.press({ key: "kit-flow-on" });
+  expect(w.store.flow).toBe("on");
 });
