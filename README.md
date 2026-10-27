@@ -965,7 +965,8 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
 
   **The verify gate**: a turn that ends with changed code (not docs) is held until a passing
   check ran on the code as it is now. Flow judges by what it sees itself: git's fingerprint
-  of the worktree (so edits through the shell, a subagent or GPT count too), compared with the
+  of the code's contents (so edits through the shell, a subagent or GPT count too, and a commit
+  changes nothing), compared with the
   one the last passing check started on; without git, the order of the edits and checks.
   Only real runs count (a test, typecheck, lint or build command, not `echo test`); a failing
   check wipes earlier evidence; a piped check (`npm test | tail`) passes only when its output

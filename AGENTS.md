@@ -77,8 +77,8 @@ product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.m
   worktrees on other branches); it writes only through `roadmap-file.ts` and
   `$.store` (worktree marks, pins). It starts Codex only for `mcp__kit__delegate`: what a
   writing run changes is Codex's work, in Codex's sandbox, reviewed by the chat. Flow reads the
-  chat's own tool calls (Edit/Write, Bash), subagents' answers and read-only git state (diff,
-  status, `hash-object` without `-w`), and holds a turn's end; it writes only `$.store` (its
+  chat's own tool calls (Edit/Write, Bash), subagents' answers and read-only git state (`ls-files`,
+  diff, `hash-object` without `-w`), and holds a turn's end; it writes only `$.store` (its
   open task per session, a 14-day log).
   Schema or roadmap format change → update `roadmap-file.ts` + its skill. `claude plugin test .`
 - A rule that needs a second paragraph of exceptions is a sign to cut it, not to extend it

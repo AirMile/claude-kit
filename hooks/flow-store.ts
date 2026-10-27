@@ -60,25 +60,59 @@ export async function saveTask(
   await $.store.set(TASKS_KEY, recent).catch(() => {});
 }
 
-// The worktree's fingerprint: tracked changes, the status and untracked files' contents, docs
-// left out. Undefined outside git (or before a first commit): flow then goes by the tool calls.
-export async function worktreePrint($: EngineInterface): Promise<string | undefined> {
+// The worktree's fingerprint: each code file's content (git's blob id, never written), docs
+// left out. It names the content, not the change from HEAD, so a commit leaves it as it was.
+// Undefined outside git: flow then goes by the tool calls.
+export async function worktreePrint(
+  $: EngineInterface,
+): Promise<string | undefined> {
   const root = await $.session.root().catch(() => undefined);
   if (!root) return undefined;
   const git = (args: string[], stdin?: string) =>
     $.process
       .run(["git", ...args], { cwd: root, stdin, timeoutMs: 10_000 })
       .catch(() => null);
-  const diff = await git(["diff", "HEAD", "--no-ext-diff", "--", ".", ...DOCS_PATHSPEC]);
-  if (!diff || diff.exitCode !== 0) return undefined;
-  const status = await git(["status", "--porcelain", "-uall", "--", ".", ...DOCS_PATHSPEC]);
-  if (!status || status.exitCode !== 0) return undefined;
-  const untracked = status.stdout
-    .split("\n")
-    .filter((l) => l.startsWith("?? "))
-    .map((l) => l.slice(3));
-  const blobs = untracked.length
-    ? await git(["hash-object", "--stdin-paths"], untracked.join("\n"))
-    : null;
-  return hashText(`${diff.stdout}\0${status.stdout}\0${blobs?.stdout ?? ""}`);
+  const scope = ["--", ".", ...DOCS_PATHSPEC];
+  const index = await git(["ls-files", "-s", ...scope]);
+  if (!index || index.exitCode !== 0) return undefined;
+  const edited = await git([
+    "diff",
+    "--name-status",
+    "--no-renames",
+    "--no-ext-diff",
+    ...scope,
+  ]);
+  const fresh = await git([
+    "ls-files",
+    "--others",
+    "--exclude-standard",
+    ...scope,
+  ]);
+  if (!edited || edited.exitCode !== 0 || !fresh || fresh.exitCode !== 0)
+    return undefined;
+  // The index's blob per path, then what the worktree holds where it differs.
+  const blobs = new Map<string, string>();
+  for (const line of index.stdout.split("\n")) {
+    const [meta, path] = line.split("\t");
+    if (path) blobs.set(path, meta?.split(" ")[1] ?? "");
+  }
+  const reread: string[] = [];
+  for (const line of edited.stdout.split("\n")) {
+    const [state, path] = line.split("\t");
+    if (!path) continue;
+    if (state === "D") blobs.delete(path);
+    else reread.push(path);
+  }
+  reread.push(...fresh.stdout.split("\n").filter(Boolean));
+  if (reread.length) {
+    const hashed = await git(
+      ["hash-object", "--stdin-paths"],
+      reread.join("\n"),
+    );
+    if (!hashed || hashed.exitCode !== 0) return undefined;
+    const ids = hashed.stdout.split("\n");
+    reread.forEach((path, i) => blobs.set(path, ids[i] ?? ""));
+  }
+  const listing = [...blobs].sort(([x], [y]) => (x < y ? -1 : 1));
+  return hashText(listing.map(([path, blob]) => `${path}\0${blob}`).join("\n"));
 }

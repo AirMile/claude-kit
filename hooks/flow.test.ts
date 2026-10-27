@@ -2,11 +2,12 @@ import type { On } from "claude-code";
 import { expect, test } from "claude-code/testing";
 
 // kit's own mod is loaded around the test; these hooks only answer what is beneath it.
-// `git`: the worktree as git shows it (a diff); absent, no git and flow goes by tool calls.
+// `git`: src/a.ts's blob in git's index and in the worktree; absent, no git and flow goes by
+// tool calls. A commit makes the index the worktree's.
 function world(
   on: On,
   store: Record<string, unknown> = {},
-  git?: { diff: string },
+  git?: { index: string; work: string },
 ) {
   let now = Date.parse("2026-10-27T12:00:00Z");
   on("session.id", async () => ({ value: "s1" }));
@@ -20,9 +21,21 @@ function world(
   on("classic.Stop", async () => ({ value: {} }));
   on("ui.invalidate", async () => ({ value: undefined }));
   on("process.run", async (_$, e) => {
-    const [cmd, sub] = e.argv;
+    const [cmd, sub, flag] = e.argv;
     if (!git || cmd !== "git") return { value: { exitCode: 1, stdout: "", stderr: "" } };
-    const stdout = sub === "diff" ? git.diff : git.diff ? " M src/a.ts\n" : "";
+    const edited = git.work !== git.index;
+    const stdout =
+      sub === "ls-files"
+        ? flag === "-s"
+          ? `100644 ${git.index} 0\tsrc/a.ts\n`
+          : ""
+        : sub === "diff"
+          ? edited
+            ? "M\tsrc/a.ts\n"
+            : ""
+          : sub === "hash-object"
+            ? `${git.work}\n`
+            : "";
     return { value: { exitCode: 0, stdout, stderr: "" } };
   });
   on("store.get", async (_$, e) => ({ value: store[e.key] }));
@@ -85,10 +98,10 @@ test("a turn ending on a question is never held", async ($, on) => {
 });
 
 test("with git, a change made through the shell is held until a check ran on it", async ($, on) => {
-  const git = { diff: "" };
+  const git = { index: "a1", work: "a1" };
   const w = world(on, {}, git);
   expect((await stop($)).block).toBe(undefined); // a clean turn sets the baseline
-  git.diff = "-a+b"; // sed -i, no Edit or Write call
+  git.work = "b2"; // sed -i, no Edit or Write call
   await bash($, "sed -i s/a/b/ src/a.ts");
   expect((await stop($)).block).toContain("Code changed after the last passing check");
   await bash($, "npm test 2>&1 | tail -5");
@@ -114,4 +127,16 @@ test("/flow mark puts the user's judgment on a pick", async ($, on) => {
   expect(String((out as { text?: string }).text)).toContain("Marked 1 as too-light");
   const log = w.store.flowLog as { mark?: string }[];
   expect(log.at(-1)?.mark).toBe("too-light");
+});
+
+test("a commit after the passing check is no change: the turn ends", async ($, on) => {
+  const git = { index: "a1", work: "a1" };
+  world(on, {}, git);
+  expect((await stop($)).block).toBe(undefined);
+  git.work = "b2";
+  await write($, "/p/app/src/a.ts");
+  await bash($, "npm test");
+  git.index = "b2"; // git commit -am
+  await bash($, "git commit -am 'fix: b'");
+  expect((await stop($)).block).toBe(undefined);
 });
