@@ -4,15 +4,32 @@ import type {
   TurnStepResult,
 } from "claude-code";
 
-import { endPauseWarm, noteActive, warmForPause } from "./keep-warm";
-import { clockTime, overLimit, type Reading, rise, stopAt } from "./limit-policy";
+import {
+  endPauseWarm,
+  isWarm,
+  noteActive,
+  setWarm,
+  warmForPause,
+} from "./keep-warm";
+import {
+  clockTime,
+  DEFAULT_HOLD,
+  type Hold,
+  holdOf,
+  overLimit,
+  type Reading,
+  rise,
+  stopAt,
+  withHold,
+} from "./limit-policy";
 
 // Pauses this chat before the 5-hour plan limit runs out, has keep-warm.ts keep
 // its prompt cache warm while the reset is near, and resumes at the reset.
 // - register.tsx feeds every usage reading to noteLimits;
 // - auto-model.ts asks limitStep before each model request (main and subagents) and
 //   limitPrompt before a prompt enters; a paused prompt is queued and sent at the reset;
-// - the band shows limitInfo and offers resumeNow.
+// - the band shows limitInfo and offers resumeNow, and its limit button cycles the chat's
+//   hold (getHold/setHold): off, pause, or pause with keep warm (/warm sets the last).
 
 const RESUME_PROMPT =
   "kit: the plan limit has reset. Continue where you stopped before the pause.";
@@ -27,6 +44,57 @@ type Timer = ReturnType<EngineInterface["clock"]["after"]>;
 
 let resumeTimer: Timer | null = null;
 
+const HOLD_KEY = "limitHold";
+let hold: Hold = DEFAULT_HOLD;
+let holdFor: string | null | undefined; // the session `hold` belongs to; undefined: not read
+
+async function sessionId($: EngineInterface): Promise<string | null> {
+  try {
+    return await $.session.id();
+  } catch {
+    return null; // no session id: the hold lives in memory only
+  }
+}
+
+// This chat's hold, read from $.store when the session changes (a new chat, a reload).
+export async function getHold($: EngineInterface): Promise<Hold> {
+  const id = await sessionId($);
+  if (id !== holdFor) {
+    holdFor = id;
+    const stored = id
+      ? await $.store.get(HOLD_KEY).catch(() => undefined)
+      : undefined;
+    hold = id ? holdOf(stored, id) : DEFAULT_HOLD;
+    if (isWarm() !== (hold === "warm")) await setWarm($, hold === "warm");
+  } else if (hold === "warm" && !isWarm()) {
+    await setHold($, "pause"); // a failed ping turned keep warm off
+  }
+  return hold;
+}
+
+export async function setHold($: EngineInterface, next: Hold) {
+  if (holdFor === undefined) await getHold($);
+  hold = next;
+  if (isWarm() !== (next === "warm")) await setWarm($, next === "warm");
+  if (holdFor) {
+    const stored = await $.store.get(HOLD_KEY).catch(() => undefined);
+    await $.store.set(HOLD_KEY, withHold(stored, holdFor, next)).catch(() => {});
+  }
+  if (next === "off") await resumeNow($);
+  $.ui.invalidate("ui.render");
+}
+
+// /warm: on is the hold with keep warm, off drops back to the plain pause.
+export async function warmCommandRun($: EngineInterface, args: string) {
+  const arg = args.trim().toLowerCase();
+  const now = await getHold($);
+  const on = arg === "on" ? true : arg === "off" ? false : now !== "warm";
+  await setHold($, on ? "warm" : now === "warm" ? "pause" : now);
+  return on
+    ? "Keep warm on: after 50 idle minutes a tiny request renews the prompt cache."
+    : "Keep warm off.";
+}
+
 export async function noteLimits(
   $: EngineInterface,
   readings: readonly Reading[],
@@ -37,7 +105,7 @@ export async function noteLimits(
     if (d !== null) rises = [...rises, d].slice(-5);
     last.set(r.kind, r);
   }
-  if (paused) return;
+  if (paused || (await getHold($)) === "off") return;
   const now = await $.clock.now();
   const hit = overLimit(readings, stopAt(rises), now);
   if (hit) await pause($, hit.until, hit.percent, now);

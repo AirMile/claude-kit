@@ -58,3 +58,37 @@ export function clockTime(at: number, now: number): string {
     ? hm
     : `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()]} ${hm}`;
 }
+
+// The band's limit button, a setting per chat: no pause, a pause (the cache kept warm near the
+// reset), or a pause and the cache kept warm whenever the chat is idle. Kept in $.store per
+// session id, the newest MAX_HOLDS.
+export type Hold = "off" | "pause" | "warm";
+export const HOLDS: readonly Hold[] = ["off", "pause", "warm"];
+export const DEFAULT_HOLD: Hold = "pause";
+const MAX_HOLDS = 20;
+
+const isHold = (v: unknown): v is Hold => HOLDS.includes(v as Hold);
+
+export const nextHold = (h: Hold): Hold =>
+  HOLDS[(HOLDS.indexOf(h) + 1) % HOLDS.length] ?? DEFAULT_HOLD;
+
+function holds(stored: unknown): Record<string, Hold> {
+  const out: Record<string, Hold> = {};
+  if (!stored || typeof stored !== "object") return out;
+  for (const [id, v] of Object.entries(stored)) if (isHold(v)) out[id] = v;
+  return out;
+}
+
+export const holdOf = (stored: unknown, id: string): Hold =>
+  holds(stored)[id] ?? DEFAULT_HOLD;
+
+export function withHold(
+  stored: unknown,
+  id: string,
+  h: Hold,
+): Record<string, Hold> {
+  const all = holds(stored);
+  delete all[id];
+  all[id] = h;
+  return Object.fromEntries(Object.entries(all).slice(-MAX_HOLDS));
+}

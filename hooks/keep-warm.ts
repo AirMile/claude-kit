@@ -5,7 +5,8 @@ import { PING_EVERY_MS, shouldPing } from "./limit-policy";
 // Keeps this chat's prompt cache warm: after 50 idle minutes (the cache lives an hour) a
 // tiny fork of the chat ("reply with only ok") reads the whole cached prefix again, which
 // renews it. Each ping costs a cache read of the context, never zero.
-// - On by hand: the band's Keep warm button or /warm, for a long chat you return to later.
+// - On by hand: the band's limit button (its third setting, limit-guard.ts) or /warm, for a
+//   long chat you return to later.
 // - During a plan-limit pause (limit-guard.ts): while the reset is near.
 
 export const warmCommand: CommandSpec = {
@@ -79,13 +80,4 @@ async function tick($: EngineInterface) {
     }
   }
   $.ui.invalidate("ui.render");
-}
-
-export async function warmCommandRun($: EngineInterface, args: string) {
-  const arg = args.trim().toLowerCase();
-  const on = arg === "on" ? true : arg === "off" ? false : !warm;
-  await setWarm($, on);
-  return on
-    ? "Keep warm on: after 50 idle minutes a tiny request renews the prompt cache."
-    : "Keep warm off.";
 }

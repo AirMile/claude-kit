@@ -2,8 +2,15 @@ import type { CommandSpec, EngineInterface, On } from "claude-code";
 
 import { getMode, runState, setMode } from "./auto-model";
 import { GIT_ITEMS, gitAction } from "./git-menu";
-import { isWarm, setWarm, warmCommandRun, warmInfo } from "./keep-warm";
-import { limitInfo, resumeNow } from "./limit-guard";
+import { warmInfo } from "./keep-warm";
+import {
+  getHold,
+  limitInfo,
+  resumeNow,
+  setHold,
+  warmCommandRun,
+} from "./limit-guard";
+import { type Hold, nextHold } from "./limit-policy";
 import {
   displayName,
   EFFORTS,
@@ -29,14 +36,15 @@ import {
 // The band above the prompt, one line that wraps when narrow, an open menu (a bordered block)
 // above it: shown while the pointer rests on its button, kept open by a press. Left: context and plan usage (register.tsx measures it after each turn); the
 // context figure is a button opening Compact and Clear, run just after the press. Right: the run
-// (`Auto · model · effort` while a profile picks them, else the model; ⑂ and ♨ while orchestrate
-// and keep cache are on) opening Auto (the profile from auto-model.ts, or Off) and the
-// Orchestrate (orchestrate.ts) and Keep cache (keep-warm.ts) toggles; with Auto off, the effort
-// (Default: the session's own); Git (⎇, git-menu.ts) with /commit first; a second opinion (⚖,
+// (`Auto · model · effort` while a profile picks them, else the model; ⑂ while orchestrate is
+// on) opening Auto (the profile from auto-model.ts, or Off) and the Orchestrate toggle
+// (orchestrate.ts); with Auto off, the effort (Default: the session's own); the limit button,
+// a press cycling this chat's hold (limit-guard.ts): off, pause at the limit, or pause and keep
+// the cache warm while idle (keep-warm.ts); Git (⎇, git-menu.ts) with /commit first; a second opinion (⚖,
 // second-opinion.ts: a row per Opinion, Review, Stuck, a press per model); the dashboard pane
 // (▤). With Auto off the model is the app's own picker's. The plan-limit pause with Resume now
 // (limit-guard.ts) follows on its own line. It yields to a survey. /band draws it again; /warm
-// toggles keep warm.
+// toggles the hold's keep warm.
 
 export const bandCommand: CommandSpec = {
   name: "band",
@@ -46,6 +54,12 @@ export const bandCommand: CommandSpec = {
 };
 
 type Menu = "run" | "effort" | "ctx" | "git" | "opinion";
+
+const HOLD_LABEL: Record<Hold, string> = {
+  off: "⏸ Limit off",
+  pause: "⏸ Limit",
+  warm: "⏸♨ Limit+cache",
+};
 
 let menu: Menu | null = null; // the unfolded menu row
 let usage: Usage[] = []; // context and plan limits, from register.tsx
@@ -77,7 +91,7 @@ export function kitBand(on: On) {
     const now = await getMode($);
     const run = await runState($);
     const pause = await limitInfo($);
-    const warm = isWarm();
+    const hold = await getHold($);
     const orch = await isOrchestrating($);
     const warmed = warmInfo();
     const ctx = usage.find((u) => u.label === "ctx");
@@ -127,14 +141,6 @@ export function kitBand(on: On) {
                   void setOrchestrating($, !orch).then(() =>
                     $.ui.invalidate("ui.render"),
                   );
-                }}
-              />,
-              <Button
-                key="kit-warm"
-                label="♨ Keep cache"
-                dimColor={!warm}
-                onPress={() => {
-                  void setWarm($, !warm);
                 }}
               />,
             ])}
@@ -307,7 +313,7 @@ export function kitBand(on: On) {
               <Button
                 key="kit-run"
                 label={`${run.auto ? `Auto · ${runLine(run.model, run.effort)}` : displayName(run.model)}${
-                  orch || warm ? ` ${orch ? "⑂" : ""}${warm ? "♨" : ""}` : ""
+                  orch ? " ⑂" : ""
                 }`}
                 onPress={() => unfold($, "run")}
               />,
@@ -323,6 +329,14 @@ export function kitBand(on: On) {
                     onPress={() => unfold($, "effort")}
                   />,
                 )}
+            <Button
+              key="kit-hold"
+              label={HOLD_LABEL[hold]}
+              dimColor={hold === "off"}
+              onPress={() => {
+                void setHold($, nextHold(hold));
+              }}
+            />
             {trigger(
               "git",
               <Button

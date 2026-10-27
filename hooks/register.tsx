@@ -20,7 +20,8 @@ import { themeTool, themeView } from "./theme-view";
 // - Model and effort picked per prompt and per subagent from a profile (auto-model), chosen
 //   in the band above the prompt or with /mode.
 // - A pause before the plan limit runs out, with the cache kept warm until the reset
-//   (limit-guard), and keep warm by hand for an idle chat (keep-warm, the band, /warm).
+//   (limit-guard), and keep warm for an idle chat (keep-warm); the band's limit button or
+//   /warm sets both per chat.
 // - fresh_start: /build's safe point clears the chat and resumes (fresh-start).
 
 type Figures = Pick<SessionUsage, "context" | "rateLimits">;

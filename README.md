@@ -868,12 +868,15 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt, one line (it wraps when narrow): usage at the left
-  (`ctx 114k  5h 55% · 2h 53m  7d 75% · 4d 3h`), then the run, `⎇ Git`, `⚖ Ask` and `▤`
+  (`ctx 114k  5h 55% · 2h 53m  7d 75% · 4d 3h`), then the run, the limit button, `⎇ Git`, `⚖ Ask` and `▤`
   (the dashboard; `▤ Close` closes it). Each opens a menu in its own block above the band: hover to peek, press to keep it open.
   **ctx**: **Compact** and **Clear**, run at once, or when the running turn ends. The run reads
   `Auto · Opus 5.5 · medium` while a profile picks model and effort, or just the model with Auto
-  off (`⑂` and `♨` while Orchestrate and Keep cache are on); its menu holds **Auto** (Lean,
-  Balanced, Quality or Off) and **Mode** (the Orchestrate and Keep cache toggles). With Auto off
+  off (`⑂` while Orchestrate is on); its menu holds **Auto** (Lean, Balanced, Quality or Off)
+  and **Mode** (the Orchestrate toggle). The limit button needs no menu: each press cycles this
+  chat's setting, `⏸ Limit` (pause at the plan limit, the default) → `⏸♨ Limit+cache` (also
+  keep the cache warm while idle) → `⏸ Limit off` (no pause). It is kept per chat, over a
+  reload or restart; a new chat starts at `⏸ Limit`. With Auto off
   you pick the model in the app's own model picker, and an effort button appears next to the
   run: a level holds over new chats and restarts until **Default** (the session's own effort);
   the engine lowers a level the model lacks. **Git**: **Commit** (runs `/kit:commit`), Diff,
@@ -918,7 +921,8 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   (a review: effort high, its model is its own), other built-in agents classified on their
   task. An explicit `model` or `effort` on the Agent call is kept.
 
-- **Plan limit pause**: when the 5-hour (or weekly) limit nears 100%, the chat pauses before
+- **Plan limit pause**: on unless the band's limit button reads `⏸ Limit off` for this chat.
+  When the 5-hour limit nears 100%, the chat pauses before
   its next model request. The pause point is 95%, lower when the percentage climbs fast
   between two readings (other chats and agents count too: the figure is account-wide), and
   2 points stay free. While paused, prompts you send are kept and sent at the reset, the
@@ -933,11 +937,12 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   with this chat coordinating and verifying. Every note says to keep work here when it depends
   on this conversation, is small or needs your answers: a subagent starts cold and reads again.
   It works with the profile off too.
-- **Keep warm**: `♨ Keep cache` in the band's run menu (or `/warm`, `/warm on|off`) keeps a long
+- **Keep warm**: `⏸♨ Limit+cache` on the band's limit button (or `/warm`, `/warm on|off`) keeps a long
   chat's prompt cache alive while you are away. After 50 idle minutes (the cache lives an
   hour) a tiny request, a fork of the chat that replies "ok", reads the cached context again
   and so renews it. Not free: each ping costs a cache read of the whole context, far less
-  than rebuilding the cache, but it counts toward your limits. A failed ping turns it off.
+  than rebuilding the cache, but it counts toward your limits. A failed ping turns it off
+  (the button drops back to `⏸ Limit`).
 - **`/band`** draws the band above the prompt again; folded (`[+]`)? `ctrl+x ctrl+a` unfolds it.
 - **Usage**: `ctx 114k  5h 55% · 2h 53m  7d 75% · 4d 3h` at the band's left: context, then the
   5-hour and 7-day limits, each with the time until it resets; updated after every turn.

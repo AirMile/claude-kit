@@ -1,6 +1,15 @@
 import { expect, test } from "claude-code/testing";
 
-import { clockTime, overLimit, rise, shouldPing, stopAt } from "./limit-policy";
+import {
+  clockTime,
+  holdOf,
+  nextHold,
+  overLimit,
+  rise,
+  shouldPing,
+  stopAt,
+  withHold,
+} from "./limit-policy";
 
 const NOW = Date.parse("2026-10-16T12:00:00Z");
 const IN_2H = "2026-10-16T14:00:00Z";
@@ -54,4 +63,20 @@ test("resume time reads as a clock time, with the day when not today", async () 
   at.setHours(14, 5, 0, 0);
   expect(clockTime(at.getTime(), at.getTime() - 60_000)).toBe("14:05");
   expect(clockTime(at.getTime() + 24 * 60 * 60_000, at.getTime())).toMatch(/^\w{3} 14:05$/);
+});
+
+test("the limit button cycles off, pause, warm; each chat keeps its own", async () => {
+  expect(nextHold("off")).toBe("pause");
+  expect(nextHold("pause")).toBe("warm");
+  expect(nextHold("warm")).toBe("off");
+  expect(holdOf(undefined, "s1")).toBe("pause"); // a new chat pauses
+  expect(holdOf({ s1: "off", s2: "bogus" }, "s2")).toBe("pause");
+  const kept = withHold({ s1: "off" }, "s2", "warm");
+  expect(kept).toEqual({ s1: "off", s2: "warm" });
+  const many = Object.fromEntries(
+    Array.from({ length: 25 }, (_, i) => [`s${i}`, "off"]),
+  );
+  const trimmed = withHold(many, "new", "warm");
+  expect(Object.keys(trimmed).length).toBe(20);
+  expect(trimmed.new).toBe("warm");
 });
