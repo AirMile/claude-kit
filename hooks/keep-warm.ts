@@ -3,7 +3,6 @@ import type { CommandSpec, EngineInterface } from "claude-code";
 import {
   DEFAULT_HOLD,
   type Hold,
-  PING_EVERY_MS,
   wantsPing,
 } from "./limit-policy";
 
@@ -36,6 +35,7 @@ let pauseUntil: number | null = null; // set while limit-guard holds the chat
 let pauseRefused = false; // a ping during the pause hit the limit: no more
 let lastActive = 0; // when the chat last made a request
 let pings = 0;
+let pinging = false; // a ping's own turn end is not the chat's
 let ticker: Timer | null = null;
 
 // A response arrived (session.measure): the cache was just renewed.
@@ -45,6 +45,7 @@ export async function noteActive($: EngineInterface) {
 
 // A main-chat turn ended (classic.Stop): is work still open that will wake it?
 export async function noteStop($: EngineInterface, open: boolean) {
+  if (pinging) return;
   lastTurn = await $.clock.now();
   openWork = open;
   if (open) ensureTicker($);
@@ -79,10 +80,13 @@ async function tick($: EngineInterface) {
   const now = await $.clock.now();
   lastActive ||= now; // no request or turn yet since a reload: count from here
   lastTurn ||= now;
-  if (now - lastActive < PING_EVERY_MS) return;
-  const state = { hold, openWork, pauseUntil, pauseRefused, lastTurn };
-  if (!wantsPing(state, now)) return;
-  const r = await $.model.fork({ prompt: PING_PROMPT }).catch(() => null);
+  const state = { hold, openWork, pauseUntil, pauseRefused, lastTurn, lastActive };
+  if (pinging || !wantsPing(state, now)) return;
+  pinging = true;
+  const r = await $.model
+    .fork({ prompt: PING_PROMPT })
+    .catch(() => null)
+    .finally(() => (pinging = false));
   if (r?.isAnswered) {
     lastActive = now;
     pings += 1;

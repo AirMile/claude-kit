@@ -952,7 +952,10 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   Each ping costs a cache read of the whole context (0.05× the input price on Opus 5.5)
   where a rebuild costs a cache write (2× for the 1-hour cache), so warm is cheaper when you
   return within about 33 hours; pings count toward your limits. A failed ping stops it
-  (`⏸♨ Always` drops back to `⏸ Limit`).
+  (`⏸♨ Always` drops back to `⏸ Limit`). A ping only goes out in the cache's last 10 minutes:
+  after a sleep (or any gap past the hour) the cache is already cold and a ping would pay the
+  full rebuild, so none is sent until the chat runs again. The 24 hours count from your last
+  turn, sleep included; a ping's own turn does not reset them.
 - **`/band`** draws the band above the prompt again; folded (`[+]`)? `ctrl+x ctrl+a` unfolds it.
 - **Usage**: `ctx 114k  5h 55% · 2h 53m  7d 75% · 4d 3h` at the band's left: context, then the
   5-hour and 7-day limits, each with the time until it resets; updated after every turn.

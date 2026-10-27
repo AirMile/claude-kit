@@ -90,6 +90,7 @@ test("Limit pings while work is open, Always for a day, Off never", async () => 
     pauseUntil: null,
     pauseRefused: false,
     lastTurn: NOW - 60 * 60_000,
+    lastActive: NOW - 55 * 60_000, // the cache's last ten minutes
   };
   expect(wantsPing(idle, NOW)).toBe(false); // nothing open: let it cool
   expect(wantsPing({ ...idle, openWork: true }, NOW)).toBe(true);
@@ -101,4 +102,18 @@ test("Limit pings while work is open, Always for a day, Off never", async () => 
   const paused = { ...idle, pauseUntil: Date.parse(IN_2H) };
   expect(wantsPing(paused, NOW)).toBe(true);
   expect(wantsPing({ ...paused, pauseRefused: true }, NOW)).toBe(false);
+});
+
+test("no ping while the cache is fresh, nor once a sleep let it go cold", async () => {
+  const always = {
+    hold: "warm" as const,
+    openWork: false,
+    pauseUntil: null,
+    pauseRefused: false,
+    lastTurn: NOW - 60 * 60_000,
+  };
+  expect(wantsPing({ ...always, lastActive: NOW - 30 * 60_000 }, NOW)).toBe(false);
+  expect(wantsPing({ ...always, lastActive: NOW - 50 * 60_000 }, NOW)).toBe(true);
+  // The laptop slept past the hour: a ping would rebuild the cache, not renew it.
+  expect(wantsPing({ ...always, lastActive: NOW - 3 * 60 * 60_000 }, NOW)).toBe(false);
 });

@@ -13,6 +13,7 @@ const KEEP_FREE = 2; // points left for keep-alive pings
 const MIN_MARGIN = 3;
 const MIN_STOP = 90; // never pause earlier than this
 export const PING_EVERY_MS = 50 * 60_000; // inside the 1-hour cache lifetime
+export const CACHE_LIFE_MS = 60 * 60_000; // later than this a ping would rebuild, not renew
 export const PING_HORIZON_MS = 5 * 60 * 60_000; // further away, a cold start is cheaper
 
 export function stopAt(rises: readonly number[]): number {
@@ -58,11 +59,16 @@ export type WarmState = {
   pauseUntil: number | null; // a plan-limit pause, until its reset
   pauseRefused: boolean; // a ping during the pause hit the limit
   lastTurn: number; // when the chat last ended a turn
+  lastActive: number; // when the cache was last renewed (a request or a ping)
 };
 
-// Pause: warm while the reset is near. Otherwise Limit keeps it warm while work is still
-// open, Always until a day without a turn, Off never.
+// Only in the last 10 minutes of the cache's hour: earlier it is still warm, later (a laptop
+// that slept) it is already cold and a ping would pay the full rebuild for nobody. Then a
+// pause stays warm while its reset is near, Limit while work is still open, Always until a
+// day without a turn, Off never.
 export function wantsPing(s: WarmState, now: number): boolean {
+  const idle = now - s.lastActive;
+  if (idle < PING_EVERY_MS || idle >= CACHE_LIFE_MS) return false;
   if (s.pauseUntil !== null)
     return !s.pauseRefused && shouldPing(s.pauseUntil, now);
   if (s.hold === "warm") return now - s.lastTurn < ALWAYS_FOR_MS;
