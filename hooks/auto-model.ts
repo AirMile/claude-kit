@@ -33,7 +33,7 @@ import {
   switchTo,
 } from "./model-switch";
 import { noteAgent } from "./chat-facts";
-import { isOrchestrating, orchestrateNote } from "./orchestrate";
+import { limitsUsed, orchestrateNote, orchestration } from "./orchestrate";
 
 // Picks model and effort before the model runs (it cannot change its own turn's effort):
 // - the first prompt of a chat (a new session or after /clear) picks a model from the profile,
@@ -226,7 +226,8 @@ export function autoModel(on: On) {
     }
     const now = await getMode($);
     const typed = e.origin.kind === "composer" || e.origin.kind === "bridge";
-    const orchestrating = typed && (await isOrchestrating($));
+    const to = typed ? await orchestration($) : "off";
+    const orchestrating = to !== "off";
     if (!typed || (now === "off" && !orchestrating)) return next(e);
     const kind = (await kindOf($, e.text)) ?? "routine";
     if (now !== "off") {
@@ -251,10 +252,13 @@ export function autoModel(on: On) {
       }
       if (step.note) escalated = step.note;
     }
-    // Orchestrate (the band's ⑂): a note for this kind of work rides along with the prompt.
+    // Orchestrate (the band's ⑂): a note for this kind of work rides along with the prompt;
+    // with Codex, how much of this plan's limits is used decides how much goes there.
     const notes = [
       escalated,
-      orchestrating ? orchestrateNote(kind) : undefined,
+      to !== "off"
+        ? orchestrateNote(kind, to, to === "codex" ? await limitsUsed($) : 0)
+        : undefined,
     ].filter((n): n is string => n !== undefined);
     escalated = undefined;
     return next(

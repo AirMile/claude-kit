@@ -31,6 +31,7 @@ Code already has a native feature (plan mode, subagents, `AGENTS.md` loading, `/
   - [/convert](#convert)
   - [/theme](#theme)
   - [/improve](#improve)
+  - [/codex](#codex-1)
   - [/launch](#launch)
   - [/audit](#audit)
   - [/scan](#scan)
@@ -673,6 +674,24 @@ Together with the Skill Feedback rule in your global instructions this is the lo
 is noticed during a run → raised after the report and saved in `~/.agents/kit/feedback.md` →
 you approve → `/improve` applies it and ticks the line off.
 
+### /codex
+
+Hands a task to a GPT model through the Codex CLI, so it runs on your ChatGPT plan instead of
+Claude's limits. Claude uses it by itself when you ask for GPT (Sol, Astra, Luna, Terra), for the
+band's second opinion and for Orchestrate's `⑂ Codex`; you can also call it yourself.
+
+```
+/codex Sol: review the current diff
+```
+
+It finds the `codex` CLI on the device, checks `codex login status` (ChatGPT, never an API key),
+writes a brief that stands alone, runs `codex exec` read-only (workspace-write only for an
+implementation you asked for, or with `⑂ Codex` on) and reads only Codex's final message; its
+log stays in a file. After an implementation Claude reviews the diff and runs the checks. The
+name → model ID table lives in the skill, so every device with kit has it: a new GPT model goes
+there, then bump the version. Needed per device: the Codex CLI installed and `codex login` done
+once.
+
 ### /launch
 
 The step from "done on my branch" to "live", for solo and team work.
@@ -872,8 +891,8 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   (the dashboard; `▤ Close` closes it). Each opens a menu in its own block above the band: hover to peek, press to keep it open.
   **ctx**: **Compact** and **Clear**, run at once, or when the running turn ends. The run reads
   `Auto · Opus 5.5 · medium` while a profile picks model and effort, or just the model with Auto
-  off (`⑂` while Orchestrate is on); its menu holds **Auto** (Lean, Balanced, Quality or Off)
-  and **Mode** (the Orchestrate toggle). The limit button needs no menu: each press cycles this
+  off (`⑂` while orchestrating, `⑂ Codex` with Codex); its menu holds **Auto** (Lean, Balanced,
+  Quality or Off) and **Mode** (Off, ⑂ Subagents, ⑂ Codex). The limit button needs no menu: each press cycles this
   chat's setting, `⏸ Limit` (pause at the plan limit, the cache warm while work is open; the
   default) → `⏸♨ Always` (also keep the cache warm while idle) → `⏸ Off` (no pause, no
   pings); see Keep warm. It is kept per chat, over a
@@ -886,11 +905,11 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
 - **Second opinion**: the band's `⚖ Ask` (hover or press) opens a menu with a row per ask: **Opinion** (on
   what the chat is working on), **Review** (of the current changes) and **Stuck** (a diagnosis
   of the bug the chat is stuck on). Each row holds the models; one press sends it. GPT (Sol 6.1,
-  Astra 6) runs through Codex, read-only, as the GPT delegation section of your
-  `~/.claude/CLAUDE.md` says; Claude (Opus 5.5, Sonnet 5.5) runs as a fresh read-only subagent
+  Astra 6) runs through Codex, read-only, with the `codex` skill; Claude (Opus 5.5, Sonnet 5.5)
+  runs as a fresh read-only subagent
   on that model. The pick is sent as your prompt; this chat writes the brief and shows the other
   model's findings next to its own judgment. Models live in `GPT` and `CLAUDE` in
-  `hooks/second-opinion.ts`; a new GPT name also goes in that `CLAUDE.md` table.
+  `hooks/second-opinion.ts`; a new GPT name also goes in the `codex` skill's table.
 - **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (◆'s menu in the band,
   or `/mode lean|balanced|quality|off`). The choice is kept across sessions. Each prompt is sorted (kit's own skills by name, the rest by a Haiku
   classifier) into question, routine, planning or heavy work, and the profile maps that to a
@@ -903,8 +922,8 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   kind      Lean             Balanced          Quality
   question  Haiku  · low     Haiku  · low      Sonnet · medium
   routine   Sonnet · medium  Sonnet · medium   Opus   · high
-  planning  Opus   · high    Opus   · high     Fable  · high
-  heavy     Opus   · high    Opus   · xhigh    Fable  · xhigh
+  planning  Opus   · high    Opus   · high     Opus   · high
+  heavy     Opus   · high    Opus   · xhigh    Opus   · xhigh
   ```
 
   The first prompt of a chat (a new session or after `/clear`, not a resume) picks the model
@@ -930,14 +949,25 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   band shows `paused until 14:05`, and **Resume now** ends the pause by hand. The prompt
   cache is kept warm meanwhile (see Keep warm), only when the reset is under 5 hours away:
   further out, a cold start is cheaper. At the reset a cut-off turn continues by itself.
-- **Orchestrate**: `⑂ Orchestrate` in the band's run menu (off by default, kept across sessions) makes
+- **Orchestrate**: **Mode** in the band's run menu (Off by default, kept across sessions) makes
   this chat the orchestrator. Each typed prompt carries a note by its kind of work: a question
-  none; routine work stays here unless it means searching many files (then an Explore
+  none. With `⑂ Subagents`, routine work stays here unless it means searching many files (then an Explore
   subagent); planning sends the research to subagents and keeps the decision here; heavy work
   is split into independent pieces for subagents or, on the desktop app, their own sessions,
   with this chat coordinating and verifying. Every note says to keep work here when it depends
   on this conversation, is small or needs your answers: a subagent starts cold and reads again.
   It works with the profile off too.
+- **Orchestrate with Codex**: `⑂ Codex` hands the work to Codex instead, which runs on your
+  ChatGPT plan, so Claude's limits are spared. Claude plans, writes the brief, reviews the diff
+  and runs the checks; Codex reads (read-only) and changes code (workspace-write, it commits
+  nothing). Routine work stays here when small and goes to Codex when it spans several files;
+  planning sends the research to Codex and keeps the decision here; heavy work is split into
+  pieces Codex carries out one at a time. Once Claude's 5h or 7d meter reaches 70%, routine
+  changes go to Codex too. Codex's log goes to a file and only its final message is read: its
+  log holds every command it ran. It runs with the `codex` skill (model `CODEX` in
+  `hooks/orchestrate.ts`, Sol 6.1, threshold `PRESSURE`); if Codex fails (not logged in, its own limit), Claude says why and does it
+  here. Not free: the brief, Codex's report and the diff review still cost Claude tokens, so
+  it pays off for work with many steps, not for a one-line fix.
 - **Keep warm**: keeps a chat's prompt cache alive while it waits. After 50 idle minutes (the
   cache lives an hour) a tiny request, a fork of the chat that replies "ok", reads the cached
   context again and so renews it. The band's limit button decides when:
@@ -956,6 +986,7 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   after a sleep (or any gap past the hour) the cache is already cold and a ping would pay the
   full rebuild, so none is sent until the chat runs again. The 24 hours count from your last
   turn, sleep included; a ping's own turn does not reset them.
+
 - **`/band`** draws the band above the prompt again; folded (`[+]`)? `ctrl+x ctrl+a` unfolds it.
 - **Usage**: `ctx 114k  5h 55% · 2h 53m  7d 75% · 4d 3h` at the band's left: context, then the
   5-hour and 7-day limits, each with the time until it resets; updated after every turn.

@@ -11,6 +11,7 @@ function world(
     labels?: string[]; // classifier answers in order, then `label`
     turns?: number;
     percent?: number;
+    limits?: { kind: string; percentUsed: number }[]; // this plan's meters
     store?: Record<string, unknown>;
     drawn?: true; // a mounted band redraws on ui.invalidate: leave it to the engine
   },
@@ -26,7 +27,10 @@ function world(
   on("session.turns", async () => ({ value: opts.turns ?? 0 }));
   on("session.id", async () => ({ value: "s1" }));
   on("session.usage", async () => ({
-    value: { context: { window: 200_000, percent: opts.percent } },
+    value: {
+      context: { window: 200_000, percent: opts.percent },
+      rateLimits: opts.limits ?? [],
+    },
   }));
   on("clock.after", async () => ({ value: undefined }));
   on("ui.toast", async () => ({ value: undefined }));
@@ -129,8 +133,7 @@ test("two tiers short asks; a subagent keeps the model and rides along as a note
     "refactor the auth layer",
     "and the billing layer",
   ]);
-  for (const s of w.sent)
-    expect(String(s.context)).toContain('model "opus"');
+  for (const s of w.sent) expect(String(s.context)).toContain('model "opus"');
 });
 
 test("a full context offers no switch now; staying is not asked again", async ($, on) => {
@@ -221,7 +224,9 @@ test("with Auto off the band's effort holds until Default; with Auto on it hides
   await ui.press({ key: "kit-run" });
   await ui.press({ key: "kit-mode-balanced" });
   expect(await ui.find({ key: "kit-effort" })).toBeFalsy();
-  expect((await ui.find({ key: "kit-run" }))?.text).toContain("Auto · Haiku 5.5");
+  expect((await ui.find({ key: "kit-run" }))?.text).toContain(
+    "Auto · Haiku 5.5",
+  );
 });
 
 test("a thin reply keeps the effort of the work it continues", async ($, on) => {
@@ -250,9 +255,13 @@ test("/build runs at high, a plain heavy prompt at xhigh", async ($, on) => {
   world(on, { model: "claude-opus-5-5", label: HEAVY, turns: 5, drawn: true });
   const ui = await band($, on);
   await $.prompt.submit({ text: "/build login-form", origin: TYPED });
-  expect((await ui.find({ key: "kit-run" }))?.text).toBe("Auto · Opus 5.5 · high");
+  expect((await ui.find({ key: "kit-run" }))?.text).toBe(
+    "Auto · Opus 5.5 · high",
+  );
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
-  expect((await ui.find({ key: "kit-run" }))?.text).toBe("Auto · Opus 5.5 · xhigh");
+  expect((await ui.find({ key: "kit-run" }))?.text).toBe(
+    "Auto · Opus 5.5 · xhigh",
+  );
 });
 
 test("clear behind the band's context figure clears just after the press", async ($, on) => {
@@ -331,7 +340,54 @@ test("Orchestrate in the band's run menu turns it on and marks the run", async (
   });
   const ui = await band($, on);
   await ui.press({ key: "kit-run" });
-  await ui.press({ key: "kit-orchestrate" });
-  expect(w.store.orchestrate).toBe(true);
+  await ui.press({ key: "kit-orchestrate-claude" });
+  expect(w.store.orchestrate).toBe("claude");
   expect((await ui.find({ key: "kit-run" }))?.text).toContain("⑂");
+  await ui.press({ key: "kit-run" });
+  await ui.press({ key: "kit-orchestrate-codex" });
+  expect(w.store.orchestrate).toBe("codex");
+  expect((await ui.find({ key: "kit-run" }))?.text).toContain("⑂ Codex");
+});
+
+test("Orchestrate with Codex sends heavy work there and keeps its log out of the chat", async ($, on) => {
+  const w = world(on, {
+    model: "claude-opus-5-5",
+    label: HEAVY,
+    turns: 5,
+    store: { orchestrate: "codex" },
+  });
+  await $.prompt.submit({ text: "rebuild the importer", origin: TYPED });
+  const note = String(w.sent[0]?.context);
+  expect(note).toContain("kit orchestrate (Codex): plan this here");
+  expect(note).toContain("model Sol 6.1");
+  expect(note).toContain("kit:codex skill");
+});
+
+test("Orchestrate with Codex keeps a small routine change here until this plan's limits run high", async ($, on) => {
+  const calm = world(on, {
+    model: "claude-opus-5-5",
+    label: ROUTINE,
+    turns: 5,
+    store: { orchestrate: "codex" },
+    limits: [{ kind: "five_hour", percentUsed: 40 }],
+  });
+  await $.prompt.submit({ text: "add a submit button", origin: TYPED });
+  expect(String(calm.sent[0]?.context)).toContain(
+    "do this here when it is small",
+  );
+});
+
+test("Orchestrate with Codex gives routine changes to Codex once a plan meter passes 70%", async ($, on) => {
+  const w = world(on, {
+    model: "claude-opus-5-5",
+    label: ROUTINE,
+    turns: 5,
+    store: { orchestrate: "codex" },
+    limits: [
+      { kind: "five_hour", percentUsed: 40 },
+      { kind: "seven_day", percentUsed: 82.4 },
+    ],
+  });
+  await $.prompt.submit({ text: "add a submit button", origin: TYPED });
+  expect(String(w.sent[0]?.context)).toContain("this plan's limit is at 82%");
 });

@@ -5,10 +5,10 @@ import { displayName, family } from "./model-policy";
 // The band's second opinion: another model weighs in on what this chat is working on, reviews
 // its changes, or looks at a bug the chat is stuck on. A pick is a prompt sent as the person's
 // own, just after the press; this chat's model writes the brief (the other model starts cold)
-// and sets both judgments side by side. A GPT model runs through Codex, read-only, as the GPT
-// delegation instructions in the user's CLAUDE.md say (they map the name to a model id, so
-// only names live here); a Claude model runs as a fresh subagent on that model. Only models at
-// least as strong as the main one: a weaker opinion adds little.
+// and sets both judgments side by side. A GPT model runs through Codex, read-only, with the
+// kit:codex skill (it maps the name to a model id, so only names live here); a Claude model
+// runs as a fresh subagent on that model. Only models at least as strong as the main one: a
+// weaker opinion adds little.
 
 export const GPT = ["Sol 6.1", "Astra 6"] as const;
 export const CLAUDE = ["claude-opus-5-5", "claude-sonnet-5-5"] as const;
@@ -33,7 +33,7 @@ export function opinionPrompt(who: string, ask: Ask): string {
   const claude = family(who);
   const by = claude
     ? `${displayName(who)} in a fresh subagent (Agent tool, model "${claude}", read-only: it edits nothing)`
-    : `GPT ${who} through Codex (read-only, as the GPT delegation instructions say)`;
+    : `GPT ${who} through Codex (read-only, with the kit:codex skill)`;
   return `${TASKS[ask](by)} It starts cold: give it the goal, the constraints, the relevant files and what to check. Then show its findings next to your own judgment: where you agree, where not, and why.`;
 }
 

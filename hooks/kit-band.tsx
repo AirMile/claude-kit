@@ -20,7 +20,12 @@ import {
   runLine,
 } from "./model-policy";
 import { reset, setEffortLock } from "./model-switch";
-import { isOrchestrating, setOrchestrating } from "./orchestrate";
+import {
+  type Orchestrate,
+  ORCHESTRATES,
+  orchestration,
+  setOrchestration,
+} from "./orchestrate";
 import { openRoadmap } from "./roadmap-open";
 import type { Usage } from "./roadmap-parts";
 import { PANE } from "./roadmap-view";
@@ -36,9 +41,10 @@ import {
 // The band above the prompt, one line that wraps when narrow, an open menu (a bordered block)
 // above it: shown while the pointer rests on its button, kept open by a press. Left: context and plan usage (register.tsx measures it after each turn); the
 // context figure is a button opening Compact and Clear, run just after the press. Right: the run
-// (`Auto · model · effort` while a profile picks them, else the model; ⑂ while orchestrate is
-// on) opening Auto (the profile from auto-model.ts, or Off) and the Orchestrate toggle
-// (orchestrate.ts); with Auto off, the effort (Default: the session's own); the limit button,
+// (`Auto · model · effort` while a profile picks them, else the model; ⑂ while orchestrating,
+// `⑂ Codex` with Codex) opening Auto (the profile from auto-model.ts, or Off) and Mode: Off,
+// ⑂ Subagents or ⑂ Codex (orchestrate.ts); with Auto off, the effort (Default: the session's
+// own); the limit button,
 // a press cycling this chat's hold (limit-guard.ts): off, Limit (pause at the plan limit, the
 // cache warm while work is open) or Always (also warm while idle, keep-warm.ts); Git (⎇, git-menu.ts) with /commit first; a second opinion (⚖,
 // second-opinion.ts: a row per Opinion, Review, Stuck, a press per model); the dashboard pane
@@ -59,6 +65,12 @@ const HOLD_LABEL: Record<Hold, string> = {
   off: "⏸ Off",
   pause: "⏸ Limit",
   warm: "⏸♨ Always",
+};
+
+const ORCHESTRATE_LABELS: Record<Orchestrate, string> = {
+  off: "Off",
+  claude: "⑂ Subagents",
+  codex: "⑂ Codex",
 };
 
 let menu: Menu | null = null; // the unfolded menu row
@@ -92,7 +104,7 @@ export function kitBand(on: On) {
     const run = await runState($);
     const pause = await limitInfo($);
     const hold = await getHold($);
-    const orch = await isOrchestrating($);
+    const orch = await orchestration($);
     const warmed = warmInfo();
     const ctx = usage.find((u) => u.label === "ctx");
     const meters = usage.filter((u) => u !== ctx);
@@ -132,18 +144,21 @@ export function kitBand(on: On) {
                 />
               )),
             )}
-            {line("Mode", [
-              <Button
-                key="kit-orchestrate"
-                label="⑂ Orchestrate"
-                dimColor={!orch}
-                onPress={() => {
-                  void setOrchestrating($, !orch).then(() =>
-                    $.ui.invalidate("ui.render"),
-                  );
-                }}
-              />,
-            ])}
+            {line(
+              "Mode",
+              ORCHESTRATES.map((o) => (
+                <Button
+                  key={`kit-orchestrate-${o}`}
+                  label={ORCHESTRATE_LABELS[o]}
+                  dimColor={orch !== o}
+                  onPress={() => {
+                    void setOrchestration($, o).then(() =>
+                      $.ui.invalidate("ui.render"),
+                    );
+                  }}
+                />
+              )),
+            )}
           </Box>
         );
       } else if (m === "effort") {
@@ -313,7 +328,7 @@ export function kitBand(on: On) {
               <Button
                 key="kit-run"
                 label={`${run.auto ? `Auto · ${runLine(run.model, run.effort)}` : displayName(run.model)}${
-                  orch ? " ⑂" : ""
+                  orch === "codex" ? " ⑂ Codex" : orch === "claude" ? " ⑂" : ""
                 }`}
                 onPress={() => unfold($, "run")}
               />,

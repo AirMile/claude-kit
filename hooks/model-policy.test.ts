@@ -29,7 +29,7 @@ test("each profile maps a kind of work to a model and an effort", async () => {
     effort: "xhigh",
   });
   expect(pick("lean", "heavy").effort).toBe("high");
-  expect(pick("quality", "planning").model).toBe("claude-fable-5-1");
+  expect(pick("quality", "planning").model).toBe("claude-opus-5-5");
 });
 
 test("kit's skills are known without the classifier", async () => {
@@ -59,7 +59,7 @@ test("/build and the verifier run at high in every profile, never above", async 
     expect(pick(profile, "planning").effort).toBe("high");
   }
   expect(pick("quality", "planning")).toEqual({
-    model: "claude-fable-5-1",
+    model: "claude-opus-5-5",
     effort: "high",
   });
 });
@@ -145,7 +145,7 @@ test("no escalation at or above the model a prompt needs, or for an unknown mode
   expect(escalation(OPUS, OPUS, 50)).toEqual({ step: "none" });
   expect(escalation(OPUS, HAIKU, 50)).toEqual({ step: "none" });
   expect(escalation("claude-mythos-1", OPUS, 50)).toEqual({ step: "none" });
-  expect(escalation(`${OPUS}[1m]`, "claude-fable-5-1", 50).step).toBe("effort");
+  expect(escalation(`${OPUS}[1m]`, "claude-fable-5-1", 50)).toEqual({ step: "none" });
 });
 
 test("a switch is stored per session, junk ignored, the newest twenty kept", async () => {

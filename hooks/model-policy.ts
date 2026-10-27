@@ -24,10 +24,9 @@ export const DEFAULT_MODE: Profile = "balanced";
 const HAIKU = "claude-haiku-5-5";
 const SONNET = "claude-sonnet-5-5";
 const OPUS = "claude-opus-5-5";
-const FABLE = "claude-fable-5-1";
 
-// Every model the engine can switch to, cheapest first.
-export const MODELS: readonly string[] = [HAIKU, SONNET, OPUS, FABLE];
+// Every model the engine can switch to, cheapest first. No Fable: the user's Pro plan lacks it.
+export const MODELS: readonly string[] = [HAIKU, SONNET, OPUS];
 
 const TABLE: Record<Profile, Record<Kind, Pick>> = {
   lean: {
@@ -45,8 +44,8 @@ const TABLE: Record<Profile, Record<Kind, Pick>> = {
   quality: {
     question: { model: SONNET, effort: "medium" },
     routine: { model: OPUS, effort: "high" },
-    planning: { model: FABLE, effort: "high" },
-    heavy: { model: FABLE, effort: "xhigh" },
+    planning: { model: OPUS, effort: "high" },
+    heavy: { model: OPUS, effort: "xhigh" },
   },
 };
 
@@ -130,7 +129,7 @@ export function family(model: string): string | undefined {
 }
 
 // Model tiers, weakest first: how far the model a prompt needs is above the one running.
-const TIERS = ["haiku", "sonnet", "opus", "fable"];
+const TIERS = ["haiku", "sonnet", "opus"];
 
 // Below this share of the context window a switch costs little: the new model reads the whole
 // conversation again without the cache, so a fuller chat is offered a clear or compact first.
