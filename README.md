@@ -886,16 +886,17 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt, one line (it wraps when narrow): usage at the left
-  (`ctx 114k  5h 55% · 2h 53m  7d 75% · 4d 3h`, then `gpt 5h 1%` and `gpt 7d 6%` for ChatGPT once
-  Codex is found and GPT is on), then the run, the limit button, `⎇ Git` and `▤`
+  (`ctx 114k  5h 55% · 2h 53m  7d 12%`, then `gpt 5h 1%` and `gpt 7d 6%` for ChatGPT once
+  Codex is found and GPT is on; a reset time only from 50% used), then the profile, the run,
+  the limit button, `⎇ Git` and `▤`
   (the dashboard; `▤ Close` closes it). Each opens a menu in its own block above the band: hover to peek, press to keep it open.
-  **ctx**: **Compact** and **Clear**, run at once, or when the running turn ends. The run reads
-  `Balanced · Opus 5.5 · medium + GPT` while a profile picks model and effort (`+ GPT` while GPT
-  may take delegated work), or just the model with the profile off; its menu holds **Profile**
-  (Lean, Balanced, Quality or Off), **GPT** (On or Off) and **Flow** (Observe, On or Off): three
-  switches, none depends on another. The limit button needs no menu: each press cycles this
+  **ctx**: **Compact** and **Clear**, run at once, or when the running turn ends. The profile
+  button reads `Balanced` (or `Profile off`) and opens Lean, Balanced, Quality or Off. The run
+  reads `Opus 5.5 · medium + GPT` (`+ GPT` while GPT may take delegated work); its menu holds
+  **GPT** (On or Off): two switches, neither depends on the other. Flow's open task shows its
+  track before the profile (`flow medium`). The limit button needs no menu: each press cycles this
   chat's setting, `⏸ Limit` (pause at the plan limit, the cache warm while work is open; the
-  default) → `⏸♨ Always` (also keep the cache warm while idle) → `⏸ Off` (no pause, no
+  default) → `⏸♨ Always` (also keep the cache warm while idle; `♨×3` after it counts the pings) → `⏸ Off` (no pause, no
   pings); see Keep warm. It is kept per chat, over a
   reload or restart; a new chat starts at `⏸ Limit`. With the profile off
   you pick the model in the app's own model picker, and an effort button appears next to the
@@ -903,7 +904,7 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   the engine lowers a level the model lacks. **Git**: **Commit** (runs `/kit:commit`), Diff,
   Pull, Push, PR, Branch. The effort shown is what kit set for the last prompt, which can differ
   from the session setting in the app's model picker.
-- **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (Profile in the band's run menu,
+- **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (the band's profile button,
   or `/mode lean|balanced|quality|off`). The choice is kept across sessions. Each prompt is sorted (kit's own skills by name, the rest by a Haiku
   classifier) into question, routine, planning or heavy work, and the profile maps that to a
   model and effort. `/build` counts as planning work, not heavy: it starts from a spec and ends
@@ -975,14 +976,11 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   that the task shows as `unverified`. The open task is kept per session (a reload or restart
   keeps it), and after a compaction a note says what it still needs.
 
-  **Flow** in the run menu: **Observe** (the default: it runs everything, the hold budget
-  included, but sends no note and holds nothing), **On**, **Off**. It never turns itself on.
-  `/flow` reports 14 days: tasks per first pick, how many grew after it (too light?) or ended
+  Flow is always on: there is no switch. `/flow` reports 14 days: tasks per first pick, how many grew after it (too light?) or ended
   heavy with two files or fewer and no spec (too heavy?), holds, how tasks ended (verified,
   unresolved, unverified), and the last ten picks and holds, numbered. `/flow mark 3
   too-light` (or `too-heavy`, `hold-right`, `hold-wrong`) adds your judgment, which counts
-  alone can't give. `/flow on|observe|off` sets it. After seven days of observing the band
-  says so. The open task's track shows below the band (`flow medium · observe`).
+  alone can't give. The open task's track shows on the band (`flow medium`).
 - **Delegation**: flow's notes (and `/build`) hand self-contained work to the tool
   `mcp__kit__delegate` with a role. The mod picks Claude or GPT by role and by which plan has
   room, on the newest model per family:
@@ -1035,7 +1033,8 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
 
 - **`/band`** draws the band above the prompt again; folded (`[+]`)? `ctrl+x ctrl+a` unfolds it.
 - **Usage**: `ctx 114k  5h 55% · 2h 53m  7d 75% · 4d 3h` at the band's left: context, then the
-  5-hour and 7-day limits, each with the time until it resets; updated after every turn.
+  5-hour and 7-day limits, each with the time until it resets once half is used; updated after
+  every turn.
 
 **Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
 columns, above the prompt otherwise):

@@ -34,7 +34,7 @@ import {
   switchTo,
 } from "./model-switch";
 import { noteAgent } from "./chat-facts";
-import { flowMode, flowPrompt, flowSpawned } from "./flow";
+import { flowPrompt, flowSpawned } from "./flow";
 
 // Picks model and effort before the model runs (it cannot change its own turn's effort):
 // - the first prompt of a chat (a new session or after /clear) picks a model from the profile,
@@ -259,8 +259,7 @@ export function autoModel(on: On) {
       e.origin.kind === "composer" ||
       e.origin.kind === "bridge" ||
       (e.origin.kind === "plugin" && e.origin.name === "kit");
-    const flowing = (await flowMode($)) !== "off";
-    if (!typed || (now === "off" && !flowing)) return next(e);
+    if (!typed) return next(e);
     const kind = (await kindOf($, e.text)) ?? "routine";
     // The profile picks the model and effort; flow (flow.ts) the workflow. Neither needs the
     // other.
@@ -272,7 +271,7 @@ export function autoModel(on: On) {
     }
     const notes = [
       escalated,
-      flowing ? await flowPrompt($, e.text, kind) : undefined,
+      await flowPrompt($, e.text, kind),
     ].filter((n): n is string => n !== undefined);
     escalated = undefined;
     return next(

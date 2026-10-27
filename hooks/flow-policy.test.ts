@@ -215,8 +215,7 @@ test("the log keeps 14 days, records each task's end, and takes the user's marks
   expect(notable(log)[1]?.event).toBe("end");
   const m = marked(log, 2, "too-light");
   expect(m?.[0]?.mark).toBe("too-light");
-  const out = report(m ?? [], "observe", 0, 21 * day);
-  expect(out).toContain("day 21 of 7: the week is done");
+  const out = report(m ?? []);
   expect(out).toContain("grew after the first pick (too light?): 1");
   expect(out).toContain("too-light 1");
   expect(out).toContain(

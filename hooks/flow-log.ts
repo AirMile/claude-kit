@@ -1,4 +1,4 @@
-import type { Change, FlowMode, Task, Track } from "./flow-policy";
+import type { Change, Task, Track } from "./flow-policy";
 import { TRACKS } from "./flow-policy";
 import type { Kind } from "./model-policy";
 
@@ -91,23 +91,13 @@ const line = (e: LogEntry, n: number): string => {
   return `  ${n}. ${what}: ${e.text || "-"}${e.mark ? ` [${e.mark}]` : ""}`;
 };
 
-const WEEK = 7 * 86_400_000;
-export const weekDone = (since: number | undefined, now: number): boolean =>
-  since !== undefined && now - since >= WEEK;
-
 // /flow's report: the first picks against how the tasks ended, the holds, the user's marks.
-export function report(
-  log: readonly LogEntry[],
-  mode: FlowMode,
-  since: number | undefined,
-  now: number,
-): string {
+export function report(log: readonly LogEntry[]): string {
   const ends = log.filter((e) => e.event === "end");
   const count = (f: (e: LogEntry) => boolean, of: readonly LogEntry[] = log) =>
     of.filter(f).length;
-  const days = since !== undefined ? Math.floor((now - since) / 86_400_000) : 0;
   const lines = [
-    `kit flow: ${mode}${mode === "observe" ? ` (day ${days} of 7${weekDone(since, now) ? ": the week is done" : ""})` : ""}`,
+    "kit flow",
     log.length
       ? `log: ${log.length} entries since ${new Date(log[0]!.at).toISOString().slice(0, 10)} (kept 14 days)`
       : "log: empty",
@@ -120,7 +110,5 @@ export function report(
   const last = notable(log);
   if (last.length) lines.push("last:", ...last.map((e, i) => line(e, i + 1)));
   lines.push(`Mark one: /flow mark <n> ${MARKS.join("|")}.`);
-  if (mode === "observe")
-    lines.push("Happy with the picks and holds → /flow on.");
   return lines.join("\n");
 }

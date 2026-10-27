@@ -220,7 +220,7 @@ test("with Auto off the band's effort holds until Default; with Auto on it hides
     store: { mode: "off" },
   });
   const ui = await band($, on);
-  expect((await ui.find({ key: "kit-run" }))?.text).toBe("Haiku 5.5");
+  expect((await ui.find({ key: "kit-run" }))?.text).toBe("Haiku 5.5 + GPT");
   await ui.press({ key: "kit-effort" });
   await ui.press({ key: "kit-effort-high" });
   expect(w.store.effortLock).toBe("high");
@@ -228,12 +228,12 @@ test("with Auto off the band's effort holds until Default; with Auto on it hides
   await ui.press({ key: "kit-effort" });
   await ui.press({ key: "kit-effort-default" });
   expect(w.store.effortLock).toBe(undefined);
-  await ui.press({ key: "kit-run" });
+  expect((await ui.find({ key: "kit-profile" }))?.text).toBe("Profile off");
+  await ui.press({ key: "kit-profile" });
   await ui.press({ key: "kit-mode-balanced" });
   expect(await ui.find({ key: "kit-effort" })).toBeFalsy();
-  expect((await ui.find({ key: "kit-run" }))?.text).toContain(
-    "Balanced · Haiku 5.5",
-  );
+  expect((await ui.find({ key: "kit-profile" }))?.text).toBe("Balanced");
+  expect((await ui.find({ key: "kit-run" }))?.text).toContain("Haiku 5.5");
 });
 
 test("a thin reply keeps the effort of the work it continues", async ($, on) => {
@@ -263,11 +263,11 @@ test("/build runs at high, a plain heavy prompt at xhigh", async ($, on) => {
   const ui = await band($, on);
   await $.prompt.submit({ text: "/build login-form", origin: TYPED });
   expect((await ui.find({ key: "kit-run" }))?.text).toBe(
-    "Balanced · Opus 5.5 · high + GPT",
+    "Opus 5.5 · high + GPT",
   );
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
   expect((await ui.find({ key: "kit-run" }))?.text).toBe(
-    "Balanced · Opus 5.5 · xhigh + GPT",
+    "Opus 5.5 · xhigh + GPT",
   );
 });
 
@@ -311,14 +311,13 @@ test("the band's Git menu sends its item as a prompt", async ($, on) => {
   ]);
 });
 
-test("flow on sends a track note with a change task; a question gets none", async ($, on) => {
+test("flow sends a track note with a change task; a question gets none", async ($, on) => {
   const w = world(on, {
     model: "claude-opus-5-5",
     label: QUESTION,
     labels: [HEAVY],
     change: CHANGE_LABELS.heavy,
     turns: 5,
-    store: { flow: "on" },
   });
   await $.prompt.submit({ text: "rebuild the importer", origin: TYPED });
   expect(String(w.sent[0]?.context)).toContain("kit flow (heavy)");
@@ -326,16 +325,20 @@ test("flow on sends a track note with a change task; a question gets none", asyn
   expect(w.sent[1]?.context ?? []).toEqual([]);
 });
 
-test("flow works with the profile off", async ($, on) => {
+test("flow works with the profile off, its track on the band", async ($, on) => {
   const w = world(on, {
     model: "claude-opus-5-5",
     label: ROUTINE,
     change: CHANGE_LABELS.light,
     turns: 5,
-    store: { mode: "off", flow: "on" },
+    drawn: true,
+    store: { mode: "off" },
   });
+  const ui = await band($, on);
   await $.prompt.submit({ text: "add a submit button", origin: TYPED });
   expect(String(w.sent[0]?.context)).toContain("kit flow (light)");
+  expect(await ui.find({ key: "kit-flow-observe" })).toBeFalsy();
+  expect(await ui.find({ type: "Text", text: "flow light" })).toBeDefined();
 });
 
 test("a /build kit started on the user's click gets the profile's model and effort", async ($, on) => {
@@ -363,14 +366,4 @@ test("the band's GPT switch turns GPT off and the run drops its + GPT", async ($
   expect(w.store.gpt).toBe(false);
   expect((await ui.find({ key: "kit-run" }))?.text).not.toContain("GPT");
   expect(await ui.find({ key: "kit-opinion" })).toBeFalsy();
-});
-
-
-test("the band's Flow row sets the workflow mode, observe by default", async ($, on) => {
-  const w = world(on, { model: "claude-opus-5-5", label: QUESTION, drawn: true });
-  const ui = await band($, on);
-  await ui.press({ key: "kit-run" });
-  expect((await ui.find({ key: "kit-flow-observe" }))?.text).toBe("Observe");
-  await ui.press({ key: "kit-flow-on" });
-  expect(w.store.flow).toBe("on");
 });

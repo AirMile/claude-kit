@@ -11,8 +11,6 @@ import type { Kind } from "./model-policy";
 
 export type Track = "light" | "medium" | "heavy";
 export type Change = "none" | Track;
-export type FlowMode = "observe" | "on" | "off";
-export const FLOW_MODES: readonly FlowMode[] = ["observe", "on", "off"];
 
 // What the change classifier sees: the risk of the change, not the model it needs.
 export const CHANGE_LABELS: Record<Change, string> = {

@@ -14,8 +14,8 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   (`hooks/compaction.ts`), usage figures, and the tools
   `mcp__kit__roadmap_view` / `mcp__kit__theme_view` (`hooks/roadmap-open.ts`,
   `hooks/theme-view.tsx`) that `/product` and `/theme` call to open their panes (plus the `/panel` command), the band
-  above the prompt (`hooks/kit-band.tsx`: one line of usage, the run menu (auto profile or off,
-  GPT on or off, flow observe/on/off), the limit button (Limit: pause + warm while work is open, Always, Off; per chat), an effort button with auto off, git, dashboard), model/effort per prompt and subagent
+  above the prompt (`hooks/kit-band.tsx`: one line of usage, the profile (auto or off), the run menu
+  (GPT on or off; the menus in `hooks/band-menus.tsx`), flow's track, the limit button (Limit: pause + warm while work is open, Always, Off; per chat), an effort button with auto off, git, dashboard), model/effort per prompt and subagent
   (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, switches kept by `hooks/model-switch.ts`, `/mode`), flow (`hooks/flow.ts` on the pure `hooks/flow-policy.ts`, `hooks/flow-check.ts` and
   `hooks/flow-log.ts`, storage and git fingerprint in `hooks/flow-store.ts`: each change task's
   track light/medium/heavy, its note at the start or on growth, the verify gate on `classic.Stop`
@@ -78,7 +78,7 @@ product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.m
   writing run changes is Codex's work, in Codex's sandbox, reviewed by the chat. Flow reads the
   chat's own tool calls (Edit/Write, Bash), subagents' answers and read-only git state (diff,
   status, `hash-object` without `-w`), and holds a turn's end; it writes only `$.store` (its
-  mode, the open task per session, a 14-day log).
+  open task per session, a 14-day log).
   Schema or roadmap format change → update `roadmap-file.ts` + its skill. `claude plugin test .`
 - A rule that needs a second paragraph of exceptions is a sign to cut it, not to extend it
 - Check: `wc -l skills/*/SKILL.md`

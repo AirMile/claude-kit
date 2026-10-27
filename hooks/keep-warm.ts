@@ -69,8 +69,8 @@ export function endPauseWarm() {
   pauseUntil = null;
 }
 
-// The band's note: how often the cache was kept warm, empty before the first ping.
-export const warmInfo = () => (pings ? `cache kept warm ×${pings}` : "");
+// How often the cache was kept warm, on the band's limit button; empty before the first ping.
+export const warmInfo = () => (pings ? ` ♨×${pings}` : "");
 
 function ensureTicker($: EngineInterface) {
   if (!ticker) ticker = $.clock.every(TICK_MS, () => void tick($));
