@@ -1,8 +1,8 @@
 import type { CommandSpec, EngineInterface, On } from "claude-code";
 
-import { getMode, runState } from "./auto-model";
+import { getMode, runState, setMode } from "./auto-model";
 import { type Menu, menuBody } from "./band-menus";
-import { gptOn } from "./codex-run";
+import { gptOn, setGptOn } from "./codex-run";
 import { flowBand } from "./flow";
 import { warmInfo } from "./keep-warm";
 import {
@@ -13,7 +13,7 @@ import {
   warmCommandRun,
 } from "./limit-guard";
 import { type Hold, nextHold } from "./limit-policy";
-import { displayName, profileName, runLine } from "./model-policy";
+import { type Mode, PROFILES, profileName, runLine } from "./model-policy";
 import { openRoadmap } from "./roadmap-open";
 import type { Usage } from "./roadmap-parts";
 import { PANE } from "./roadmap-view";
@@ -22,16 +22,14 @@ import { PANE } from "./roadmap-view";
 // block) above it: shown while the pointer rests on its button, kept open by a press. Left:
 // context and plan usage (register.tsx measures it after each turn), a reset time only from
 // half a window used; the context figure is a button opening Compact and Clear, run just after
-// the press. Right: the profile (Lean, Balanced, Quality from auto-model.ts, or Off), the run
-// (`model · effort` while a profile picks them, else the model, `+ GPT` while GPT may take
-// delegated work) opening GPT (on or off, codex-run.ts); with the profile off, the effort
-// (Default: the session's own);
-// the limit button, a press cycling this chat's hold (limit-guard.ts): off, Limit (pause at
-// the plan limit, the cache warm while work is open) or Always (also warm while idle,
-// keep-warm.ts), with the pings so far; Git (⎇, git-menu.ts) with /commit first; the dashboard
-// pane (▤). Flow's open task (flow.ts) shows its track before them. With the profile
-// off the model is the app's own picker's. The plan-limit pause with Resume now
-// (limit-guard.ts) follows on its own line. It yields to a survey. /band draws it again;
+// the press. Right: flow's open task (flow.ts), then switches a press cycles: the profile
+// (Lean, Balanced, Quality from auto-model.ts, Off), its model and effort beside it (with the
+// profile off a button opening the effort, Default: the session's own; the model is then the
+// app's own picker's), GPT (on or off, codex-run.ts; a ChatGPT window from half used), the
+// limit hold (limit-guard.ts): off, Limit (pause at the plan limit, the cache warm while work
+// is open) or Always (also warm while idle, keep-warm.ts), with the pings so far. Then Git (⎇,
+// git-menu.ts) with /commit first and the dashboard pane (▤). The plan-limit pause with Resume
+// now (limit-guard.ts) follows on its own line. It yields to a survey. /band draws it again;
 // /warm toggles the hold's keep warm.
 
 export const bandCommand: CommandSpec = {
@@ -40,8 +38,9 @@ export const bandCommand: CommandSpec = {
   immediate: true,
 };
 
-// A reset time is noise until half the window is used.
+// A reset time, or a GPT window on the GPT switch, is noise until half the window is used.
 const NOTE_FROM = 50;
+const MODES: readonly Mode[] = [...PROFILES, "off"];
 
 const HOLD_LABEL: Record<Hold, string> = {
   off: "⏸ Off",
@@ -75,7 +74,11 @@ export function kitBand(on: On) {
     const gpt = await gptOn($);
     const flow = await flowBand($);
     const ctx = usage.find((u) => u.label === "ctx");
-    const meters = usage.filter((u) => u !== ctx);
+    const meters = usage.filter((u) => u !== ctx && !u.label.startsWith("gpt"));
+    const gptTight = usage
+      .filter((u) => u.label.startsWith("gpt") && u.pct >= NOTE_FROM)
+      .map((u) => ` ${u.label.slice(4)} ${u.value}`)
+      .join("");
     const done = () => unfold($, null);
     const close = (
       <Button key="kit-menu-close" label="×" dimColor onPress={done} />
@@ -83,8 +86,6 @@ export function kitBand(on: On) {
 
     const state = {
       ui: $.ui.resolve(e),
-      now,
-      gpt,
       effort: run.effort,
       done,
     };
@@ -92,7 +93,7 @@ export function kitBand(on: On) {
     // Each menu is drawn: the pressed one open, the others hidden until the pointer rests on
     // their button (or on the menu itself), which shares its hover scope. A press still opens
     // it for the keyboard.
-    const MENUS: Menu[] = ["profile", "run", "effort", "ctx", "git"];
+    const MENUS: Menu[] = ["effort", "ctx", "git"];
     const menus = MENUS.map((m) => {
       const body = menuBody($, m, state);
       if (!body) return null;
@@ -153,34 +154,35 @@ export function kitBand(on: On) {
                 {flow}
               </Text>
             ) : null}
-            {trigger(
-              "profile",
-              <Button
-                key="kit-profile"
-                label={run.auto ? profileName(now) : "Profile off"}
-                dimColor={!run.auto}
-                onPress={() => unfold($, "profile")}
-              />,
+            <Button
+              key="kit-profile"
+              label={run.auto ? profileName(now) : "Profile off"}
+              dimColor={!run.auto}
+              onPress={() => {
+                const after = MODES[(MODES.indexOf(now) + 1) % MODES.length]!;
+                void setMode($, after).then(() => $.ui.invalidate("ui.render"));
+              }}
+            />
+            {run.auto ? (
+              <Text dimColor>{runLine(run.model, run.effort)}</Text>
+            ) : (
+              trigger(
+                "effort",
+                <Button
+                  key="kit-run"
+                  label={runLine(run.model, run.effort)}
+                  onPress={() => unfold($, "effort")}
+                />,
+              )
             )}
-            {trigger(
-              "run",
-              <Button
-                key="kit-run"
-                label={`${run.auto ? runLine(run.model, run.effort) : displayName(run.model)}${gpt ? " + GPT" : ""}`}
-                onPress={() => unfold($, "run")}
-              />,
-            )}
-            {run.auto
-              ? null
-              : trigger(
-                  "effort",
-                  <Button
-                    key="kit-effort"
-                    label={run.effort ?? "effort"}
-                    dimColor={!run.effort}
-                    onPress={() => unfold($, "effort")}
-                  />,
-                )}
+            <Button
+              key="kit-gpt"
+              label={gpt ? `GPT${gptTight}` : "GPT off"}
+              dimColor={!gpt}
+              onPress={() => {
+                void setGptOn($, !gpt).then(() => $.ui.invalidate("ui.render"));
+              }}
+            />
             <Button
               key="kit-hold"
               label={`${HOLD_LABEL[hold]}${warmInfo()}`}
@@ -193,7 +195,7 @@ export function kitBand(on: On) {
               "git",
               <Button
                 key="kit-git"
-                label="⎇ Git"
+                label="⎇"
                 onPress={() => unfold($, "git")}
               />,
             )}

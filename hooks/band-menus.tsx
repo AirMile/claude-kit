@@ -1,20 +1,16 @@
 import type { EngineInterface } from "claude-code";
 
-import { setMode } from "./auto-model";
-import { setGptOn } from "./codex-run";
 import { GIT_ITEMS, gitAction } from "./git-menu";
-import { EFFORTS, type Mode, PROFILES, profileName } from "./model-policy";
+import { EFFORTS } from "./model-policy";
 import { reset, setEffortLock } from "./model-switch";
 
-// The band's menus (kit-band.tsx draws and opens them): Profile, the run (GPT), the
-// effort, the context (Compact, Clear) and Git, each a row of choices beside its name.
+// The band's menus (kit-band.tsx draws and opens them): the effort (with the profile off), the
+// context (Compact, Clear) and Git, each a row of choices beside its name.
 
-export type Menu = "profile" | "run" | "effort" | "ctx" | "git";
+export type Menu = "effort" | "ctx" | "git";
 
 export type MenuState = {
   ui: ReturnType<EngineInterface["ui"]["resolve"]>;
-  now: Mode;
-  gpt: boolean;
   effort: string | undefined;
   done: () => void;
 };
@@ -29,8 +25,8 @@ function soon($: EngineInterface, work: () => Promise<unknown>) {
 
 export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
   const { Box, Button, Text } = s.ui;
-  const { now, gpt, done } = s;
-  // A line of the run menu: its name in a narrow column, its choices beside it.
+  const { done } = s;
+  // A line of a menu: its name in a narrow column, its choices beside it.
   const line = (name: string, items: unknown[]) => (
     <Box key={`kit-line-${name}`} gap={1}>
       <Box width={8} flexShrink={0}>
@@ -43,43 +39,7 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
   );
 
   let body = null;
-  if (m === "profile") {
-    const modes: Mode[] = [...PROFILES, "off"];
-    body = (
-      <Box flexDirection="column" flexGrow={1} gap={1}>
-        {line(
-          "Profile",
-          modes.map((m) => (
-            <Button
-              key={`kit-mode-${m}`}
-              label={profileName(m)}
-              dimColor={now !== m}
-              onPress={() => {
-                void setMode($, m).then(done);
-              }}
-            />
-          )),
-        )}
-      </Box>
-    );
-  } else if (m === "run") {
-    body = (
-      <Box flexDirection="column" flexGrow={1} gap={1}>
-        {line("GPT", [
-          ...[true, false].map((v) => (
-            <Button
-              key={`kit-gpt-${v ? "on" : "off"}`}
-              label={v ? "On" : "Off"}
-              dimColor={gpt !== v}
-              onPress={() => {
-                void setGptOn($, v).then(() => $.ui.invalidate("ui.render"));
-              }}
-            />
-          )),
-        ])}
-      </Box>
-    );
-  } else if (m === "effort") {
+  if (m === "effort") {
     const levels = ["default", ...EFFORTS] as const;
     body = (
       <Box flexDirection="column" flexGrow={1} gap={1}>

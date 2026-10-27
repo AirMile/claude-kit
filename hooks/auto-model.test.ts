@@ -200,6 +200,13 @@ test("a stored switch survives a reload: no question on the stronger model", asy
   expect(w.asked).toEqual([]);
 });
 
+// The model and effort the band shows beside the profile.
+async function runText(ui: {
+  find: (q: object) => Promise<{ text?: string } | undefined>;
+}) {
+  return (await ui.find({ type: "Text", text: /\d\.\d/ }))?.text;
+}
+
 // The band as the terminal draws it; a press acts as a click does.
 function band($: Parameters<Parameters<typeof test>[1]>[0], on: On) {
   on("ui.panes", async () => ({ value: [] }));
@@ -220,20 +227,21 @@ test("with Auto off the band's effort holds until Default; with Auto on it hides
     store: { mode: "off" },
   });
   const ui = await band($, on);
-  expect((await ui.find({ key: "kit-run" }))?.text).toBe("Haiku 5.5 + GPT");
-  await ui.press({ key: "kit-effort" });
+  expect((await ui.find({ key: "kit-run" }))?.text).toBe("Haiku 5.5");
+  await ui.press({ key: "kit-run" });
   await ui.press({ key: "kit-effort-high" });
   expect(w.store.effortLock).toBe("high");
-  expect((await ui.find({ key: "kit-effort" }))?.text).toBe("high");
-  await ui.press({ key: "kit-effort" });
+  expect((await ui.find({ key: "kit-run" }))?.text).toBe("Haiku 5.5 · high");
+  await ui.press({ key: "kit-run" });
   await ui.press({ key: "kit-effort-default" });
   expect(w.store.effortLock).toBe(undefined);
   expect((await ui.find({ key: "kit-profile" }))?.text).toBe("Profile off");
-  await ui.press({ key: "kit-profile" });
-  await ui.press({ key: "kit-mode-balanced" });
-  expect(await ui.find({ key: "kit-effort" })).toBeFalsy();
+  await ui.press({ key: "kit-profile" }); // Off → Lean
+  await ui.press({ key: "kit-profile" }); // → Balanced
+  expect(w.store.mode).toBe("balanced");
+  expect(await ui.find({ key: "kit-run" })).toBeFalsy();
   expect((await ui.find({ key: "kit-profile" }))?.text).toBe("Balanced");
-  expect((await ui.find({ key: "kit-run" }))?.text).toContain("Haiku 5.5");
+  expect(await runText(ui)).toContain("Haiku 5.5");
 });
 
 test("a thin reply keeps the effort of the work it continues", async ($, on) => {
@@ -245,8 +253,7 @@ test("a thin reply keeps the effort of the work it continues", async ($, on) => 
     drawn: true,
   });
   const ui = await band($, on);
-  const shown = async () =>
-    (await ui.find({ key: "kit-run" }))?.text?.replace(" + GPT", "").split(" · ").at(-1);
+  const shown = async () => (await runText(ui))?.split(" · ").at(-1);
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
   expect(await shown()).toBe("xhigh");
   await $.prompt.submit({ text: "ja", origin: TYPED });
@@ -262,13 +269,9 @@ test("/build runs at high, a plain heavy prompt at xhigh", async ($, on) => {
   world(on, { model: "claude-opus-5-5", label: HEAVY, turns: 5, drawn: true });
   const ui = await band($, on);
   await $.prompt.submit({ text: "/build login-form", origin: TYPED });
-  expect((await ui.find({ key: "kit-run" }))?.text).toBe(
-    "Opus 5.5 · high + GPT",
-  );
+  expect(await runText(ui)).toBe("Opus 5.5 · high");
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
-  expect((await ui.find({ key: "kit-run" }))?.text).toBe(
-    "Opus 5.5 · xhigh + GPT",
-  );
+  expect(await runText(ui)).toBe("Opus 5.5 · xhigh");
 });
 
 test("clear behind the band's context figure clears just after the press", async ($, on) => {
@@ -348,10 +351,10 @@ test("a /build kit started on the user's click gets the profile's model and effo
     text: "/kit:build login-form",
     origin: { kind: "plugin", name: "kit" } as never,
   });
-  expect((await ui.find({ key: "kit-run" }))?.text).toContain("Opus 5.5 · high");
+  expect(await runText(ui)).toContain("Opus 5.5 · high");
 });
 
-test("the band's GPT switch turns GPT off and the run drops its + GPT", async ($, on) => {
+test("the band's GPT switch turns GPT off with a press", async ($, on) => {
   const w = world(on, {
     model: "claude-opus-5-5",
     label: ROUTINE,
@@ -360,10 +363,9 @@ test("the band's GPT switch turns GPT off and the run drops its + GPT", async ($
   });
   const ui = await band($, on);
   await $.prompt.submit({ text: "add a submit button", origin: TYPED });
-  expect((await ui.find({ key: "kit-run" }))?.text).toContain("+ GPT");
-  await ui.press({ key: "kit-run" });
-  await ui.press({ key: "kit-gpt-off" });
+  expect((await ui.find({ key: "kit-gpt" }))?.text).toBe("GPT");
+  await ui.press({ key: "kit-gpt" });
   expect(w.store.gpt).toBe(false);
-  expect((await ui.find({ key: "kit-run" }))?.text).not.toContain("GPT");
+  expect((await ui.find({ key: "kit-gpt" }))?.text).toBe("GPT off");
   expect(await ui.find({ key: "kit-opinion" })).toBeFalsy();
 });

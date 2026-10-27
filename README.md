@@ -886,25 +886,25 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt, one line (it wraps when narrow): usage at the left
-  (`ctx 114k  5h 55% · 2h 53m  7d 12%`, then `gpt 5h 1%` and `gpt 7d 6%` for ChatGPT once
-  Codex is found and GPT is on; a reset time only from 50% used), then the profile, the run,
-  the limit button, `⎇ Git` and `▤`
-  (the dashboard; `▤ Close` closes it). Each opens a menu in its own block above the band: hover to peek, press to keep it open.
-  **ctx**: **Compact** and **Clear**, run at once, or when the running turn ends. The profile
-  button reads `Balanced` (or `Profile off`) and opens Lean, Balanced, Quality or Off. The run
-  reads `Opus 5.5 · medium + GPT` (`+ GPT` while GPT may take delegated work); its menu holds
-  **GPT** (On or Off): two switches, neither depends on the other. Flow's open task shows its
-  track before the profile (`flow medium`). The limit button needs no menu: each press cycles this
-  chat's setting, `⏸ Limit` (pause at the plan limit, the cache warm while work is open; the
-  default) → `⏸♨ Always` (also keep the cache warm while idle; `♨×3` after it counts the pings) → `⏸ Off` (no pause, no
-  pings); see Keep warm. It is kept per chat, over a
-  reload or restart; a new chat starts at `⏸ Limit`. With the profile off
-  you pick the model in the app's own model picker, and an effort button appears next to the
-  run: a level holds over new chats and restarts until **Default** (the session's own effort);
-  the engine lowers a level the model lacks. **Git**: **Commit** (runs `/kit:commit`), Diff,
-  Pull, Push, PR, Branch. The effort shown is what kit set for the last prompt, which can differ
-  from the session setting in the app's model picker.
-- **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (the band's profile button,
+  (`ctx 114k  5h 55% · 2h 53m  7d 12%`; a reset time only from 50% used), then flow's open
+  task (`flow medium`), the profile, its model and effort, GPT, the limit button, `⎇` and `▤`
+  (the dashboard; `▤ Close` closes it). **ctx** and `⎇` open a menu in its own block above the
+  band (hover to peek, press to keep it open): **Compact** and **Clear**, run at once or when
+  the running turn ends; **Commit** (runs `/kit:commit`), Diff, Pull, Push, PR, Branch. The
+  rest are switches a press cycles, none depending on another:
+  - **Profile**: `Lean` → `Balanced` → `Quality` → `Profile off`. Beside it the model and
+    effort kit set for the last prompt (`Opus 5.5 · medium`), which can differ from the session
+    setting in the app's model picker. With the profile off you pick the model in that picker,
+    and the model becomes a button opening the effort: a level holds over new chats and
+    restarts until **Default** (the session's own effort); the engine lowers a level the model
+    lacks.
+  - **GPT**: `GPT` or `GPT off` (may GPT take delegated work). A ChatGPT window from half used
+    shows on it (`GPT 5h 62%`).
+  - **Limit**: `⏸ Limit` (pause at the plan limit, the cache warm while work is open; the
+    default) → `⏸♨ Always` (also keep the cache warm while idle; `♨×3` after it counts the
+    pings) → `⏸ Off` (no pause, no pings); see Keep warm. Kept per chat, over a reload or
+    restart; a new chat starts at `⏸ Limit`.
+- **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (the band's profile button cycles them,
   or `/mode lean|balanced|quality|off`). The choice is kept across sessions. Each prompt is sorted (kit's own skills by name, the rest by a Haiku
   classifier) into question, routine, planning or heavy work, and the profile maps that to a
   model and effort. `/build` counts as planning work, not heavy: it starts from a spec and ends
@@ -998,7 +998,7 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   Claude is tight at 70% of its 5h window, or when its week runs 10 points ahead of the time
   gone by; ChatGPT at 80% (5h) or 90% (7d), read from Codex at most every 10 minutes. Astra
   never runs by itself: only when you name it. A change is built here without GPT: a Claude
-  subagent would start cold on what this chat already knows. **GPT Off** in the run menu (or
+  subagent would start cold on what this chat already knows. **GPT off** on the band (or
   `/gpt off`) keeps all delegated work on Claude (the right column), reads nothing from Codex
   and hides its meters; a GPT model you name still runs. While GPT is on, a GPT run may write
   without asking (that switch is the standing request); with it off, a write asks first. A GPT run returns its final message, the files
