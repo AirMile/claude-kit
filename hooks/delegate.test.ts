@@ -121,14 +121,18 @@ test("with room on both, a build runs on the newest Terra and only its final mes
   expect(out).toContain("Added the button; npm test passes.");
 });
 
-test("a search stays on Claude: the answer says how to run it as an Explore subagent", async ($, on) => {
+test("a search runs on Luna when ChatGPT has room", async ($, on) => {
   const w = world(on, { events: EVENTS });
   const out = await delegate($, {
     role: "search",
     brief: "Find where the form is submitted.",
   });
-  expect(w.spawned.length).toBe(0);
-  expect(out).toContain('subagent_type "Explore", model "haiku"');
+  expect(w.spawned[0]?.argv).toContain("gpt-6-luna");
+  expect(w.spawned[0]?.argv).toContain("read-only");
+  expect(out).toContain("GPT Luna 6 (search");
+  expect(w.store.flowLog).toMatchObject([
+    { event: "delegate", text: "search gpt" },
+  ]);
 });
 
 test("a family asked for by name runs on it; a thread continues the earlier run", async ($, on) => {
@@ -150,7 +154,11 @@ test("a family asked for by name runs on it; a thread continues the earlier run"
 
 test("a review runs read-only with the brief and asks for ranked findings", async ($, on) => {
   const w = world(on, { events: EVENTS });
-  await delegate($, { role: "review", brief: "Review the form change.", author: "claude" });
+  await delegate($, {
+    role: "review",
+    brief: "Review the form change.",
+    author: "claude",
+  });
   const argv = w.spawned[0]?.argv ?? [];
   expect(argv.slice(1, 3)).toEqual(["exec", "--json"]);
   expect(argv).toContain("read-only");
@@ -168,10 +176,19 @@ test("without Codex a change is built here and research goes to Claude, saying w
     brief: "Add a submit button.",
   });
   expect(w.spawned.length).toBe(0);
-  expect(out).toBe("Not delegated: Codex is not available here: build it here.");
-  const read = await delegate($, { role: "research", brief: "Weigh the retry options." });
+  expect(out).toBe(
+    "Not delegated: Codex is not available here: build it here.",
+  );
+  const read = await delegate($, {
+    role: "research",
+    brief: "Weigh the retry options.",
+  });
   expect(read).toContain("Route: Claude (Codex: codex not found)");
   expect(read).toContain('model "sonnet"');
+  expect(w.store.flowLog).toMatchObject([
+    { event: "delegate", text: "build none" },
+    { event: "delegate", text: "research claude" },
+  ]);
 });
 
 test("/gpt shows the newest model per family and pins one", async ($, on) => {
@@ -192,9 +209,101 @@ test("/gpt shows the newest model per family and pins one", async ($, on) => {
 
 test("with GPT off a build stays here and Codex is not read; a named family still runs", async ($, on) => {
   const w = world(on, { store: { gpt: false }, events: EVENTS });
-  const out = await delegate($, { role: "build", brief: "Add a submit button." });
+  const out = await delegate($, {
+    role: "build",
+    brief: "Add a submit button.",
+  });
   expect(out).toBe("Not delegated: GPT is off in the band: build it here.");
   expect(w.reads()).toBe(0);
-  await delegate($, { role: "research", brief: "Weigh the retry options.", family: "sol" });
+  await delegate($, {
+    role: "research",
+    brief: "Weigh the retry options.",
+    family: "sol",
+  });
   expect(w.spawned[0]?.argv).toContain("gpt-6.1-sol");
+});
+
+test("the delegate schema stays in the prompt without changing its description", async ($, on) => {
+  on("tool.describe", { tool: "mcp__kit__delegate" }, async () => ({
+    description: "Stable description",
+    isDeferred: true,
+  }));
+  const result = await $.tool.describe({
+    tool: "mcp__kit__delegate",
+    description: "Stable description",
+    isDeferred: true,
+    provider: { plugin: "kit", tier: "user" },
+  } as never);
+  expect(result).toEqual({
+    description: "Stable description",
+    isDeferred: false,
+  });
+});
+
+test("each role receives its answer shape and length target", async ($, on) => {
+  const w = world(on, { events: EVENTS });
+  for (const role of [
+    "search",
+    "research",
+    "plan",
+    "review",
+    "build",
+    "build+",
+  ]) {
+    await delegate($, {
+      role,
+      brief: "A task.",
+      family: "sol",
+      author: "claude",
+    });
+    const prompt = w.spawned[w.spawned.length - 1]?.input ?? "";
+    expect(prompt).toContain(
+      `Aim for ${role === "search" || role === "build" ? 2000 : 4000} characters or less`,
+    );
+    expect(prompt).toContain(
+      "Conclusion first; evidence as file:line; uncertainties",
+    );
+    expect(prompt).toContain("No command logs");
+    expect(prompt).toContain("file contents beyond short quotes, or diffs");
+    if (role === "build" || role === "build+") {
+      expect(prompt).toContain("Commit, push and deploy nothing");
+      expect(prompt).toContain("checks run and their results");
+    } else expect(prompt).toContain("Read only: change no files");
+    if (role === "review") expect(prompt).toContain("[P0] to [P3]");
+  }
+});
+
+test("a cut answer says whether its thread can be resumed", async ($, on) => {
+  const long = JSON.stringify({
+    type: "item.completed",
+    item: { type: "agent_message", text: "x".repeat(6001) },
+  });
+  world(on, { events: [long] });
+  const without = await delegate($, {
+    role: "research",
+    brief: "Research.",
+    family: "sol",
+  });
+  expect(without).toContain("[incomplete: cut at 6000 characters]");
+});
+
+test("a cut answer includes its thread for retrieving the rest", async ($, on) => {
+  const long = JSON.stringify({
+    type: "item.completed",
+    item: { type: "agent_message", text: "x".repeat(6001) },
+  });
+  world(on, {
+    events: [
+      JSON.stringify({ type: "thread.started", thread_id: "t-123" }),
+      long,
+    ],
+  });
+  const withThread = await delegate($, {
+    role: "research",
+    brief: "Research.",
+    family: "sol",
+  });
+  expect(withThread).toContain(
+    '[incomplete: cut at 6000 characters, ask for the rest with thread "t-123"]',
+  );
 });

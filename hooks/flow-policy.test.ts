@@ -42,6 +42,9 @@ test("a prompt's change picks the track; /build is heavy; a question or none sta
   expect(ask({ change: "medium" }).note).toContain(
     "checks that cover the change",
   );
+  expect(ask({ change: "medium" }).note).toContain(
+    "A self-contained piece you can describe up front: hand it to mcp__kit__delegate (role build) and review its diff here.",
+  );
   expect(changeOfLabel(CHANGE_LABELS.medium)).toBe("medium");
 });
 
@@ -218,6 +221,15 @@ test("the log keeps 14 days, records each task's end, and takes the user's marks
   const out = report(m ?? []);
   expect(out).toContain("grew after the first pick (too light?): 1");
   expect(out).toContain("too-light 1");
+  expect(
+    report([
+      { at: 1, event: "explore-note", text: "" },
+      { at: 2, event: "read-note", text: "5 calls, 42 chars" },
+      { at: 3, event: "delegate", text: "search gpt" },
+      { at: 4, event: "delegate", text: "research claude" },
+      { at: 5, event: "delegate", text: "build none" },
+    ]),
+  ).toContain("explore notes 1 · read notes 1 · delegated 3 (gpt 1, claude 1)");
   expect(out).toContain(
     "end medium (from light) · 1 files · 1 checks · verified: src/a.ts [too-light]",
   );

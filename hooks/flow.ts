@@ -1,6 +1,7 @@
 import type { CommandSpec, EngineInterface, On } from "claude-code";
 
 import { checkOf, checkPassed } from "./flow-check";
+import { classifyPrompt } from "./flow-prompt";
 import {
   endEntry,
   type Ending,
@@ -10,10 +11,7 @@ import {
   report,
 } from "./flow-log";
 import {
-  CHANGE_LABELS,
-  type Change,
   changed,
-  changeOfLabel,
   newTask,
   onCheck,
   onEdit,
@@ -33,6 +31,7 @@ import {
   writeLog,
 } from "./flow-store";
 import { isThin, type Kind } from "./model-policy";
+import { readTurn } from "./read-watch";
 
 // Flow (always on; /flow reports it): this chat's open change task, fed by its prompts
 // (auto-model.ts), edits, turn ends and compactions (register.tsx, compaction.ts), shell
@@ -48,7 +47,6 @@ export const flowCommand: CommandSpec = {
   immediate: true,
 };
 
-const CLASSIFY_CHARS = 4000;
 const BUILD =
   /^\s*\/(kit:)?build\b|<command-name>\/?(kit:)?build<\/command-name>/;
 
@@ -79,24 +77,13 @@ const ending = (t: Task, p: string | undefined): Ending =>
         ? "unverified"
         : "unresolved";
 
-async function classifyChange(
-  $: EngineInterface,
-  text: string,
-): Promise<Change | undefined> {
-  const label = await $.model
-    .classify(text.slice(0, CLASSIFY_CHARS), Object.values(CHANGE_LABELS), {
-      model: "haiku",
-    })
-    .catch(() => undefined);
-  return changeOfLabel(label);
-}
-
 // A typed prompt, already sorted into its kind: the note to send with it.
 export async function flowPrompt(
   $: EngineInterface,
   text: string,
   kind: Kind,
 ): Promise<string | undefined> {
+  readTurn();
   await load($);
   const now = await $.clock.now();
   const p = await worktreePrint($);
@@ -104,10 +91,7 @@ export async function flowPrompt(
   const build = BUILD.test(text);
   // A short reply ("ja") continues an open task; without one it is a request of its own.
   const thin = !!task && isThin(text);
-  const change =
-    build || thin || kind === "question"
-      ? undefined
-      : await classifyChange($, text);
+  const { change, note } = await classifyPrompt($, text, kind, build, thin);
   const step = onPrompt({
     task,
     kind,
@@ -135,7 +119,7 @@ export async function flowPrompt(
       reason:
         step.event === "escalate" ? "the prompt asked for more" : undefined,
     });
-  return step.note;
+  return [step.note, note].filter(Boolean).join("\n") || undefined;
 }
 
 // A file written or edited, by this chat or one of its subagents: the note for the tool's

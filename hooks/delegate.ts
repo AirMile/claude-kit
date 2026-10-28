@@ -4,7 +4,6 @@ import {
   type Author,
   type Family,
   FAMILIES,
-  type Meters,
   newest,
   type Role,
   ROLES,
@@ -24,6 +23,7 @@ import {
   type GptStatus,
 } from "./codex-run";
 import { flowDelegated } from "./flow";
+import { noteClaudeLimits, noteGptMeters } from "./delegate-balance";
 
 // mcp__kit__delegate: this chat hands a self-contained piece of work to whichever plan has room
 // (delegate-policy.ts picks Claude or GPT, and the model). A GPT route runs here through the
@@ -72,15 +72,6 @@ export const gptCommand: CommandSpec = {
 
 let writing = false; // a GPT run that writes is going: one at a time in this checkout
 
-async function claudeMeters($: EngineInterface): Promise<Meters> {
-  const usage = await $.session.usage().catch(() => undefined);
-  const out: Meters = {};
-  for (const r of usage?.rateLimits ?? [])
-    if (r.kind === "five_hour" || r.kind === "seven_day")
-      out[r.kind] = { pct: r.percentUsed, resetsAt: r.resetsAt };
-  return out;
-}
-
 type Input = {
   role: Role;
   brief: string;
@@ -106,15 +97,19 @@ function readInput(e: unknown): Input | string {
   return { role, brief: i.brief, author, family, thread };
 }
 
-const FOOTER: Record<"read" | "write" | "review", string> = {
-  read: "Read only: change no files. End with a short report: what you found, with file paths.",
+const SHAPE =
+  "Conclusion first; evidence as file:line; uncertainties. No command logs, " +
+  "file contents beyond short quotes, or diffs.";
+const FOOTER: Record<Role, string> = {
+  search: `Read only: change no files. Aim for 2000 characters or less. ${SHAPE}`,
+  research: `Read only: change no files. Aim for 4000 characters or less. ${SHAPE}`,
+  plan: `Read only: change no files. Aim for 4000 characters or less. ${SHAPE}`,
   review:
     "Read only: change no files. Review the uncommitted changes (git status, git diff, new " +
     "files too) against the brief above. List findings most severe first as [P0] to [P3] with " +
-    "file:line and why; no fixes. No findings → say so.",
-  write:
-    "Follow the project's AGENTS.md. Commit, push and deploy nothing. End with a short " +
-    "report: what you changed, the checks you ran with their result, open points.",
+    `file:line and why; no fixes. No findings → say so. Aim for 4000 characters or less. ${SHAPE}`,
+  build: `Follow the project's AGENTS.md. Commit, push and deploy nothing. Aim for 2000 characters or less. ${SHAPE} Include checks run and their results.`,
+  "build+": `Follow the project's AGENTS.md. Commit, push and deploy nothing. Aim for 4000 characters or less. ${SHAPE} Include checks run and their results.`,
 };
 
 function claudeAnswer(
@@ -141,14 +136,18 @@ async function delegate(
       ? await gptStatus($)
       : { argv: null, models: [], limits: {}, at: 0 };
   const now = await $.clock.now();
+  const usage = await $.session.usage().catch(() => undefined);
+  const claude = noteClaudeLimits(usage?.rateLimits ?? [], now);
+  const gpt = st.argv && !st.error ? st.limits : undefined;
+  noteGptMeters(on, gpt, now);
   const r = route({
     role: input.role,
     author: input.author,
     family: input.family,
     gptOn: on,
     models: newest(st.models, await pins($)),
-    claude: await claudeMeters($),
-    gpt: st.argv && !st.error ? st.limits : undefined,
+    claude,
+    gpt,
     now,
   });
   if (r.provider === "none") return `Not delegated: ${r.reason}.`;
@@ -167,8 +166,7 @@ async function delegate(
   if (writes && writing)
     return "Not started: another GPT run that writes is still going. Wait for it, or make this a read-only role.";
   const root = await $.session.root();
-  const footer = r.review ? "review" : writes ? "write" : "read";
-  const brief = `${input.brief.trim()}\n\n${FOOTER[footer]}`;
+  const brief = `${input.brief.trim()}\n\n${FOOTER[input.role]}`;
   const before = await changed($, root);
   let last = 0;
   const show = async (line: string) => {
@@ -203,7 +201,11 @@ async function delegate(
     void gptStatus($, true); // the ChatGPT meters moved
   }
   const files = [...(await changed($, root))].filter((f) => !before.has(f));
-  if (writes) await flowDelegated($, files.map((f) => f.slice(3))); // GPT's changes count
+  if (writes)
+    await flowDelegated(
+      $,
+      files.map((f) => f.slice(3)),
+    ); // GPT's changes count
   const head = `GPT ${r.name} (${input.role}, ${r.sandbox}, effort ${r.effort})`;
   if (run.error && !run.answer)
     return `${head} failed: ${run.error}\nSay why to the user, then do it here or on Claude.`;
@@ -216,7 +218,7 @@ async function delegate(
       : "Changed: nothing",
     "--- final message ---",
     answer.length > MAX_ANSWER
-      ? `${answer.slice(0, MAX_ANSWER)}\n[cut at ${MAX_ANSWER} characters]`
+      ? `${answer.slice(0, MAX_ANSWER)}\n[incomplete: cut at ${MAX_ANSWER} characters${run.thread ? `, ask for the rest with thread "${run.thread}"` : ""}]`
       : answer || "(empty)",
     "---",
     writes
@@ -250,6 +252,12 @@ function statusText(
 }
 
 export function delegation(on: On) {
+  // A deferred tool reads as absent to skills that check whether it exists.
+  on("tool.describe", { tool: TOOL }, async ($, e, next) => ({
+    ...(await next(e)),
+    isDeferred: false,
+  }));
+
   // Reading runs without a prompt, and so does writing while GPT is on (the user's standing
   // request); any other change asks first, as any tool does.
   on("tool.check", { tool: TOOL }, async ($, e, next) => {

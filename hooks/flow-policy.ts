@@ -16,7 +16,8 @@ export type Change = "none" | Track;
 export const CHANGE_LABELS: Record<Change, string> = {
   none: "none: no code change (an explanation, a question, a review, a plan only)",
   light: "light: a small local change in one or two files",
-  medium: "medium: a bounded behaviour change or a clear bug across a few files",
+  medium:
+    "medium: a bounded behaviour change or a clear bug across a few files",
   heavy:
     "heavy: a new capability (page, route, endpoint, model, migration), an interface " +
     "several modules use, or a change whose scope is unclear",
@@ -102,7 +103,8 @@ const NOTE: Record<Track, string> = {
   medium:
     "kit flow (medium): before editing, state 2-4 acceptance criteria in the chat; test first " +
     "where it can be tested; then run the checks that cover the change (the full suite when " +
-    "shared code changed). Self-contained pieces may go to mcp__kit__delegate (role build).",
+    "shared code changed). A self-contained piece you can describe up front: hand it to " +
+    "mcp__kit__delegate (role build) and review its diff here.",
   heavy:
     "kit flow (heavy): follow the kit:build skill (its Feature or Fix path) up to and " +
     "including Verify: a spec, plan mode, the build, then the kit:verifier agent. Commit or " +
@@ -239,7 +241,12 @@ export function onVerifier(
 ): Task {
   return passed
     ? { ...task, verifier: "pass", lastVerifierAt: now, verifiedPrint: print }
-    : { ...task, verifier: "fail", lastVerifierAt: 0, verifiedPrint: undefined };
+    : {
+        ...task,
+        verifier: "fail",
+        lastVerifierAt: 0,
+        verifiedPrint: undefined,
+      };
 }
 
 export type Outcome =

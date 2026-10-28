@@ -1,4 +1,5 @@
 import type { EngineInterface } from "claude-code";
+import { noteGptMeters } from "./delegate-balance";
 
 import {
   type CatalogModel,
@@ -34,14 +35,25 @@ let loading: Promise<GptStatus> | undefined;
 // The band's GPT switch (on unless turned off, kept across sessions): off, no GPT model is used
 // unless the user names one, Codex is not read and the band shows no ChatGPT meters.
 export async function gptOn($: EngineInterface): Promise<boolean> {
-  if (gpt === undefined)
+  if (gpt === undefined) {
     gpt = (await $.store.get(GPT_KEY).catch(() => undefined)) !== false;
+    await refreshBalance($);
+  }
   return gpt;
 }
 
 export async function setGptOn($: EngineInterface, next: boolean) {
   gpt = next;
+  await refreshBalance($);
   await $.store.set(GPT_KEY, next).catch(() => {});
+}
+
+async function refreshBalance($: EngineInterface) {
+  noteGptMeters(
+    gpt !== false,
+    status?.argv && !status.error ? status.limits : undefined,
+    await $.clock.now(),
+  );
 }
 
 export const gptCached = (): GptStatus | undefined => status;
@@ -65,6 +77,7 @@ async function readStatus($: EngineInterface): Promise<GptStatus> {
     error: got ? got.error : "codex-status.js gave no answer",
     at,
   };
+  await refreshBalance($);
   return status;
 }
 
@@ -141,7 +154,10 @@ export function codexArgs(
   ];
 }
 
-export async function changed($: EngineInterface, root: string): Promise<Set<string>> {
+export async function changed(
+  $: EngineInterface,
+  root: string,
+): Promise<Set<string>> {
   const ran = await $.process
     .run(["git", "status", "--porcelain"], { cwd: root })
     .catch(() => null);

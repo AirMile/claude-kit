@@ -104,6 +104,18 @@ export function ahead(
 
 export const CLAUDE_TIGHT = { five_hour: 70, ahead: 10 } as const;
 export const GPT_TIGHT = { five_hour: 80, seven_day: 90 } as const;
+export const LEAN = 10;
+
+export function lean(
+  claude: Meters,
+  gpt: Meters | undefined,
+  now: number,
+): number {
+  return (
+    ahead(claude.seven_day, "seven_day", now) -
+    ahead(gpt?.seven_day, "seven_day", now)
+  );
+}
 
 export const claudeTight = (m: Meters, now: number): boolean =>
   (m.five_hour?.pct ?? 0) >= CLAUDE_TIGHT.five_hour ||
@@ -186,11 +198,13 @@ export function route(i: RouteInput): Route {
     const m = i.models[i.family];
     return m
       ? onGpt(i.role, m)
-      : { provider: "none", reason: `no ${i.family} model in Codex's catalog: do it here` };
+      : {
+          provider: "none",
+          reason: `no ${i.family} model in Codex's catalog: do it here`,
+        };
   }
   const want = i.models[GPT[i.role].family];
-  const gptOk =
-    i.gptOn && i.gpt !== undefined && !gptTight(i.gpt) && want;
+  const gptOk = i.gptOn && i.gpt !== undefined && !gptTight(i.gpt) && want;
   if (i.role === "review" && i.author === "gpt")
     return onClaude("review", "a review needs another family");
   if (!gptOk) {
@@ -201,11 +215,14 @@ export function route(i: RouteInput): Route {
         : "ChatGPT has no room or no model for this";
     // Claude's own code is covered by its checks and the verifier: no second Claude review.
     if (i.role === "review")
-      return { provider: "none", reason: `${why}; the checks and the verifier cover it` };
-    return onClaude(i.role, `${why}: ${i.role === "plan" ? "plan" : "build it"} here`);
+      return {
+        provider: "none",
+        reason: `${why}; the checks and the verifier cover it`,
+      };
+    return onClaude(
+      i.role,
+      `${why}: ${i.role === "plan" ? "plan" : "build it"} here`,
+    );
   }
-  // Searching is quick and cheap on Haiku; GPT takes it only while Claude's plan is tight.
-  if (i.role === "search" && !claudeTight(i.claude, i.now))
-    return onClaude("search", "");
   return onGpt(i.role, want);
 }

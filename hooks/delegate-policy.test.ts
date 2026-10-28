@@ -4,6 +4,8 @@ import {
   ahead,
   claudeTight,
   gptTight,
+  lean,
+  LEAN,
   newest,
   route,
   type RouteInput,
@@ -67,7 +69,7 @@ test("a plan is tight by its 5h meter or by running ahead of its week", async ()
   expect(gptTight({ seven_day: { pct: 89 } })).toBe(false);
 });
 
-test("with room on both, building goes to GPT and searching stays on Haiku", async () => {
+test("with room on both, building goes to Terra and searching to Luna", async () => {
   expect(route(at({ role: "build" }))).toEqual({
     provider: "gpt",
     model: "gpt-6.1-terra",
@@ -85,13 +87,14 @@ test("with room on both, building goes to GPT and searching stays on Haiku", asy
     sandbox: "read-only",
   });
   expect(route(at({ role: "search" }))).toMatchObject({
-    provider: "claude",
-    model: "haiku",
-    subagentType: "Explore",
+    provider: "gpt",
+    model: "gpt-6-luna",
+    sandbox: "read-only",
+    effort: "low",
   });
 });
 
-test("a tight Claude plan sends searching to Luna; without GPT, changes are built here", async () => {
+test("a tight Claude plan also searches on Luna; without GPT, changes are built here", async () => {
   const tight = { five_hour: { pct: 85 } };
   expect(route(at({ role: "search", claude: tight }))).toMatchObject({
     provider: "gpt",
@@ -113,6 +116,35 @@ test("a tight Claude plan sends searching to Luna; without GPT, changes are buil
   expect(route(at({ role: "build", gpt: undefined }))).toMatchObject({
     reason: "Codex is not available here: build it here",
   });
+});
+
+test("search falls back to Haiku Explore with GPT off, missing, tight or without Luna", async () => {
+  for (const over of [
+    { gptOn: false },
+    { gpt: undefined },
+    { gpt: { five_hour: { pct: 80 } } },
+    { gpt: { seven_day: { pct: 90 } } },
+    { models: newest([{ id: "gpt-6.1-sol" }]) },
+  ])
+    expect(route(at({ role: "search", ...over }))).toMatchObject({
+      provider: "claude",
+      model: "haiku",
+      subagentType: "Explore",
+    });
+});
+
+test("lean compares weekly pace, including reset dates and missing windows", async () => {
+  const week = (pct: number, hours = 120) => ({
+    seven_day: { pct, resetsAt: in_(hours) },
+  });
+  expect(lean(week(40), week(30), NOW)).toBe(LEAN);
+  expect(lean(week(39), week(30), NOW) >= LEAN).toBe(false);
+  expect(lean(week(30), week(40), NOW)).toBe(-10);
+  expect(Math.round(lean(week(40, 120), week(40, 144), NOW))).toBe(-14);
+  expect(lean({}, undefined, NOW)).toBe(0);
+  expect(lean({ seven_day: { pct: 80 } }, {}, NOW)).toBe(0);
+  expect(lean(week(10, 168), undefined, NOW)).toBe(LEAN);
+  expect(lean({}, week(10, 168), NOW)).toBe(-LEAN);
 });
 
 test("a review goes to the family that did not write it", async () => {
@@ -156,7 +188,9 @@ test("with GPT off nothing goes to GPT unless a family is named; no Claude revie
     provider: "none",
     reason: "GPT is off in the band; the checks and the verifier cover it",
   });
-  expect(route(at({ role: "review", gptOn: false, author: "gpt" }))).toMatchObject({
+  expect(
+    route(at({ role: "review", gptOn: false, author: "gpt" })),
+  ).toMatchObject({
     provider: "claude",
   });
 });

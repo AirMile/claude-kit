@@ -4,6 +4,7 @@ import { autoModel, modeCommand } from "./auto-model";
 import { freshStart, freshTool } from "./fresh-start";
 import { gptCached, gptOn, gptStatus } from "./codex-run";
 import { delegateTool, delegation, gptCommand } from "./delegate";
+import { noteClaudeLimits } from "./delegate-balance";
 import { flow, flowCommand, flowEdit, flowStop, resetFlow } from "./flow";
 import { noteFile, resetChat } from "./chat-facts";
 import { compaction } from "./compaction";
@@ -14,6 +15,7 @@ import { panelCommand, roadmapOpen, roadmapTool } from "./roadmap-open";
 import { roadmapEdited, roadmapStale, roadmapView } from "./roadmap-view";
 import type { Usage } from "./roadmap-parts";
 import { themeTool, themeView } from "./theme-view";
+import { readWatch } from "./read-watch";
 
 // kit's context mod. Reads the active spec; never writes.
 // - Native compaction priorities and spec recovery (compaction.ts).
@@ -53,6 +55,7 @@ async function refresh($: EngineInterface, figures?: Figures) {
   const usage = figures ?? (await $.session.usage());
   const pct = usage.context.percent;
   const now = await $.clock.now();
+  noteClaudeLimits(usage.rateLimits, now);
   meters = [
     {
       label: "ctx",
@@ -100,6 +103,7 @@ export const register: Register = (on) => {
   roadmapOpen(on);
   themeView(on);
   freshStart(on);
+  readWatch(on);
   delegation(on);
   flow(on);
   autoModel(on);
@@ -150,7 +154,9 @@ export const register: Register = (on) => {
     const open = !!e.background_tasks?.length || !!e.session_crons?.length;
     // Flow holds a turn that ends with changes but no check; background work wakes it later.
     const hold =
-      open || ran.block ? undefined : await flowStop($, e.last_assistant_message);
+      open || ran.block
+        ? undefined
+        : await flowStop($, e.last_assistant_message);
     if (hold) return { ...ran, block: hold };
     await noteStop($, open);
     return ran;

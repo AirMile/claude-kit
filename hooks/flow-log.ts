@@ -20,7 +20,7 @@ export type Ending =
 export type LogEntry = {
   at: number;
   task?: number;
-  event: string; // start, escalate, block, pass-question, pass-asked, pass-unverified, end
+  event: string; // task events, explore-note, read-note, delegate
   text: string; // the prompt's first 60 characters, or the files it is about
   track?: Track;
   first?: Track;
@@ -106,6 +106,7 @@ export function report(log: readonly LogEntry[]): string {
       `ending with 2 files or fewer and no spec (too heavy?): ${count((e) => e.first === "heavy" && (e.files ?? 0) <= 2 && !e.spec, ends)}`,
     `holds ${count((e) => e.event === "block")} · ended ${(["verified", "unresolved", "unverified"] as const).map((o) => `${o} ${count((e) => e.outcome === o, ends)}`).join(" · ")}`,
     `your marks: ${MARKS.map((m) => `${m} ${count((e) => e.mark === m)}`).join(" · ")}`,
+    `explore notes ${count((e) => e.event === "explore-note")} · read notes ${count((e) => e.event === "read-note")} · delegated ${count((e) => e.event === "delegate")} (gpt ${count((e) => e.event === "delegate" && e.text.endsWith(" gpt"))}, claude ${count((e) => e.event === "delegate" && e.text.endsWith(" claude"))})`,
   ];
   const last = notable(log);
   if (last.length) lines.push("last:", ...last.map((e, i) => line(e, i + 1)));
