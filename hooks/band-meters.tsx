@@ -3,14 +3,13 @@ import type { EngineInterface } from "claude-code";
 import type { Band } from "./delegate-policy";
 import type { Usage } from "./roadmap-parts";
 
-// The band's plan meters: per window Claude's share and ChatGPT's beside it (`5h 30%·2%`), the
-// times until reset in a card above the band while the pointer rests on the meters. Claude and
-// GPT both stay in view on one short line; the card has the detail.
+// The band's plan meters: per window Claude's share, ChatGPT's dim beside it and Claude's time
+// until reset (`5h 30%·2% 3h29m`); both plans' resets and the balance in a card above the band
+// while the pointer rests on the meters.
 
 type Ui = ReturnType<EngineInterface["ui"]["resolve"]>;
 export type MeterRow = { label: string; claude?: Usage; gpt?: Usage };
 
-export const GPT_COLOR = "#4ade80";
 export const METERS_SCOPE = "kit-meters";
 const WINDOWS = ["5h", "wk"] as const;
 
@@ -23,14 +22,15 @@ export function meterRows(usage: readonly Usage[]): MeterRow[] {
   })).filter((r) => r.claude || r.gpt);
 }
 
-// The band's line: `5h 30%·2%`, GPT's share in its own colour.
+// The band's line: `5h 30%·2% 3h29m`, GPT's share dim beside Claude's, then Claude's reset.
 export function meterLine(ui: Ui, rows: readonly MeterRow[]) {
   const { Text } = ui;
   return rows.map((r) => (
     <Text key={`kit-usage-${r.label}`} wrap="truncate-end">
       <Text dimColor>{`${r.label} `}</Text>
       <Text bold>{r.claude?.value ?? "–"}</Text>
-      {r.gpt ? <Text color={GPT_COLOR}>{`·${r.gpt.value}`}</Text> : null}
+      {r.gpt ? <Text dimColor>{`·${r.gpt.value}`}</Text> : null}
+      {r.claude?.note ? <Text dimColor>{` ${r.claude.note}`}</Text> : null}
     </Text>
   ));
 }
@@ -63,7 +63,7 @@ export function meterCard(ui: Ui, rows: readonly MeterRow[], band: Band) {
           <Text key={`kit-meters-${r.label}`}>
             <Text dimColor>{`${r.label}  `}</Text>
             <Text>{cell(r.claude)}</Text>
-            {gpt ? <Text color={GPT_COLOR}>{` ${cell(r.gpt)}`}</Text> : null}
+            {gpt ? <Text dimColor>{` ${cell(r.gpt)}`}</Text> : null}
           </Text>
         ))}
         {gpt ? <Text dimColor>{`balance: ${band}`}</Text> : null}

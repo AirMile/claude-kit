@@ -3,7 +3,7 @@ Criteria are checked [x] when built AND verified. -->
 
 # window-sync
 
-Status: defined
+Status: verifying
 Design: —
 
 ## Goal
@@ -23,15 +23,15 @@ Measured (codex-status.js, 28 Oct): while ChatGPT's window is idle, its `resetsA
       ago, with ChatGPT's 5h window idle (pct 0 and `resetsAt` passed or reading as "now + 5h")
       and GPT on, kit sends one Codex ping (newest Luna, effort low, read-only, ephemeral) and
       shows one toast. After that, ChatGPT's `resetsAt` lies within 30 min of Claude's.
-- [ ] Edge: at most one ping per Claude window, also across sessions and restarts (the window
+- [x] Edge: at most one ping per Claude window, also across sessions and restarts (the window
       start is kept in `$.store`); no ping while ChatGPT's window is still running, while the
       Claude window started > 30 min ago, or while there is no Claude 5h reading.
-- [ ] Edge: GPT off, Codex missing or not logged in, or no Luna in the catalog → no ping and
+- [x] Edge: GPT off, Codex missing or not logged in, or no Luna in the catalog → no ping and
       no message.
-- [ ] Error: the ping fails or times out (60 s) → no retry in this window, one line in
+- [x] Error: the ping fails or times out (60 s) → no retry in this window, one line in
       `/gpt` ("window sync: failed at <time>"), and the turn is never held or slowed (the ping
       runs in the background).
-- [ ] Happy: `/gpt` shows the sync state: `window sync: <time>` of the last ping, or `—`.
+- [x] Happy: `/gpt` shows the sync state: `window sync: <time>` of the last ping, or `—`.
 
 ## Out of scope
 
@@ -82,13 +82,31 @@ Open points (blind second plan by Sol, differences):
 
 ## Handoff
 
-- The user asked: build, then commit everything and update the plugin
-  (`claude plugin marketplace update airmile && claude plugin update kit@airmile`). No push.
-- Uncommitted from before this spec: the band shows GPT's share dim with Claude's reset
-  (`hooks/band-meters.tsx`, version 0.15.49 in both plugin.json). Include it in the final
-  commit; bump the version again (0.15.50) for this feature.
-- Run `claude plugin test .` without a pipe (flow only counts unpiped checks).
+- Built, verified and fixed (all uncommitted); see `## Verify`. Status stays `verifying`
+  until the two manual items are done; criterion 1 stays open until the live check.
+- Also in this change, on the user's request: the band shows short effort words (`med`, `hi`,
+  `xhi`; `low`/`max` as is) via `effortLabel` in `hooks/model-policy.ts`, used by `runLine`
+  and the ‹ › stepper in `hooks/kit-band.tsx`.
+- The user asked: commit everything (incl. the earlier `hooks/band-meters.tsx` change, version
+  0.15.50) and update the plugin (`claude plugin marketplace update airmile && claude plugin
+  update kit@airmile`). No push.
 
 ## Verify
+
+- Verifier (round 1): criteria 2, 3 and 5 passed. Criterion 4 failed: `return()` on the stream
+  waits behind a pending read, so a silent Codex kept `runCodex` waiting, `busy` stuck and
+  `/gpt` showing success. A GPT review (Sol) found the same, plus a stale idle cache that
+  could ping without a fresh read and a signal-killed run that counted as success.
+- Fixed: `runCodex` races each read against the deadline and returns at once (the child is
+  then ended with `return()`); a signal end is an error; an idle reading older than 60 s is
+  read again before a ping. New tests: a silent Codex with a later timer, and Codex missing.
+  Suite 154 pass, 0 fail; tsc clean outside tests; scratch validate passes.
+- Criterion 1 is built and tested; its "within 30 min" part needs a live Claude reset.
+- Manual, open: (1) after a real Claude reset with ChatGPT idle: one toast, `/gpt` shows
+  `window sync: <time>`, both 5h resets ≤ 30 min apart, no second ping in that window.
+  (2) a stub `codex` that sleeps silently: after ~70 s `/gpt` shows `failed at`, the stub
+  process is gone.
+- Improvement notes: `now` is taken before the status read, so the gap can pass 30 min by
+  about a minute at the edge.
 
 ## Fixes

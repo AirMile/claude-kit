@@ -206,6 +206,14 @@ export const isMode = (v: unknown): v is Mode =>
 export const profileName = (mode: Mode): string =>
   mode.charAt(0).toUpperCase() + mode.slice(1);
 
-// The band's run line: `Opus 5.5 · medium`, the effort left out before the first prompt.
+// The band's short effort: `med`, `hi`, `xhi`; low and max stay as they are.
+const SHORT: Partial<Record<string, string>> = {
+  medium: "med",
+  high: "hi",
+  xhigh: "xhi",
+};
+export const effortLabel = (effort: string): string => SHORT[effort] ?? effort;
+
+// The band's run line: `Opus 5.5 · med`, the effort left out before the first prompt.
 export const runLine = (model: string, effort: string | undefined): string =>
-  [displayName(model), effort].filter(Boolean).join(" · ");
+  [displayName(model), effort && effortLabel(effort)].filter(Boolean).join(" · ");

@@ -16,6 +16,7 @@ import { roadmapEdited, roadmapStale, roadmapView } from "./roadmap-view";
 import type { Usage } from "./roadmap-parts";
 import { themeTool, themeView } from "./theme-view";
 import { readWatch } from "./read-watch";
+import { syncWindows } from "./window-sync";
 
 // kit's context mod. Reads the active spec; never writes.
 // - Native compaction priorities and spec recovery (compaction.ts).
@@ -31,6 +32,7 @@ import { readWatch } from "./read-watch";
 // - delegate: work handed to Claude or GPT through Codex by role and room, ChatGPT's meters in
 //   the band while GPT is on, /gpt (delegate).
 // - flow: each change task's track, its notes and the check before a turn ends, /flow (flow).
+// - window sync: ChatGPT's 5h window started with a new Claude one (window-sync).
 
 type Figures = Pick<SessionUsage, "context" | "rateLimits">;
 type Meter = Usage;
@@ -144,6 +146,7 @@ export const register: Register = (on) => {
     roadmapStale(); // the pane reloads git and specs on its next draw
     await refresh($, e);
     await noteLimits($, e.rateLimits);
+    void syncWindows($, e.rateLimits); // in the background: the turn never waits on Codex
     return next(e);
   });
 

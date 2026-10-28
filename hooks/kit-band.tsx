@@ -20,6 +20,7 @@ import {
   type Mode,
   PROFILES,
   profileName,
+  effortLabel,
   runLine,
 } from "./model-policy";
 import { setEffortLock } from "./model-switch";
@@ -188,7 +189,7 @@ export function kitBand(on: On) {
                   dimColor={at <= 0}
                   onPress={() => step(-1)}
                 />
-                <Text key="kit-effort-level">{` ${run.effort ?? "default"} `}</Text>
+                <Text key="kit-effort-level">{` ${run.effort ? effortLabel(run.effort) : "default"} `}</Text>
                 <Button
                   key="kit-effort-up"
                   label="›"

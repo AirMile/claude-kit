@@ -24,7 +24,8 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   `mcp__kit__delegate` (`hooks/delegate.ts` on the pure `hooks/delegate-policy.ts`: work handed
   to Claude or GPT by role and by which plan has room, the newest GPT model per family; the
   Codex side, its catalog, the ChatGPT meters, the GPT switch and a run, in `hooks/codex-run.ts`;
-  `/gpt` command in `hooks/gpt-command.ts`), shared delegation balance (`hooks/balance.ts`, meters in `hooks/delegate-balance.ts`),
+  `/gpt` command in `hooks/gpt-command.ts`), ChatGPT's 5h window started with a new Claude one
+  (`hooks/window-sync.ts` on the pure `hooks/window-sync-policy.ts`), shared delegation balance (`hooks/balance.ts`, meters in `hooks/delegate-balance.ts`),
   explore-first prompts (`hooks/explore-first.ts`, classifiers in `hooks/flow-prompt.ts`),
   read budgets (`hooks/read-budget.ts`, observed by `hooks/read-watch.ts`), a pause before the plan limit with
   cache keep-alive (`hooks/limit-guard.ts` on the pure `hooks/limit-policy.ts`), keep-alive forks by hand or
@@ -77,7 +78,7 @@ product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.m
   purpose per file, ≤ ~300 lines each (larger → split). It reads only specs (`Status` +
   criteria), `docs/roadmap.md` and read-only git state (spec commits and
   worktrees on other branches); it writes only through `roadmap-file.ts` and
-  `$.store` (worktree marks, pins). It starts Codex only for `mcp__kit__delegate`: what a
+  `$.store` (worktree marks, pins). It starts Codex only for `mcp__kit__delegate` and the window-sync ping: what a
   writing run changes is Codex's work, in Codex's sandbox, reviewed by the chat. Flow reads the
   chat's own tool calls (Edit/Write, Bash), subagents' answers and read-only git state (`ls-files`,
   diff, `hash-object` without `-w`), and holds a turn's end; it writes only `$.store` (its

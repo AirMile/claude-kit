@@ -10,6 +10,7 @@ import {
   setPins,
   type GptStatus,
 } from "./codex-run";
+import { syncLine } from "./window-sync";
 
 export const gptCommand: CommandSpec = {
   name: "gpt",
@@ -24,6 +25,7 @@ function statusText(
   models: Partial<Record<Family, { id: string; name: string }>>,
   pinned: Partial<Record<Family, string>>,
   now: number,
+  sync: string,
 ): string {
   const lines = FAMILIES.map((f) => {
     const m = models[f];
@@ -37,6 +39,7 @@ function statusText(
       : `ChatGPT ${st.limits.plan ?? ""}: 5h ${pct("five_hour")} · weekly ${pct("seven_day")}`,
   );
   lines.push(`balance: ${balance(now).band}`);
+  lines.push(sync);
   return lines.join("\n");
 }
 
@@ -64,8 +67,24 @@ export async function gptCommandRun($: EngineInterface, e: { args: string }) {
     else delete next[family as Family];
     await setPins($, next);
     const st = await gptStatus($);
-    return { text: statusText(st, newest(st.models, next), next, await $.clock.now()) };
+    return {
+      text: statusText(
+        st,
+        newest(st.models, next),
+        next,
+        await $.clock.now(),
+        await syncLine($),
+      ),
+    };
   }
   const st = await gptStatus($, true);
-  return { text: statusText(st, newest(st.models, pinned), pinned, await $.clock.now()) };
+  return {
+    text: statusText(
+      st,
+      newest(st.models, pinned),
+      pinned,
+      await $.clock.now(),
+      await syncLine($),
+    ),
+  };
 }

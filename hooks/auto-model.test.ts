@@ -205,7 +205,7 @@ test("a stored switch survives a reload: no question on the stronger model", asy
 async function effortLevel(ui: {
   find: (q: object) => Promise<{ text?: string } | undefined>;
 }) {
-  const levels = /^ (default|low|medium|high|xhigh|max) $/;
+  const levels = /^ (default|low|med|hi|xhi|max) $/;
   return (await ui.find({ type: "Text", text: levels }))?.text;
 }
 
@@ -243,7 +243,7 @@ test("with the profile off ‹ and › step the effort; with a profile on they h
   await ui.press({ key: "kit-effort-up" }); // default → low
   await ui.press({ key: "kit-effort-up" }); // → medium
   expect(w.store.effortLock).toBe("medium");
-  expect((await effortLevel(ui))?.trim()).toBe("medium");
+  expect((await effortLevel(ui))?.trim()).toBe("med");
   await ui.press({ key: "kit-effort-down" });
   await ui.press({ key: "kit-effort-down" }); // → default
   await ui.press({ key: "kit-effort-down" }); // stays
@@ -267,9 +267,9 @@ test("a thin reply keeps the effort of the work it continues", async ($, on) => 
   const ui = await band($, on);
   const shown = async () => (await runText(ui))?.split(" · ").at(-1);
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
-  expect(await shown()).toBe("xhigh");
+  expect(await shown()).toBe("xhi");
   await $.prompt.submit({ text: "ja", origin: TYPED });
-  expect(await shown()).toBe("xhigh");
+  expect(await shown()).toBe("xhi");
   await $.prompt.submit({
     text: "what does the importer do on retries",
     origin: TYPED,
@@ -281,9 +281,9 @@ test("/build runs at high, a plain heavy prompt at xhigh", async ($, on) => {
   world(on, { model: "claude-opus-5-5", label: HEAVY, turns: 5, drawn: true });
   const ui = await band($, on);
   await $.prompt.submit({ text: "/build login-form", origin: TYPED });
-  expect(await runText(ui)).toBe("Opus 5.5 · high");
+  expect(await runText(ui)).toBe("Opus 5.5 · hi");
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
-  expect(await runText(ui)).toBe("Opus 5.5 · xhigh");
+  expect(await runText(ui)).toBe("Opus 5.5 · xhi");
 });
 
 test("clear behind the band's context figure clears just after the press", async ($, on) => {
@@ -362,7 +362,7 @@ test("a /build kit started on the user's click gets the profile's model and effo
     text: "/kit:build login-form",
     origin: { kind: "plugin", name: "kit" } as never,
   });
-  expect(await runText(ui)).toContain("Opus 5.5 · high");
+  expect(await runText(ui)).toContain("Opus 5.5 · hi");
 });
 
 test("the band's GPT switch turns GPT off with a press", async ($, on) => {

@@ -200,19 +200,36 @@ export type Run = {
 
 // Runs `codex exec` and reads its JSON events. A review runs this way too: `codex review
 // --uncommitted` takes no brief of its own (Codex 0.162), and without one it misses the intent.
+// `deadline` (ms) stops the run by the clock even while Codex writes nothing.
 export async function runCodex(
   $: EngineInterface,
   argv: string[],
   brief: string,
   root: string,
   show: (line: string) => Promise<void>,
+  deadline?: number,
 ): Promise<Run> {
   const run: Run = { answer: "", commands: 0 };
   let buffer = "";
   let stderr = "";
   const stream = $.process.spawn({ argv, cwd: root, input: brief });
   const started = await $.clock.now();
-  for await (const { stream: pipe, text } of stream) {
+  // The deadline wins the race with a read: return() alone waits behind a read that Codex
+  // never answers.
+  let stop: (v: "stop") => void = () => {};
+  const stopped = new Promise<"stop">((r) => (stop = r));
+  const timer =
+    deadline === undefined ? undefined : $.clock.after(deadline, () => stop("stop"));
+  let timedOut = false;
+  for (;;) {
+    const got = await Promise.race([stream.next(), stopped]);
+    if (got === "stop") {
+      timedOut = true;
+      run.error = `stopped after ${took(deadline!)}`;
+      break;
+    }
+    if (got.done) break;
+    const { stream: pipe, text } = got.value;
     if (pipe === "stderr") {
       stderr = (stderr + text).slice(-4000);
     } else {
@@ -249,12 +266,20 @@ export async function runCodex(
     await show(`${took(now - started)} · ${run.commands} commands`);
     if (now - started > MAX_RUN_MS) {
       run.error = `stopped after ${took(MAX_RUN_MS)}`;
-      break; // leaving the loop ends the child
+      break;
     }
+  }
+  timer?.cancel();
+  if (run.error?.startsWith("stopped after")) {
+    void stream.return(undefined as never).catch(() => {}); // ends the child
+    if (timedOut) return run; // a silent child may never settle its result
   }
   const end = await stream.result.catch(() => undefined);
   run.code = end?.code ?? undefined;
   if (run.code && !run.error)
-    run.error = stderr.trim().split("\n").slice(-6).join("\n");
+    run.error =
+      stderr.trim().split("\n").slice(-6).join("\n") ||
+      `exit code ${run.code}`;
+  if (end?.signal && !run.error) run.error = `ended by ${end.signal}`;
   return run;
 }
