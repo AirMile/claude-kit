@@ -145,7 +145,7 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
       />
     );
     body = (
-      <Box flexDirection="column" flexGrow={1}>
+      <Box flexDirection="column" flexGrow={1} gap={1}>
         {line("Panel", [
           <Button
             key="kit-dashboard"
