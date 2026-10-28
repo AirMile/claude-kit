@@ -244,7 +244,7 @@ function statusText(
   lines.push(
     st.error
       ? `Codex: ${st.error}`
-      : `ChatGPT ${st.limits.plan ?? ""}: 5h ${pct("five_hour")} · 7d ${pct("seven_day")}`,
+      : `ChatGPT ${st.limits.plan ?? ""}: 5h ${pct("five_hour")} · weekly ${pct("seven_day")}`,
   );
   return lines.join("\n");
 }

@@ -23,7 +23,7 @@ import { themeTool, themeView } from "./theme-view";
 // - Model and effort picked per prompt and per subagent from a profile (auto-model), chosen
 //   in the band above the prompt or with /mode.
 // - A pause before the plan limit runs out (limit-guard), and the cache kept warm while work
-//   is open or, on Always, while the chat is idle (keep-warm); the band's limit button or
+//   is open or, on Warm, while the chat is idle (keep-warm); the band's limit button or
 //   /warm sets both per chat.
 // - fresh_start: /build's safe point clears the chat and resumes (fresh-start).
 // - delegate: work handed to Claude or GPT through Codex by role and room, ChatGPT's meters in
@@ -62,7 +62,7 @@ async function refresh($: EngineInterface, figures?: Figures) {
   ];
   for (const [kind, label] of [
     ["five_hour", "5h"],
-    ["seven_day", "7d"],
+    ["seven_day", "weekly"],
   ] as const) {
     const rl = usage.rateLimits.find((r) => r.kind === kind);
     if (rl)
@@ -79,7 +79,7 @@ async function refresh($: EngineInterface, figures?: Figures) {
   const gpt = on ? gptCached() : undefined;
   for (const [kind, label] of [
     ["five_hour", "gpt 5h"],
-    ["seven_day", "gpt 7d"],
+    ["seven_day", "gpt weekly"],
   ] as const) {
     const w = gpt?.error ? undefined : gpt?.limits[kind];
     if (w)

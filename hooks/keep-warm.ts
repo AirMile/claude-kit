@@ -12,7 +12,7 @@ import {
 // button decides (limit-guard.ts mirrors it here with syncHold; wantsPing in limit-policy.ts):
 // - Limit: while work is open, a plan-limit pause near its reset (limit-guard.ts) or a turn
 //   that ended with background work or a wake-up pending (noteStop, from classic.Stop);
-// - Always (or /warm): whenever the chat is idle, until a day without a turn.
+// - Warm (or /warm): whenever the chat is idle, until a day without a turn.
 
 export const warmCommand: CommandSpec = {
   name: "warm",
@@ -53,7 +53,7 @@ export async function noteStop($: EngineInterface, open: boolean) {
 
 export const warmHold = () => hold;
 
-// Limit starts the ticker once work is open (noteStop, warmForPause); Always at once.
+// Limit starts the ticker once work is open (noteStop, warmForPause); Warm at once.
 export function syncHold($: EngineInterface, next: Hold) {
   hold = next;
   if (next === "warm") ensureTicker($);
@@ -92,7 +92,7 @@ async function tick($: EngineInterface) {
     pings += 1;
   } else if (r?.reason === "api-error") {
     // The limit (or the API) refused it: retrying every 5 minutes would not help.
-    // Always drops back to Limit; limit-guard.ts sees that and stores it.
+    // Warm drops back to Limit; limit-guard.ts sees that and stores it.
     if (pauseUntil !== null) pauseRefused = true;
     else if (hold === "warm") {
       hold = "pause";

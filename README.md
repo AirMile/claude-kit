@@ -886,8 +886,8 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt, one line: usage at the left
-  (`114k  5h 55% · 2h 53m  7d 12% · 4d 3h`, each limit with the time until it resets), then
-  the profile, the model, the effort bars, GPT, the limit button, `⎇` and `▤`
+  (`114k  5h 55% · 2h 53m  weekly 12% · 4d 3h`, each limit with the time until it resets), then
+  the model with its effort, the profile, GPT, the limit button, `⎇` and `▤`
   (the dashboard; `▤ Close` closes it). The context figure and `⎇` open a menu in its own block above the
   band (hover to peek, press to keep it open): **Compact** and **Clear**, run at once or when
   the running turn ends; **Commit** (runs `/kit:commit`), Diff, Pull, Push, PR, Branch. The
@@ -902,7 +902,7 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   - **GPT**: `GPT` or `GPT off` (may GPT take delegated work). A ChatGPT window from half used
     shows on it (`GPT 5h 62%`).
   - **Limit**: `⏸ Limit` (pause at the plan limit, the cache warm while work is open; the
-    default) → `⏸♨ Always` (also keep the cache warm while idle; `♨×3` after it counts the
+    default) → `⏸♨ Warm` (also keep the cache warm while idle; `♨×3` after it counts the
     pings) → `⏸ Off` (no pause, no pings); see Keep warm. Kept per chat, over a reload or
     restart; a new chat starts at `⏸ Limit`.
 - **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (the band's profile button cycles them,
@@ -998,7 +998,7 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   ```
 
   Claude is tight at 70% of its 5h window, or when its week runs 10 points ahead of the time
-  gone by; ChatGPT at 80% (5h) or 90% (7d), read from Codex at most every 10 minutes. Astra
+  gone by; ChatGPT at 80% (5h) or 90% (weekly), read from Codex at most every 10 minutes. Astra
   never runs by itself: only when you name it. A change is built here without GPT: a Claude
   subagent would start cold on what this chat already knows. **GPT off** on the band (or
   `/gpt off`) keeps all delegated work on Claude (the right column), reads nothing from Codex
@@ -1021,20 +1021,20 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
     5 hours away), or a turn that ended with background work still running (subagents,
     shells, workflows) or a wake-up or `/loop` still to come. A turn that ends with nothing
     open stops it.
-  - `⏸♨ Always` (or `/warm`, `/warm on|off`): also whenever the chat is idle, for a chat whose
+  - `⏸♨ Warm` (or `/warm`, `/warm on|off`): also whenever the chat is idle, for a chat whose
     context you want to keep; it stops after 24 hours without a turn.
   - `⏸ Off`: never.
 
   Each ping costs a cache read of the whole context (0.05× the input price on Opus 5.5)
   where a rebuild costs a cache write (2× for the 1-hour cache), so warm is cheaper when you
   return within about 33 hours; pings count toward your limits. A failed ping stops it
-  (`⏸♨ Always` drops back to `⏸ Limit`). A ping only goes out in the cache's last 10 minutes:
+  (`⏸♨ Warm` drops back to `⏸ Limit`). A ping only goes out in the cache's last 10 minutes:
   after a sleep (or any gap past the hour) the cache is already cold and a ping would pay the
   full rebuild, so none is sent until the chat runs again. The 24 hours count from your last
   turn, sleep included; a ping's own turn does not reset them.
 
 - **`/band`** draws the band above the prompt again; folded (`[+]`)? `ctrl+x ctrl+a` unfolds it.
-- **Usage**: `114k  5h 55% · 2h 53m  7d 75% · 4d 3h` at the band's left: context, then the
+- **Usage**: `114k  5h 55% · 2h 53m  weekly 75% · 4d 3h` at the band's left: context, then the
   5-hour and 7-day limits, each with the time until it resets; updated after
   every turn.
 

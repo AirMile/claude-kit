@@ -50,7 +50,7 @@ export function rise(before: Reading | undefined, now: Reading): number | null {
 export const shouldPing = (until: number, now: number): boolean =>
   until - now <= PING_HORIZON_MS && until - now > PING_EVERY_MS / 5;
 
-export const ALWAYS_FOR_MS = 24 * 60 * 60_000; // Always stops after this long without a turn
+export const ALWAYS_FOR_MS = 24 * 60 * 60_000; // Warm stops after this long without a turn
 
 // What keep-warm.ts knows when an idle tick asks whether to ping.
 export type WarmState = {
@@ -64,7 +64,7 @@ export type WarmState = {
 
 // Only in the last 10 minutes of the cache's hour: earlier it is still warm, later (a laptop
 // that slept) it is already cold and a ping would pay the full rebuild for nobody. Then a
-// pause stays warm while its reset is near, Limit while work is still open, Always until a
+// pause stays warm while its reset is near, Limit while work is still open, Warm until a
 // day without a turn, Off never.
 export function wantsPing(s: WarmState, now: number): boolean {
   const idle = now - s.lastActive;

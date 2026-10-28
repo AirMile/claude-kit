@@ -29,11 +29,11 @@ import { PANE } from "./roadmap-view";
 // block) above it: shown while the pointer rests on its button, kept open by a press. Left:
 // context and plan usage with the time until each resets (register.tsx measures it after each
 // turn); the context figure is a button opening Compact and Clear, run just after the press.
-// Right: switches a press cycles: the profile (A·L, A·B, A·Q for Lean, Balanced, Quality from
-// auto-model.ts, A dim for off), the model beside it with the profile's effort, or with the
-// profile off the effort between ‹ and ›, a step down or up (below low: the session's own). GPT (on or off, codex-run.ts; a ChatGPT window from half used), the
+// Right: the model with the profile's effort, or with the profile off the effort between ‹
+// and ›, a step down or up (below low: the session's own); then switches a press cycles: the
+// profile (A·L, A·B, A·Q for Lean, Balanced, Quality from auto-model.ts, A dim for off), GPT (on or off, codex-run.ts; a ChatGPT window from half used), the
 // limit hold (limit-guard.ts): off, Limit (pause at the plan limit, the cache warm while work
-// is open) or Always (also warm while idle, keep-warm.ts), with the pings so far. Then Git (⎇,
+// is open) or Warm (also warm while idle, keep-warm.ts), with the pings so far. Then Git (⎇,
 // git-menu.ts) with /commit first and the dashboard pane (▤). The plan-limit pause with Resume
 // now (limit-guard.ts) follows on its own line. It yields to a survey. /band draws it again;
 // /warm toggles the hold's keep warm.
@@ -53,7 +53,7 @@ const LEVELS: readonly (Effort | undefined)[] = [undefined, ...EFFORTS];
 const HOLD_LABEL: Record<Hold, string> = {
   off: "⏸ Off",
   pause: "⏸ Limit",
-  warm: "⏸♨ Always",
+  warm: "⏸♨ Warm",
 };
 
 let menu: Menu | null = null; // the unfolded menu row
@@ -162,15 +162,6 @@ export function kitBand(on: On) {
             ))}
           </Box>
           <Box key="kit-actions" gap={1} flexShrink={0}>
-            <Button
-              key="kit-profile"
-              label={run.auto ? `A·${profileName(now).charAt(0)}` : "A"}
-              dimColor={!run.auto}
-              onPress={() => {
-                const after = MODES[(MODES.indexOf(now) + 1) % MODES.length]!;
-                void setMode($, after).then(() => $.ui.invalidate("ui.render"));
-              }}
-            />
             <Text key="kit-run" dimColor>
               {runLine(run.model, run.auto ? run.effort : undefined)}
             </Text>
@@ -193,6 +184,15 @@ export function kitBand(on: On) {
                 />
               </Box>
             )}
+            <Button
+              key="kit-profile"
+              label={run.auto ? `A·${profileName(now).charAt(0)}` : "A"}
+              dimColor={!run.auto}
+              onPress={() => {
+                const after = MODES[(MODES.indexOf(now) + 1) % MODES.length]!;
+                void setMode($, after).then(() => $.ui.invalidate("ui.render"));
+              }}
+            />
             <Button
               key="kit-gpt"
               label={gpt ? `GPT${gptTight}` : "GPT off"}
