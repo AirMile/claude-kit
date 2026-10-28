@@ -206,15 +206,17 @@ export const isMode = (v: unknown): v is Mode =>
 export const profileName = (mode: Mode): string =>
   mode.charAt(0).toUpperCase() + mode.slice(1);
 
-// The band's short effort: `l`, `m`, `h`, `xh`; max stays as it is.
-const SHORT: Partial<Record<string, string>> = {
-  low: "l",
-  medium: "m",
-  high: "h",
-  xhigh: "xh",
+// The band's effort as one block that fills with the level: low ▂ medium ▄ high ▆ xhigh ▇
+// max █. The name stays in the profile menu and /mode.
+const FILL: Partial<Record<string, string>> = {
+  low: "▂",
+  medium: "▄",
+  high: "▆",
+  xhigh: "▇",
+  max: "█",
 };
-export const effortLabel = (effort: string): string => SHORT[effort] ?? effort;
+export const effortLabel = (effort: string): string => FILL[effort] ?? effort;
 
-// The band's run line: `Opus 5.5 · m`, the effort left out before the first prompt.
+// The band's run line: `Opus 5.5 ▆`, the effort left out before the first prompt.
 export const runLine = (model: string, effort: string | undefined): string =>
-  [displayName(model), effort && effortLabel(effort)].filter(Boolean).join(" · ");
+  [displayName(model), effort && effortLabel(effort)].filter(Boolean).join(" ");

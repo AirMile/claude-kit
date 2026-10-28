@@ -205,17 +205,17 @@ test("a stored switch survives a reload: no question on the stronger model", asy
 async function effortLevel(ui: {
   find: (q: object) => Promise<{ text?: string } | undefined>;
 }) {
-  const levels = /^ (default|l|m|h|xh|max) $/;
+  const levels = /^ (default|▂|▄|▆|▇|█) $/;
   return (await ui.find({ type: "Text", text: levels }))?.text;
 }
 
-// The model and, after " · ", the profile's effort or the effort set by hand.
+// The model and, after a space, the profile's effort or the effort set by hand.
 async function runText(ui: {
   find: (q: object) => Promise<{ text?: string } | undefined>;
 }) {
   const model = (await ui.find({ type: "Text", text: /\d\.\d/ }))?.text;
   const level = (await effortLevel(ui))?.trim();
-  return level && level !== "default" ? `${model} · ${level}` : model;
+  return level && level !== "default" ? `${model} ${level}` : model;
 }
 
 // The band as the terminal draws it; a press acts as a click does.
@@ -239,11 +239,11 @@ test("with the profile off ‹ and › step the effort; with a profile on they h
   });
   const ui = await band($, on);
   expect(await runText(ui)).toBe("Haiku 5.5");
-  expect((await ui.find({ key: "kit-profile" }))?.text).toBe("A");
+  expect((await ui.find({ key: "kit-profile" }))?.text).toBe("○");
   await ui.press({ key: "kit-effort-up" }); // default → low
   await ui.press({ key: "kit-effort-up" }); // → medium
   expect(w.store.effortLock).toBe("medium");
-  expect((await effortLevel(ui))?.trim()).toBe("m");
+  expect((await effortLevel(ui))?.trim()).toBe("▄");
   await ui.press({ key: "kit-effort-down" });
   await ui.press({ key: "kit-effort-down" }); // → default
   await ui.press({ key: "kit-effort-down" }); // stays
@@ -251,7 +251,7 @@ test("with the profile off ‹ and › step the effort; with a profile on they h
   await ui.press({ key: "kit-profile" }); // Off → Lean
   await ui.press({ key: "kit-profile" }); // → Balanced
   expect(w.store.mode).toBe("balanced");
-  expect((await ui.find({ key: "kit-profile" }))?.text).toBe("A·B");
+  expect((await ui.find({ key: "kit-profile" }))?.text).toBe("◑");
   expect(await ui.find({ key: "kit-effort-up" })).toBeFalsy();
   expect(await runText(ui)).toContain("Haiku 5.5");
 });
@@ -265,25 +265,25 @@ test("a thin reply keeps the effort of the work it continues", async ($, on) => 
     drawn: true,
   });
   const ui = await band($, on);
-  const shown = async () => (await runText(ui))?.split(" · ").at(-1);
+  const shown = async () => (await runText(ui))?.split(" ").at(-1);
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
-  expect(await shown()).toBe("xh");
+  expect(await shown()).toBe("▇");
   await $.prompt.submit({ text: "ja", origin: TYPED });
-  expect(await shown()).toBe("xh");
+  expect(await shown()).toBe("▇");
   await $.prompt.submit({
     text: "what does the importer do on retries",
     origin: TYPED,
   });
-  expect(await shown()).toBe("l");
+  expect(await shown()).toBe("▂");
 });
 
 test("/build runs at high, a plain heavy prompt at xhigh", async ($, on) => {
   world(on, { model: "claude-opus-5-5", label: HEAVY, turns: 5, drawn: true });
   const ui = await band($, on);
   await $.prompt.submit({ text: "/build login-form", origin: TYPED });
-  expect(await runText(ui)).toBe("Opus 5.5 · h");
+  expect(await runText(ui)).toBe("Opus 5.5 ▆");
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
-  expect(await runText(ui)).toBe("Opus 5.5 · xh");
+  expect(await runText(ui)).toBe("Opus 5.5 ▇");
 });
 
 test("clear behind the band's context figure clears just after the press", async ($, on) => {
@@ -362,7 +362,7 @@ test("a /build kit started on the user's click gets the profile's model and effo
     text: "/kit:build login-form",
     origin: { kind: "plugin", name: "kit" } as never,
   });
-  expect(await runText(ui)).toContain("Opus 5.5 · h");
+  expect(await runText(ui)).toContain("Opus 5.5 ▆");
 });
 
 test("the band's GPT switch turns GPT off with a press", async ($, on) => {

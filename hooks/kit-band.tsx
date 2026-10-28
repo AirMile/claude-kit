@@ -19,7 +19,6 @@ import {
   EFFORTS,
   type Mode,
   PROFILES,
-  profileName,
   effortLabel,
   runLine,
 } from "./model-policy";
@@ -35,7 +34,7 @@ import { PANE } from "./roadmap-view";
 // a card on hover (band-meters.tsx; register.tsx measures it after each turn); the context figure is a button opening Compact and Clear, run just after the press.
 // Right: the model with the profile's effort, or with the profile off the effort between ‹
 // and ›, a step down or up (below low: the session's own); then switches a press cycles: the
-// profile (A·L, A·B, A·Q for Lean, Balanced, Quality from auto-model.ts, A dim for off), GPT (on or off, codex-run.ts), the
+// profile (◔ ◑ ● for Lean, Balanced, Quality from auto-model.ts, ○ dim for off), GPT (on or off, codex-run.ts), the
 // limit hold (limit-guard.ts): off, Limit (pause at the plan limit, the cache warm while work
 // is open) or Warm (also warm while idle, keep-warm.ts), with the pings so far. Then Git (⎇,
 // git-menu.ts) with /commit first and the skills menu (▤: kit's skills by stage on hover; a press opens or closes the
@@ -53,6 +52,14 @@ export const bandCommand: CommandSpec = {
 const MODES: readonly Mode[] = [...PROFILES, "off"];
 // The effort steps ‹ and › walk with the profile off: the session's own, then low to max.
 const LEVELS: readonly (Effort | undefined)[] = [undefined, ...EFFORTS];
+
+// The profile as a circle that fills with the work it allows; empty for off.
+const PROFILE_MARK: Record<Mode, string> = {
+  lean: "◔",
+  balanced: "◑",
+  quality: "●",
+  off: "○",
+};
 
 const HOLD_LABEL: Record<Hold, string> = {
   off: "⏸ Off",
@@ -205,7 +212,7 @@ export function kitBand(on: On) {
             )}
             <Button
               key="kit-profile"
-              label={run.auto ? `A·${profileName(now).charAt(0)}` : "A"}
+              label={PROFILE_MARK[run.auto ? now : "off"]}
               dimColor={!run.auto}
               onPress={() => {
                 const after = MODES[(MODES.indexOf(now) + 1) % MODES.length]!;

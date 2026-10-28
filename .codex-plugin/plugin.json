@@ -1,6 +1,6 @@
 {
   "name": "kit",
-  "version": "0.15.51",
+  "version": "0.15.52",
   "description": "Minimal dev workflow: shape an idea into a markdown roadmap, build features, launch, commit, convert designs to code, plan and measure SEO.",
   "author": {
     "name": "Miles Zeilstra"
