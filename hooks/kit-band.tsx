@@ -232,7 +232,7 @@ export function kitBand(on: On) {
               "skills",
               <Button
                 key="kit-roadmap"
-                label={isOpen ? "✦ Close" : "✦"}
+                label={isOpen ? "⌘ Close" : "⌘"}
                 onPress={toggleDashboard}
               />,
             )}
