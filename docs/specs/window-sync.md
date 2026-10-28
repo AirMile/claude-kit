@@ -82,7 +82,12 @@ Open points (blind second plan by Sol, differences):
 
 ## Handoff
 
-—
+- The user asked: build, then commit everything and update the plugin
+  (`claude plugin marketplace update airmile && claude plugin update kit@airmile`). No push.
+- Uncommitted from before this spec: the band shows GPT's share dim with Claude's reset
+  (`hooks/band-meters.tsx`, version 0.15.49 in both plugin.json). Include it in the final
+  commit; bump the version again (0.15.50) for this feature.
+- Run `claude plugin test .` without a pipe (flow only counts unpiped checks).
 
 ## Verify
 
