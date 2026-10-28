@@ -328,7 +328,7 @@ test("flow sends a track note with a change task; a question gets none", async (
   expect(w.sent[1]?.context ?? []).toEqual([]);
 });
 
-test("flow works with the profile off, its track on the band", async ($, on) => {
+test("flow works with the profile off and stays off the band", async ($, on) => {
   const w = world(on, {
     model: "claude-opus-5-5",
     label: ROUTINE,
@@ -340,8 +340,7 @@ test("flow works with the profile off, its track on the band", async ($, on) => 
   const ui = await band($, on);
   await $.prompt.submit({ text: "add a submit button", origin: TYPED });
   expect(String(w.sent[0]?.context)).toContain("kit flow (light)");
-  expect(await ui.find({ key: "kit-flow-observe" })).toBeFalsy();
-  expect(await ui.find({ type: "Text", text: "flow light" })).toBeDefined();
+  expect(await ui.find({ type: "Text", text: /flow light/ })).toBeFalsy();
 });
 
 test("a /build kit started on the user's click gets the profile's model and effort", async ($, on) => {

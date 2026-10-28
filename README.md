@@ -886,8 +886,8 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt, one line (it wraps when narrow): usage at the left
-  (`ctx 114k  5h 55% · 2h 53m  7d 12%`; a reset time only from 50% used), then flow's open
-  task (`flow medium`), the profile, its model and effort, GPT, the limit button, `⎇` and `▤`
+  (`ctx 114k  5h 55% · 2h 53m  7d 12% · 4d 3h`, each limit with the time until it resets), then
+  the profile, its model and effort, GPT, the limit button, `⎇` and `▤`
   (the dashboard; `▤ Close` closes it). **ctx** and `⎇` open a menu in its own block above the
   band (hover to peek, press to keep it open): **Compact** and **Clear**, run at once or when
   the running turn ends; **Commit** (runs `/kit:commit`), Diff, Pull, Push, PR, Branch. The
@@ -981,7 +981,7 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   heavy with two files or fewer and no spec (too heavy?), holds, how tasks ended (verified,
   unresolved, unverified), and the last ten picks and holds, numbered. `/flow mark 3
   too-light` (or `too-heavy`, `hold-right`, `hold-wrong`) adds your judgment, which counts
-  alone can't give. The open task's track shows on the band (`flow medium`).
+  alone can't give. Flow stays off the band; `/flow` shows its tasks.
 - **Delegation**: flow's notes (and `/build`) hand self-contained work to the tool
   `mcp__kit__delegate` with a role. The mod picks Claude or GPT by role and by which plan has
   room, on the newest model per family:
@@ -1034,7 +1034,7 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
 
 - **`/band`** draws the band above the prompt again; folded (`[+]`)? `ctrl+x ctrl+a` unfolds it.
 - **Usage**: `ctx 114k  5h 55% · 2h 53m  7d 75% · 4d 3h` at the band's left: context, then the
-  5-hour and 7-day limits, each with the time until it resets once half is used; updated after
+  5-hour and 7-day limits, each with the time until it resets; updated after
   every turn.
 
 **Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110

@@ -124,7 +124,6 @@ export async function flowPrompt(
     await log($, endEntry(step.ended, ending(step.ended, p), now));
   task = step.task;
   await save($);
-  $.ui.invalidate("ui.render"); // the band shows the track
   if (step.event === "start" || step.event === "escalate")
     await log($, {
       task: task?.id,
@@ -262,15 +261,6 @@ export async function resetFlow($: EngineInterface) {
   promptPrint = undefined;
   endedOnQuestion = false;
   await save($);
-}
-
-// The band's text: the open task's track.
-export async function flowBand(
-  $: EngineInterface,
-): Promise<string | undefined> {
-  await load($);
-  if (!task) return undefined;
-  return `flow ${task.track}${task.unverified ? " · unverified" : ""}`;
 }
 
 export function flow(on: On) {

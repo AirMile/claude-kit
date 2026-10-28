@@ -14,7 +14,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   (`hooks/compaction.ts`), usage figures, and the tools
   `mcp__kit__roadmap_view` / `mcp__kit__theme_view` (`hooks/roadmap-open.ts`,
   `hooks/theme-view.tsx`) that `/product` and `/theme` call to open their panes (plus the `/panel` command), the band
-  above the prompt (`hooks/kit-band.tsx`: one line of usage, flow's track, switches a press
+  above the prompt (`hooks/kit-band.tsx`: one line of usage, switches a press
   cycles (the profile, GPT on or off, the limit button (Limit: pause + warm while work is open, Always, Off; per chat)), the effort with auto off, git, dashboard; the menus in
   `hooks/band-menus.tsx`), model/effort per prompt and subagent
   (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, switches kept by `hooks/model-switch.ts`, `/mode`), flow (`hooks/flow.ts` on the pure `hooks/flow-policy.ts`, `hooks/flow-check.ts` and

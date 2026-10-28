@@ -3,7 +3,6 @@ import type { CommandSpec, EngineInterface, On } from "claude-code";
 import { getMode, runState, setMode } from "./auto-model";
 import { type Menu, menuBody } from "./band-menus";
 import { gptOn, setGptOn } from "./codex-run";
-import { flowBand } from "./flow";
 import { warmInfo } from "./keep-warm";
 import {
   getHold,
@@ -20,9 +19,9 @@ import { PANE } from "./roadmap-view";
 
 // The band above the prompt, one line (it wraps only when narrow), an open menu (a bordered
 // block) above it: shown while the pointer rests on its button, kept open by a press. Left:
-// context and plan usage (register.tsx measures it after each turn), a reset time only from
-// half a window used; the context figure is a button opening Compact and Clear, run just after
-// the press. Right: flow's open task (flow.ts), then switches a press cycles: the profile
+// context and plan usage with the time until each resets (register.tsx measures it after each
+// turn); the context figure is a button opening Compact and Clear, run just after the press.
+// Right: switches a press cycles: the profile
 // (Lean, Balanced, Quality from auto-model.ts, Off), its model and effort beside it (with the
 // profile off a button opening the effort, Default: the session's own; the model is then the
 // app's own picker's), GPT (on or off, codex-run.ts; a ChatGPT window from half used), the
@@ -38,7 +37,7 @@ export const bandCommand: CommandSpec = {
   immediate: true,
 };
 
-// A reset time, or a GPT window on the GPT switch, is noise until half the window is used.
+// A GPT window on the GPT switch is noise until half of it is used.
 const NOTE_FROM = 50;
 const MODES: readonly Mode[] = [...PROFILES, "off"];
 
@@ -72,7 +71,6 @@ export function kitBand(on: On) {
     const pause = await limitInfo($);
     const hold = await getHold($);
     const gpt = await gptOn($);
-    const flow = await flowBand($);
     const ctx = usage.find((u) => u.label === "ctx");
     const meters = usage.filter((u) => u !== ctx && !u.label.startsWith("gpt"));
     const gptTight = usage
@@ -142,18 +140,11 @@ export function kitBand(on: On) {
               <Text key={`kit-usage-${u.label}`}>
                 <Text dimColor>{`${u.label} `}</Text>
                 <Text bold>{u.value}</Text>
-                {u.note && u.pct >= NOTE_FROM ? (
-                  <Text dimColor>{` · ${u.note}`}</Text>
-                ) : null}
+                {u.note ? <Text dimColor>{` · ${u.note}`}</Text> : null}
               </Text>
             ))}
           </Box>
           <Box key="kit-actions" gap={1} flexWrap="wrap">
-            {flow ? (
-              <Text key="kit-flow" dimColor>
-                {flow}
-              </Text>
-            ) : null}
             <Button
               key="kit-profile"
               label={run.auto ? profileName(now) : "Profile off"}
