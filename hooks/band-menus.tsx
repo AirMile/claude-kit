@@ -59,7 +59,8 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
   const { done } = s;
   // A line of a menu: its name in a narrow column, its choices beside it.
   // The skills' rows are two cells high: a button draws taller than one cell row, so a
-  // one-cell row lets the buttons of neighbouring rows touch.
+  // one-cell row lets the buttons of neighbouring rows touch. They end at the right edge,
+  // above the band's button that opens the menu.
   const line = (name: string, items: unknown[], tall = false) => (
     <Box
       key={`kit-line-${name}`}
@@ -70,7 +71,12 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
       <Box width={8} flexShrink={0}>
         <Text dimColor>{name}</Text>
       </Box>
-      <Box gap={1} flexWrap="wrap">
+      <Box
+        gap={1}
+        flexWrap="wrap"
+        flexGrow={tall ? 1 : undefined}
+        justifyContent={tall ? "flex-end" : undefined}
+      >
         {items as never}
       </Box>
     </Box>
@@ -129,9 +135,7 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
         ])}
       </Box>
     );
-  }
-
-  else if (m === "skills") {
+  } else if (m === "skills") {
     // A skill runs just after the press, like Compact; failing, its line goes in the prompt.
     const skill = (key: string, label: string, command: string, args = "") => (
       <Button
@@ -144,7 +148,9 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
             try {
               await $.command.run(args ? { command, args } : { command });
             } catch (err) {
-              await $.prompt.fill({ text: `/${command}${args ? ` ${args}` : ""}` });
+              await $.prompt.fill({
+                text: `/${command}${args ? ` ${args}` : ""}`,
+              });
               $.ui.toast(`kit: run /${command} yourself (${String(err)})`);
             }
           });
@@ -165,16 +171,20 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
             true,
           ),
         )}
-        {line("Panel", [
-          <Button
-            key="kit-dashboard"
-            label={s.isOpen ? "▤ Close dashboard" : "▤ Open dashboard"}
-            onPress={() => {
-              done();
-              s.toggleDashboard();
-            }}
-          />,
-        ], true)}
+        {line(
+          "Panel",
+          [
+            <Button
+              key="kit-dashboard"
+              label={s.isOpen ? "▤ Close dashboard" : "▤ Open dashboard"}
+              onPress={() => {
+                done();
+                s.toggleDashboard();
+              }}
+            />,
+          ],
+          true,
+        )}
       </Box>
     );
   }
