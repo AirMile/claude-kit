@@ -22,6 +22,7 @@ import {
 } from "./model-policy";
 import { setEffortLock } from "./model-switch";
 import { openRoadmap } from "./roadmap-open";
+import { inRoot } from "./spec";
 import type { Usage } from "./roadmap-parts";
 import { PANE } from "./roadmap-view";
 
@@ -34,13 +35,14 @@ import { PANE } from "./roadmap-view";
 // profile (A·L, A·B, A·Q for Lean, Balanced, Quality from auto-model.ts, A dim for off), GPT (on or off, codex-run.ts; a ChatGPT window from half used), the
 // limit hold (limit-guard.ts): off, Limit (pause at the plan limit, the cache warm while work
 // is open) or Warm (also warm while idle, keep-warm.ts), with the pings so far. Then Git (⎇,
-// git-menu.ts) with /commit first and the dashboard pane (▤). The plan-limit pause with Resume
+// git-menu.ts) with /commit first and the skills menu (▤: kit's skills by stage on hover; a press opens or closes the
+// dashboard pane). The plan-limit pause with Resume
 // now (limit-guard.ts) follows on its own line. It yields to a survey. /band draws it again;
 // /warm toggles the hold's keep warm.
 
 export const bandCommand: CommandSpec = {
   name: "band",
-  description: "Show kit's band above the prompt (usage, run, git, dashboard)",
+  description: "Show kit's band above the prompt (usage, run, git, skills, dashboard)",
   immediate: true,
 };
 
@@ -98,22 +100,31 @@ export function kitBand(on: On) {
       <Button key="kit-menu-close" label="×" dimColor onPress={done} />
     );
 
+    const root = await $.session.root();
+    const isSetUp = await $.fs.exists(inRoot(root, "AGENTS.md")).catch(() => true);
+    const toggleDashboard = () => {
+      const toggle = isOpen ? $.ui.close({ id: PANE }) : openRoadmap($);
+      void toggle.then(() => $.ui.invalidate("ui.render"));
+    };
     const state = {
       ui: $.ui.resolve(e),
       done,
+      isOpen,
+      isSetUp,
+      toggleDashboard,
     };
 
     // Each menu is drawn: the pressed one open, the others hidden until the pointer rests on
     // their button (or on the menu itself), which shares its hover scope. A press still opens
     // it for the keyboard.
-    const MENUS: Menu[] = ["ctx", "git"];
+    const MENUS: Menu[] = ["ctx", "git", "skills"];
     const menus = MENUS.map((m) => {
       const body = menuBody($, m, state);
       if (!body) return null;
       const open = menu === m;
       // The blank line below the block belongs to the hovered Box (padding, not margin), so the
       // pointer crossing it from the button keeps the menu shown. Each block sits above its
-      // button's side: the context menu left, Git right.
+      // button's side: the context menu left, Git and the skills right.
       return (
         <Box
           key={`kit-menu-${m}`}
@@ -157,7 +168,7 @@ export function kitBand(on: On) {
               <Text key={`kit-usage-${u.label}`} wrap="truncate-end">
                 <Text dimColor>{`${u.label} `}</Text>
                 <Text bold>{u.value}</Text>
-                {u.note ? <Text dimColor>{` · ${u.note}`}</Text> : null}
+                {u.note ? <Text dimColor>{` ${u.note}`}</Text> : null}
               </Text>
             ))}
           </Box>
@@ -217,16 +228,14 @@ export function kitBand(on: On) {
                 onPress={() => unfold($, "git")}
               />,
             )}
-            <Button
-              key="kit-roadmap"
-              label={isOpen ? "▤ Close" : "▤"}
-              onPress={() => {
-                const toggle = isOpen
-                  ? $.ui.close({ id: PANE })
-                  : openRoadmap($);
-                void toggle.then(() => $.ui.invalidate("ui.render"));
-              }}
-            />
+            {trigger(
+              "skills",
+              <Button
+                key="kit-roadmap"
+                label={isOpen ? "▤ Close" : "▤"}
+                onPress={toggleDashboard}
+              />,
+            )}
           </Box>
         </Box>
         {pause ? (

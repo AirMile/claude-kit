@@ -81,7 +81,7 @@ test("the Chat tab shows the run, the context by category and the cost", async (
   expect(texts).toContain("7 turns · 1h 0m · $1.50");
   expect(texts).toContain("Messages");
   expect(texts).not.toContain("Free space");
-  expect(await ui.find({ key: "brainstorm" })).toBeTruthy(); // the pad, under every tab
+  expect(await ui.find({ key: "brainstorm" })).toBeFalsy(); // the skills live in the band menu
 });
 
 test("the Messages tab lists this chat newest first and Remember asks kit:lessons", async ($, on) => {

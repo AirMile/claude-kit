@@ -24,7 +24,6 @@ let product = "Dashboard"; // docs/product.md's name, read when the pane opens (
 let live: file.Roadmap | null = null;
 let specs: Record<string, SpecState | null> = {};
 let away: Record<string, string> = {}; // open features running elsewhere (roadmap-worktree.ts)
-let isSetUp = true;
 let tab: Tab = "roadmap"; // the pane's shown tab
 let chat: Chat | null = null; // the Chat tab's facts, read on each draw while it shows
 let messages: Excerpt[] | null = null; // the Messages tab's recent messages, likewise
@@ -116,7 +115,6 @@ export function roadmapView(on: On) {
       );
       away = elsewhere.lines;
       Object.assign(specs, elsewhere.specs); // their /build step, from the worktree
-      isSetUp = await $.fs.exists(inRoot(root, "AGENTS.md")).catch(() => true);
     }
     chat = tab === "chat" && !draft ? await readChat($) : null;
     messages = tab === "messages" && !draft ? await readMessages($) : null;
@@ -215,7 +213,6 @@ export function roadmapView(on: On) {
       specs,
       away,
       canWorktree: e.surface === "desktop",
-      isSetUp,
       note,
       adding,
       added,

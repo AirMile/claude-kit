@@ -46,7 +46,7 @@ function untilReset(iso: string | undefined, now: number): string {
     Math.floor(min / 60) % 24,
     min % 60,
   ];
-  return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`;
+  return d ? `${d}d${h}h` : h ? `${h}h${m}m` : `${m}m`;
 }
 
 async function refresh($: EngineInterface, figures?: Figures) {
@@ -62,7 +62,7 @@ async function refresh($: EngineInterface, figures?: Figures) {
   ];
   for (const [kind, label] of [
     ["five_hour", "5h"],
-    ["seven_day", "weekly"],
+    ["seven_day", "wk"],
   ] as const) {
     const rl = usage.rateLimits.find((r) => r.kind === kind);
     if (rl)
@@ -79,7 +79,7 @@ async function refresh($: EngineInterface, figures?: Figures) {
   const gpt = on ? gptCached() : undefined;
   for (const [kind, label] of [
     ["five_hour", "gpt 5h"],
-    ["seven_day", "gpt weekly"],
+    ["seven_day", "gpt wk"],
   ] as const) {
     const w = gpt?.error ? undefined : gpt?.limits[kind];
     if (w)
