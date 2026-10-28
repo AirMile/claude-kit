@@ -217,6 +217,3 @@ const FILL: Partial<Record<string, string>> = {
 };
 export const effortLabel = (effort: string): string => FILL[effort] ?? effort;
 
-// The band's run line: `Opus 5.5 ▆`, the effort left out before the first prompt.
-export const runLine = (model: string, effort: string | undefined): string =>
-  [displayName(model), effort && effortLabel(effort)].filter(Boolean).join(" ");

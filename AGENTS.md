@@ -16,7 +16,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   `hooks/theme-view.tsx`) that `/product` and `/theme` call to open their panes (plus the `/panel` command), the band
   above the prompt (`hooks/kit-band.tsx`: one line of usage, switches a press
   cycles (the profile, GPT on or off, the limit button (Limit: pause + warm while work is open, Always, Off; per chat)), the effort with ‹ › when the profile is off, git, dashboard; the menus in
-  `hooks/band-menus.tsx`, the Claude·GPT meters and their hover card in `hooks/band-meters.tsx`), model/effort per prompt and subagent
+  `hooks/band-menus.tsx`, the Claude·GPT meters in `hooks/band-meters.tsx`), model/effort per prompt and subagent
   (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, switches kept by `hooks/model-switch.ts`, `/mode`), flow (`hooks/flow.ts` on the pure `hooks/flow-policy.ts`, `hooks/flow-check.ts` and
   `hooks/flow-log.ts`, storage and git fingerprint in `hooks/flow-store.ts`: each change task's
   track light/medium/heavy, its note at the start or on growth, the verify gate on `classic.Stop`

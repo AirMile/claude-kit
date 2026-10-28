@@ -2,8 +2,7 @@ import type { CommandSpec, EngineInterface, On } from "claude-code";
 
 import { getMode, runState, setMode } from "./auto-model";
 import { type Menu, menuBody } from "./band-menus";
-import { METERS_SCOPE, meterCard, meterLine, meterRows } from "./band-meters";
-import { balance } from "./balance";
+import { meterLine, meterRows } from "./band-meters";
 import { gptOn, setGptOn } from "./codex-run";
 import { warmInfo } from "./keep-warm";
 import {
@@ -19,8 +18,8 @@ import {
   EFFORTS,
   type Mode,
   PROFILES,
+  displayName,
   effortLabel,
-  runLine,
 } from "./model-policy";
 import { setEffortLock } from "./model-switch";
 import { openRoadmap } from "./roadmap-open";
@@ -30,8 +29,8 @@ import { PANE } from "./roadmap-view";
 
 // The band above the prompt, one line that never wraps, an open menu (a bordered
 // block) above it: shown while the pointer rests on its button, kept open by a press. Left:
-// context and plan usage, Claude's share with ChatGPT's beside it and the times until reset in
-// a card on hover (band-meters.tsx; register.tsx measures it after each turn); the context figure is a button opening Compact and Clear, run just after the press.
+// context and plan usage, Claude's share with ChatGPT's beside it and Claude's reset
+// (band-meters.tsx; register.tsx measures it after each turn); the context figure is a button opening Compact and Clear, run just after the press.
 // Right: the model with the profile's effort, or with the profile off the effort between ‹
 // and ›, a step down or up (below low: the session's own); then switches a press cycles: the
 // profile (◔ ◑ ● for Lean, Balanced, Quality from auto-model.ts, ○ dim for off), GPT (on or off, codex-run.ts), the
@@ -95,6 +94,12 @@ export function kitBand(on: On) {
     const ctx = usage.find((u) => u.label === "ctx");
     const rows = meterRows(usage, gpt);
     const done = () => unfold($, null);
+    // The effort as a cell that fills: its block on a dim ground, so low reads as a level.
+    const cell = (effort: string) => (
+      <Text backgroundColor="#334155" dimColor={false}>
+        {effortLabel(effort)}
+      </Text>
+    );
     // With the profile off, ‹ and › move the hand-set effort one level.
     const at = LEVELS.indexOf(run.effort as Effort | undefined);
     const step = (by: number) => {
@@ -163,7 +168,6 @@ export function kitBand(on: On) {
 
     return (
       <Box flexDirection="column">
-        {gpt ? meterCard(ui, rows, balance(await $.clock.now()).band) : null}
         {menus}
         <Box justifyContent="space-between" gap={2}>
           <Box key="kit-usage" gap={2} flexShrink={1}>
@@ -175,22 +179,11 @@ export function kitBand(on: On) {
                 onPress={() => unfold($, "ctx")}
               />,
             )}
-            <Box
-              key="kit-meters"
-              gap={2}
-              hover={
-                gpt
-                  ? { scope: METERS_SCOPE, backgroundColor: "#1e293b" }
-                  : undefined
-              }
-            >
+            <Box key="kit-meters" gap={2}>
               {meterLine(ui, rows)}
             </Box>
           </Box>
           <Box key="kit-actions" gap={1} flexShrink={0}>
-            <Text key="kit-run" dimColor>
-              {runLine(run.model, run.auto ? run.effort : undefined)}
-            </Text>
             {run.auto ? null : (
               <Box key="kit-effort" gap={0}>
                 <Button
@@ -200,7 +193,11 @@ export function kitBand(on: On) {
                   dimColor={at <= 0}
                   onPress={() => step(-1)}
                 />
-                <Text key="kit-effort-level">{` ${run.effort ? effortLabel(run.effort) : "default"} `}</Text>
+                <Text key="kit-effort-level">
+                  {" "}
+                  {run.effort ? cell(run.effort) : "default"}
+                  {" "}
+                </Text>
                 <Button
                   key="kit-effort-up"
                   label="›"
@@ -210,6 +207,11 @@ export function kitBand(on: On) {
                 />
               </Box>
             )}
+            <Text key="kit-run" dimColor>
+              {run.auto && run.effort ? cell(run.effort) : null}
+              {run.auto && run.effort ? " " : ""}
+              {displayName(run.model)}
+            </Text>
             <Button
               key="kit-profile"
               label={PROFILE_MARK[run.auto ? now : "off"]}

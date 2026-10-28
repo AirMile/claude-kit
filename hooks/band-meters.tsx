@@ -1,16 +1,14 @@
 import type { EngineInterface } from "claude-code";
 
-import type { Band } from "./delegate-policy";
 import type { Usage } from "./roadmap-parts";
 
 // The band's plan meters: per window Claude's share, ChatGPT's dim beside it and Claude's time
-// until reset (`5h 30%·2% 3h29m`); both plans' resets and the balance in a card above the band
-// while the pointer rests on the meters. With GPT off: Claude's share only, and no card.
+// until reset (`5h 30%·2% 3h29m`). With GPT off: Claude's share only. The 5h windows reset
+// together (window-sync.ts), so Claude's reset stands for both.
 
 type Ui = ReturnType<EngineInterface["ui"]["resolve"]>;
 export type MeterRow = { label: string; claude?: Usage; gpt?: Usage };
 
-export const METERS_SCOPE = "kit-meters";
 const WINDOWS = ["5h", "wk"] as const;
 
 // The two windows, each with whichever plan reported it; with GPT off, Claude's alone.
@@ -33,41 +31,4 @@ export function meterLine(ui: Ui, rows: readonly MeterRow[]) {
       {r.claude?.note ? <Text dimColor>{` ${r.claude.note}`}</Text> : null}
     </Text>
   ));
-}
-
-const cell = (u: Usage | undefined) =>
-  u ? `${u.value.padStart(4)} ${(u.note ?? "").padEnd(6)}` : "   –       ";
-
-// The card the meters reveal: both plans per window with the time until reset, and the
-// delegation balance (balance.ts).
-export function meterCard(ui: Ui, rows: readonly MeterRow[], band: Band) {
-  const { Box, Text } = ui;
-  const gpt = rows.some((r) => r.gpt);
-  return (
-    <Box
-      key="kit-menu-meters"
-      flexDirection="column"
-      alignItems="flex-start"
-      paddingBottom={1}
-      display="none"
-      hover={{ scope: METERS_SCOPE, display: "flex" }}
-    >
-      <Box
-        flexDirection="column"
-        borderStyle="round"
-        borderColor="#334155"
-        paddingX={1}
-      >
-        <Text dimColor>{`    ${"Claude".padEnd(12)}${gpt ? "GPT" : ""}`}</Text>
-        {rows.map((r) => (
-          <Text key={`kit-meters-${r.label}`}>
-            <Text dimColor>{`${r.label}  `}</Text>
-            <Text>{cell(r.claude)}</Text>
-            {gpt ? <Text dimColor>{` ${cell(r.gpt)}`}</Text> : null}
-          </Text>
-        ))}
-        {gpt ? <Text dimColor>{`balance: ${band}`}</Text> : null}
-      </Box>
-    </Box>
-  );
 }
