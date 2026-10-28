@@ -1,22 +1,22 @@
-import { setBalance } from "./balance";
-import { gptTight, lean, LEAN, type Meters } from "./delegate-policy";
+import { hasPct, setBalance, type MeterState } from "./balance";
+import type { Meters } from "./delegate-policy";
 
 // Each provider updates independently; keep the other provider's last meters.
-let claude: Meters = {};
-let gpt: Meters | undefined;
+let claude: MeterState = { meters: {}, observedAt: 0, ok: false };
+let gpt: MeterState = { meters: {}, observedAt: 0, ok: false };
 let enabled = false;
 
-function refresh(now: number) {
-  setBalance({
-    ready: enabled && gpt !== undefined && !gptTight(gpt),
-    leaning: lean(claude, gpt, now) >= LEAN,
-  });
+function refresh() {
+  setBalance({ enabled, claude, gpt });
 }
 
 export function noteClaudeMeters(next: Meters, now: number) {
-  claude = next;
-  refresh(now);
+  const ok = hasPct(next, "five_hour") || hasPct(next, "seven_day");
+  claude = ok ? { meters: next, observedAt: now, ok } : { ...claude, ok };
+  refresh();
 }
+
+export const claudeMeters = (): Meters => claude.meters;
 
 export function noteClaudeLimits(
   limits: readonly { kind: string; percentUsed: number; resetsAt?: string }[],
@@ -34,8 +34,13 @@ export function noteGptMeters(
   on: boolean,
   next: Meters | undefined,
   now: number,
+  observedAt = now,
 ) {
   enabled = on;
-  gpt = next;
-  refresh(now);
+  const ok =
+    next !== undefined &&
+    hasPct(next, "five_hour") &&
+    hasPct(next, "seven_day");
+  gpt = ok ? { meters: next!, observedAt, ok } : { ...gpt, ok };
+  refresh();
 }

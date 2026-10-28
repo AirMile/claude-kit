@@ -8,7 +8,12 @@ import { LABELS } from "./model-policy";
 // Drive the installed mod through prompts and tools; never pass the test's $ to a module.
 function world(
   on: On,
-  opts: { explore?: boolean; change?: boolean; off?: boolean } = {},
+  opts: {
+    explore?: boolean;
+    change?: boolean;
+    off?: boolean;
+    delegate?: "ok" | "claude" | "failed" | "partial" | "none";
+  } = {},
 ) {
   const store: Record<string, unknown> = { mode: "off", gpt: !opts.off };
   const prompts: { context?: readonly string[] }[] = [];
@@ -19,13 +24,16 @@ function world(
   }[] = [];
   const resetsAt = "2026-11-03T12:00:00Z";
   let gptPct = 10;
+  let elapsed = 0;
   on("session.id", async () => ({ value: "s1" }));
   on("session.root", async () => ({ value: "/p/app" }));
   on("session.usage", async () => ({
     value: { context: { percent: 10 }, rateLimits: [] },
   }));
   on("session.measure", async (_$, e) => ({ changed: e.changed }));
-  on("clock.now", async () => ({ value: Date.parse("2026-10-27T12:00:00Z") }));
+  on("clock.now", async () => ({
+    value: Date.parse("2026-10-27T12:00:00Z") + elapsed,
+  }));
   on("ui.log", async () => ({ value: undefined }));
   on("ui.invalidate", async () => ({ value: undefined }));
   on("store.get", async (_$, e) => ({ value: store[e.key] }));
@@ -60,13 +68,38 @@ function world(
             exitCode: 0,
             stdout: JSON.stringify({
               argv: ["/bin/codex"],
-              models: [],
-              limits: { seven_day: { pct: gptPct, resetsAt } },
+              models: opts.delegate ? [{ id: "gpt-6-luna" }] : [],
+              limits: {
+                five_hour: { pct: 10 },
+                seven_day: { pct: gptPct, resetsAt },
+              },
             }),
             stderr: "",
           }
         : { exitCode: 1, stdout: "", stderr: "" },
   }));
+  on("process.spawn", async function* () {
+    elapsed += 50;
+    if (opts.delegate !== "failed")
+      yield {
+        stream: "stdout" as const,
+        text:
+          JSON.stringify({
+            type: "item.completed",
+            item: { type: "agent_message", text: "Done." },
+          }) + "\n",
+      };
+    if (opts.delegate === "failed" || opts.delegate === "partial")
+      yield {
+        stream: "stdout" as const,
+        text:
+          JSON.stringify({
+            type: "turn.failed",
+            error: { message: "offline" },
+          }) + "\n",
+      };
+    return { value: { code: 0, signal: null } };
+  });
   on("prompt.submit", async (_$, e) => {
     prompts.push({ context: e.context });
     return { text: e.text };
@@ -76,6 +109,7 @@ function world(
     { tool: ["Read", "Grep", "Glob", "Bash", "Edit", "Write"] },
     async (_$, e) => ({
       result: "ok" as never,
+      isError: e.tool === "Read" && e.file_path.includes("broken"),
       text: "x".repeat(e.tool === "Read" ? (e.limit ?? 1) : 1),
       context: ["existing context"],
     }),
@@ -192,3 +226,56 @@ test("Claude meter updates lower the budget and refreshed ChatGPT meters restore
   for (let i = 0; i < 4; i++) expect((await read($)).context?.length).toBe(1);
   expect(String((await read($)).context)).toContain("read 5 times");
 });
+
+test("failed reads do not use the turn's budget", async ($, on) => {
+  world(on, { off: true });
+  await prompt($);
+  await $.tool.call({
+    tool: "Read",
+    file_path: "/p/app/broken",
+    limit: 20000,
+  } as never);
+  for (let i = 0; i < 4; i++) expect((await read($)).context?.length).toBe(1);
+  expect(String((await read($)).context)).toContain(
+    "read 5 times (5 characters)",
+  );
+});
+
+for (const outcome of ["ok", "claude", "failed", "partial", "none"] as const) {
+  test(`delegate measurement and read reset: ${outcome}`, async ($, on) => {
+    const w = world(on, {
+      off: outcome === "claude" || outcome === "none",
+      delegate: outcome,
+    });
+    await prompt($);
+    for (let i = 0; i < 4; i++) await read($);
+    const input = {
+      tool: "mcp__kit__delegate",
+      role: outcome === "none" ? "build" : "search",
+      brief: "Find the retry code.",
+    } as never;
+    await $.tool.call(input);
+    const ok = outcome === "ok" || outcome === "claude";
+    // A partial GPT answer resets the reads too, but is measured as a failure.
+    const resets = ok || outcome === "partial";
+    expect((await read($)).context?.length).toBe(resets ? 1 : 2);
+    if (resets) {
+      for (let i = 0; i < 3; i++) await read($);
+      expect(String((await read($)).context)).toContain(
+        "read 5 times (5 characters)",
+      );
+      await $.tool.call(input);
+      expect((await read($, 15000)).context?.length).toBe(1);
+    }
+    const entries = (w.store.flowLog as Record<string, unknown>[]).filter(
+      (e) => e.event === "delegate",
+    );
+    expect(entries[0]).toMatchObject({
+      text: outcome === "none" ? "build" : "search",
+      provider:
+        outcome === "claude" ? "claude" : outcome === "none" ? "none" : "gpt",
+      outcome: ok ? "ok" : "failed",
+      durationMs: outcome === "claude" || outcome === "none" ? 0 : 50,
+    });
+  });
+}

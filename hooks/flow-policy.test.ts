@@ -225,11 +225,45 @@ test("the log keeps 14 days, records each task's end, and takes the user's marks
     report([
       { at: 1, event: "explore-note", text: "" },
       { at: 2, event: "read-note", text: "5 calls, 42 chars" },
-      { at: 3, event: "delegate", text: "search gpt" },
-      { at: 4, event: "delegate", text: "research claude" },
-      { at: 5, event: "delegate", text: "build none" },
+      {
+        at: 3,
+        event: "delegate",
+        text: "search",
+        provider: "gpt",
+        outcome: "ok",
+      },
+      {
+        at: 4,
+        event: "delegate",
+        text: "research",
+        provider: "claude",
+        outcome: "ok",
+      },
+      {
+        at: 5,
+        event: "delegate",
+        text: "build",
+        provider: "none",
+        outcome: "failed",
+      },
+      {
+        at: 6,
+        event: "delegate",
+        text: "search",
+        provider: "gpt",
+        outcome: "failed",
+      },
+      {
+        at: 7,
+        event: "delegate",
+        text: "build",
+        provider: "none",
+        outcome: "failed",
+      },
     ]),
-  ).toContain("explore notes 1 · read notes 1 · delegated 3 (gpt 1, claude 1)");
+  ).toContain(
+    "explore notes 1 · read notes 1 · delegated 2 (gpt 1, claude 1) · not delegated 2 · failed 1",
+  );
   expect(out).toContain(
     "end medium (from light) · 1 files · 1 checks · verified: src/a.ts [too-light]",
   );

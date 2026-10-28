@@ -53,6 +53,7 @@ async function refreshBalance($: EngineInterface) {
     gpt !== false,
     status?.argv && !status.error ? status.limits : undefined,
     await $.clock.now(),
+    status?.at,
   );
 }
 
@@ -157,11 +158,31 @@ export function codexArgs(
 export async function changed(
   $: EngineInterface,
   root: string,
-): Promise<Set<string>> {
+): Promise<Map<string, string>> {
   const ran = await $.process
-    .run(["git", "status", "--porcelain"], { cwd: root })
+    .run(["git", "status", "--porcelain", "-z", "--untracked-files=all"], {
+      cwd: root,
+    })
     .catch(() => null);
-  return new Set((ran?.stdout ?? "").split("\n").filter(Boolean));
+  const blobs = new Map<string, string>();
+  const paths: string[] = [];
+  const entries = (ran?.stdout ?? "").split("\0").filter(Boolean);
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i]!;
+    const state = entry.slice(0, 2);
+    const path = entry.slice(3); // -z puts a rename's destination before its source
+    if (/[RC]/.test(state)) i++;
+    if (state.includes("D")) blobs.set(path, "deleted");
+    else paths.push(path);
+  }
+  if (paths.length) {
+    const hashed = await $.process
+      .run(["git", "hash-object", "--", ...paths], { cwd: root })
+      .catch(() => null);
+    const ids = hashed?.exitCode === 0 ? hashed.stdout.trim().split("\n") : [];
+    paths.forEach((path, i) => blobs.set(path, ids[i] ?? "unavailable"));
+  }
+  return blobs;
 }
 
 export const took = (ms: number) => {

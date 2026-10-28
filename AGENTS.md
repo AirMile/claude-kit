@@ -24,7 +24,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   `mcp__kit__delegate` (`hooks/delegate.ts` on the pure `hooks/delegate-policy.ts`: work handed
   to Claude or GPT by role and by which plan has room, the newest GPT model per family; the
   Codex side, its catalog, the ChatGPT meters, the GPT switch and a run, in `hooks/codex-run.ts`;
-  `/gpt`), shared delegation balance (`hooks/balance.ts`, meters in `hooks/delegate-balance.ts`),
+  `/gpt` command in `hooks/gpt-command.ts`), shared delegation balance (`hooks/balance.ts`, meters in `hooks/delegate-balance.ts`),
   explore-first prompts (`hooks/explore-first.ts`, classifiers in `hooks/flow-prompt.ts`),
   read budgets (`hooks/read-budget.ts`, observed by `hooks/read-watch.ts`), a pause before the plan limit with
   cache keep-alive (`hooks/limit-guard.ts` on the pure `hooks/limit-policy.ts`), keep-alive forks by hand or

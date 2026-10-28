@@ -2,6 +2,7 @@ import { expect, test } from "claude-code/testing";
 
 import {
   ahead,
+  band,
   claudeTight,
   gptTight,
   lean,
@@ -32,6 +33,7 @@ const ROOM = {
 
 const at = (over: Partial<RouteInput>): RouteInput => ({
   role: "build",
+  band: "balanced",
   gptOn: true,
   models: newest(CATALOG),
   claude: { five_hour: { pct: 20, resetsAt: in_(3) } },
@@ -193,4 +195,25 @@ test("with GPT off nothing goes to GPT unless a family is named; no Claude revie
   ).toMatchObject({
     provider: "claude",
   });
+});
+
+test("balance bands use hysteresis on both sides", async () => {
+  expect(band("balanced", 10)).toBe("gpt-heavy");
+  expect(band("gpt-heavy", 7)).toBe("gpt-heavy");
+  expect(band("gpt-heavy", 5)).toBe("gpt-heavy");
+  expect(band("gpt-heavy", 4)).toBe("balanced");
+  expect(band("balanced", -10)).toBe("claude-safe");
+  expect(band("claude-safe", -7)).toBe("claude-safe");
+  expect(band("claude-safe", -5)).toBe("claude-safe");
+  expect(band("claude-safe", -4)).toBe("balanced");
+  expect(band("gpt-heavy", -12)).toBe("claude-safe");
+  expect(band("claude-safe", 12)).toBe("gpt-heavy");
+});
+
+test("only search changes with the balance band", async () => {
+  for (const b of ["balanced", "gpt-heavy"] as const)
+    expect(route(at({ role: "search", band: b }))).toMatchObject({ provider: "gpt", model: "gpt-6-luna" });
+  expect(route(at({ role: "search", band: "claude-safe" }))).toMatchObject({ provider: "claude", model: "haiku", subagentType: "Explore" });
+  expect(route(at({ role: "build", band: "claude-safe" }))).toMatchObject({ provider: "gpt", model: "gpt-6.1-terra" });
+  expect(route(at({ role: "search", band: "claude-safe", family: "luna" }))).toMatchObject({ provider: "gpt" });
 });

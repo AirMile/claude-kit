@@ -33,7 +33,9 @@ export type LogEntry = {
   failed?: number;
   verifier?: "pass" | "fail";
   holds?: number;
-  outcome?: Ending;
+  outcome?: Ending | "ok" | "failed";
+  provider?: "gpt" | "claude" | "none";
+  durationMs?: number;
   mark?: Mark;
 };
 
@@ -94,6 +96,10 @@ const line = (e: LogEntry, n: number): string => {
 // /flow's report: the first picks against how the tasks ended, the holds, the user's marks.
 export function report(log: readonly LogEntry[]): string {
   const ends = log.filter((e) => e.event === "end");
+  const delegates = log.filter((e) => e.event === "delegate");
+  const delegated = delegates.filter(
+    (e) => e.outcome === "ok" && e.provider !== "none",
+  );
   const count = (f: (e: LogEntry) => boolean, of: readonly LogEntry[] = log) =>
     of.filter(f).length;
   const lines = [
@@ -106,7 +112,7 @@ export function report(log: readonly LogEntry[]): string {
       `ending with 2 files or fewer and no spec (too heavy?): ${count((e) => e.first === "heavy" && (e.files ?? 0) <= 2 && !e.spec, ends)}`,
     `holds ${count((e) => e.event === "block")} · ended ${(["verified", "unresolved", "unverified"] as const).map((o) => `${o} ${count((e) => e.outcome === o, ends)}`).join(" · ")}`,
     `your marks: ${MARKS.map((m) => `${m} ${count((e) => e.mark === m)}`).join(" · ")}`,
-    `explore notes ${count((e) => e.event === "explore-note")} · read notes ${count((e) => e.event === "read-note")} · delegated ${count((e) => e.event === "delegate")} (gpt ${count((e) => e.event === "delegate" && e.text.endsWith(" gpt"))}, claude ${count((e) => e.event === "delegate" && e.text.endsWith(" claude"))})`,
+    `explore notes ${count((e) => e.event === "explore-note")} · read notes ${count((e) => e.event === "read-note")} · delegated ${delegated.length} (gpt ${count((e) => e.provider === "gpt", delegated)}, claude ${count((e) => e.provider === "claude", delegated)}) · not delegated ${count((e) => e.provider === "none", delegates)} · failed ${count((e) => e.provider !== "none" && e.outcome === "failed", delegates)}`,
   ];
   const last = notable(log);
   if (last.length) lines.push("last:", ...last.map((e, i) => line(e, i + 1)));

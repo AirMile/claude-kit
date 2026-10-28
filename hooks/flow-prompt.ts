@@ -17,7 +17,7 @@ export async function classifyPrompt(
   thin: boolean,
 ) {
   const input = text.slice(0, CLASSIFY_CHARS);
-  const ready = balance().ready; // without GPT the explore note never goes out: skip asking
+  const ready = balance(await $.clock.now()).ready; // without GPT, skip the explore classifier
   const [changeLabel, label] = await Promise.all([
     build || thin || kind === "question"
       ? undefined

@@ -17,6 +17,16 @@ export const ROLES: readonly Role[] = [
   "review",
   "plan",
 ];
+export type Band = "gpt-heavy" | "balanced" | "claude-safe";
+
+export function band(prev: Band, lean: number): Band {
+  if (lean >= 10) return "gpt-heavy";
+  if (lean <= -10) return "claude-safe";
+  if (prev === "gpt-heavy" && lean >= 5) return prev;
+  if (prev === "claude-safe" && lean <= -5) return prev;
+  return "balanced";
+}
+
 export type Family = "sol" | "terra" | "luna" | "astra";
 export const FAMILIES: readonly Family[] = ["sol", "terra", "luna", "astra"];
 export type Author = "claude" | "gpt";
@@ -184,6 +194,7 @@ function onGpt(role: Role, m: GptModel): Route {
 
 export type RouteInput = {
   role: Role;
+  band: Band;
   author?: Author; // who wrote what a review looks at; this chat (Claude) when absent
   family?: Family; // asked for by name: it wins
   gptOn: boolean; // the band's GPT switch
@@ -203,6 +214,8 @@ export function route(i: RouteInput): Route {
           reason: `no ${i.family} model in Codex's catalog: do it here`,
         };
   }
+  if (i.role === "search" && i.band === "claude-safe")
+    return onClaude("search", "Claude has the room");
   const want = i.models[GPT[i.role].family];
   const gptOk = i.gptOn && i.gpt !== undefined && !gptTight(i.gpt) && want;
   if (i.role === "review" && i.author === "gpt")

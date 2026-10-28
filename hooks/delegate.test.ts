@@ -57,11 +57,16 @@ function world(
         },
       };
     }
-    gitCalls++; // git status: clean before the run, one file after
+    if (e.argv[1] === "status") gitCalls++;
     return {
       value: {
         exitCode: 0,
-        stdout: gitCalls > 1 ? " M src/a.ts\n" : "",
+        stdout:
+          e.argv[1] === "hash-object"
+            ? "blob\n"
+            : gitCalls > 1
+              ? " M src/a.ts\0"
+              : "",
         stderr: "",
       },
     };
@@ -131,7 +136,13 @@ test("a search runs on Luna when ChatGPT has room", async ($, on) => {
   expect(w.spawned[0]?.argv).toContain("read-only");
   expect(out).toContain("GPT Luna 6 (search");
   expect(w.store.flowLog).toMatchObject([
-    { event: "delegate", text: "search gpt" },
+    {
+      event: "delegate",
+      text: "search",
+      provider: "gpt",
+      outcome: "ok",
+      durationMs: 0,
+    },
   ]);
 });
 
@@ -150,6 +161,7 @@ test("a family asked for by name runs on it; a thread continues the earlier run"
     thread: "t-123",
   });
   expect(w.spawned[1]?.argv.slice(1, 4)).toEqual(["exec", "resume", "t-123"]);
+  expect(w.spawned[1]?.argv).toContain("gpt-6-astra");
 });
 
 test("a review runs read-only with the brief and asks for ranked findings", async ($, on) => {
@@ -185,9 +197,10 @@ test("without Codex a change is built here and research goes to Claude, saying w
   });
   expect(read).toContain("Route: Claude (Codex: codex not found)");
   expect(read).toContain('model "sonnet"');
+  expect(read).toContain('Add to the subagent prompt: "Read only: change no files. Aim for 4000 characters or less. Conclusion first; evidence as file:line; uncertainties. No command logs, file contents beyond short quotes, or diffs."');
   expect(w.store.flowLog).toMatchObject([
-    { event: "delegate", text: "build none" },
-    { event: "delegate", text: "research claude" },
+    { event: "delegate", text: "build", provider: "none", outcome: "failed" },
+    { event: "delegate", text: "research", provider: "claude", outcome: "ok" },
   ]);
 });
 
@@ -197,6 +210,7 @@ test("/gpt shows the newest model per family and pins one", async ($, on) => {
   expect(String((shown as { text?: string }).text)).toContain(
     "terra: Terra 6.1 (gpt-6.1-terra)",
   );
+  expect(String((shown as { text?: string }).text)).toContain("balance: ");
   const pinned = await $.command.run({
     command: "gpt",
     args: "pin terra gpt-5.6-terra",
@@ -273,37 +287,26 @@ test("each role receives its answer shape and length target", async ($, on) => {
   }
 });
 
-test("a cut answer says whether its thread can be resumed", async ($, on) => {
-  const long = JSON.stringify({
-    type: "item.completed",
-    item: { type: "agent_message", text: "x".repeat(6001) },
+for (const thread of [undefined, "t-123"]) {
+  test(`a cut answer ${thread ? "includes its thread" : "says whether its thread can be resumed"}`, async ($, on) => {
+    const long = JSON.stringify({
+      type: "item.completed",
+      item: { type: "agent_message", text: "x".repeat(6001) },
+    });
+    world(on, {
+      events: thread
+        ? [JSON.stringify({ type: "thread.started", thread_id: thread }), long]
+        : [long],
+    });
+    const out = await delegate($, {
+      role: "research",
+      brief: "Research.",
+      family: "sol",
+    });
+    expect(out).toContain(
+      thread
+        ? '[incomplete: cut at 6000 characters, ask for the rest with thread "t-123"]'
+        : "[incomplete: cut at 6000 characters]",
+    );
   });
-  world(on, { events: [long] });
-  const without = await delegate($, {
-    role: "research",
-    brief: "Research.",
-    family: "sol",
-  });
-  expect(without).toContain("[incomplete: cut at 6000 characters]");
-});
-
-test("a cut answer includes its thread for retrieving the rest", async ($, on) => {
-  const long = JSON.stringify({
-    type: "item.completed",
-    item: { type: "agent_message", text: "x".repeat(6001) },
-  });
-  world(on, {
-    events: [
-      JSON.stringify({ type: "thread.started", thread_id: "t-123" }),
-      long,
-    ],
-  });
-  const withThread = await delegate($, {
-    role: "research",
-    brief: "Research.",
-    family: "sol",
-  });
-  expect(withThread).toContain(
-    '[incomplete: cut at 6000 characters, ask for the rest with thread "t-123"]',
-  );
-});
+}
