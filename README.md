@@ -896,9 +896,9 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
     the model and effort kit set for the last prompt (`Opus 5.5 · medium`), which can differ
     from the session setting in the app's model picker.
   - **Effort**, only with the profile off (you pick the model in the app's picker):
-    `▁▃▅▇█` (low, medium, high, xhigh, max), the level set by hand lit; it holds over new
-    chats and restarts. The lit bar pressed again gives the session's own effort back. The
-    engine lowers a level the model lacks.
+    `‹ high ›`, a press on `‹` or `›` one level down or up (`default`, the session's own,
+    then low to max); it holds over new chats and restarts. The engine lowers a level the
+    model lacks.
   - **GPT**: `GPT` or `GPT off` (may GPT take delegated work). A ChatGPT window from half used
     shows on it (`GPT 5h 62%`).
   - **Limit**: `⏸ Limit` (pause at the plan limit, the cache warm while work is open; the

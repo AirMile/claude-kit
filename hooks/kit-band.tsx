@@ -13,6 +13,7 @@ import {
 } from "./limit-guard";
 import { type Hold, nextHold } from "./limit-policy";
 import {
+  type Effort,
   EFFORTS,
   type Mode,
   PROFILES,
@@ -30,8 +31,7 @@ import { PANE } from "./roadmap-view";
 // turn); the context figure is a button opening Compact and Clear, run just after the press.
 // Right: switches a press cycles: the profile (A·L, A·B, A·Q for Lean, Balanced, Quality from
 // auto-model.ts, A dim for off), the model beside it with the profile's effort, or with the
-// profile off the effort as five bars, the level set by hand lit (pressed again: the session's
-// own). GPT (on or off, codex-run.ts; a ChatGPT window from half used), the
+// profile off the effort between ‹ and ›, a step down or up (below low: the session's own). GPT (on or off, codex-run.ts; a ChatGPT window from half used), the
 // limit hold (limit-guard.ts): off, Limit (pause at the plan limit, the cache warm while work
 // is open) or Always (also warm while idle, keep-warm.ts), with the pings so far. Then Git (⎇,
 // git-menu.ts) with /commit first and the dashboard pane (▤). The plan-limit pause with Resume
@@ -47,8 +47,8 @@ export const bandCommand: CommandSpec = {
 // A GPT window on the GPT switch is noise until half of it is used.
 const NOTE_FROM = 50;
 const MODES: readonly Mode[] = [...PROFILES, "off"];
-// One bar per effort level, lowest first, as model-policy.ts's EFFORTS.
-const BARS = ["▁", "▃", "▅", "▇", "█"];
+// The effort steps ‹ and › walk with the profile off: the session's own, then low to max.
+const LEVELS: readonly (Effort | undefined)[] = [undefined, ...EFFORTS];
 
 const HOLD_LABEL: Record<Hold, string> = {
   off: "⏸ Off",
@@ -87,6 +87,13 @@ export function kitBand(on: On) {
       .map((u) => ` ${u.label.slice(4)} ${u.value}`)
       .join("");
     const done = () => unfold($, null);
+    // With the profile off, ‹ and › move the hand-set effort one level.
+    const at = LEVELS.indexOf(run.effort as Effort | undefined);
+    const step = (by: number) => {
+      const to = at + by;
+      if (to < 0 || to >= LEVELS.length) return;
+      void setEffortLock($, LEVELS[to]).then(() => $.ui.invalidate("ui.render"));
+    };
     const close = (
       <Button key="kit-menu-close" label="×" dimColor onPress={done} />
     );
@@ -147,7 +154,7 @@ export function kitBand(on: On) {
               />,
             )}
             {meters.map((u) => (
-              <Text key={`kit-usage-${u.label}`}>
+              <Text key={`kit-usage-${u.label}`} wrap="truncate-end">
                 <Text dimColor>{`${u.label} `}</Text>
                 <Text bold>{u.value}</Text>
                 {u.note ? <Text dimColor>{` · ${u.note}`}</Text> : null}
@@ -169,21 +176,21 @@ export function kitBand(on: On) {
             </Text>
             {run.auto ? null : (
               <Box key="kit-effort" gap={0}>
-                {EFFORTS.map((l, i) => (
-                  <Button
-                    key={`kit-effort-${l}`}
-                    label={BARS[i]!}
-                    plain
-                    dimColor={run.effort !== l}
-                    onPress={() => {
-                      // The lit bar pressed again gives the session's own effort back.
-                      const level = run.effort === l ? undefined : l;
-                      void setEffortLock($, level).then(() =>
-                        $.ui.invalidate("ui.render"),
-                      );
-                    }}
-                  />
-                ))}
+                <Button
+                  key="kit-effort-down"
+                  label="‹"
+                  plain
+                  dimColor={at <= 0}
+                  onPress={() => step(-1)}
+                />
+                <Text key="kit-effort-level">{` ${run.effort ?? "default"} `}</Text>
+                <Button
+                  key="kit-effort-up"
+                  label="›"
+                  plain
+                  dimColor={at >= LEVELS.length - 1}
+                  onPress={() => step(1)}
+                />
               </Box>
             )}
             <Button

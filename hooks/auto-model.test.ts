@@ -201,19 +201,21 @@ test("a stored switch survives a reload: no question on the stronger model", asy
 });
 
 // The model and effort the band shows beside the profile.
-// The model and, after " · ", the profile's effort or the effort whose bar is lit.
+// The effort between ‹ and › (a Text is found by its text, not its key).
+async function effortLevel(ui: {
+  find: (q: object) => Promise<{ text?: string } | undefined>;
+}) {
+  const levels = /^ (default|low|medium|high|xhigh|max) $/;
+  return (await ui.find({ type: "Text", text: levels }))?.text;
+}
+
+// The model and, after " · ", the profile's effort or the effort set by hand.
 async function runText(ui: {
-  find: (
-    q: object,
-  ) => Promise<{ text?: string; props: Record<string, unknown> } | undefined>;
+  find: (q: object) => Promise<{ text?: string } | undefined>;
 }) {
   const model = (await ui.find({ type: "Text", text: /\d\.\d/ }))?.text;
-  if (model?.includes(" · ")) return model;
-  for (const l of ["low", "medium", "high", "xhigh", "max"]) {
-    const bar = await ui.find({ key: `kit-effort-${l}` });
-    if (bar && !bar.props.dimColor) return `${model} · ${l}`;
-  }
-  return model;
+  const level = (await effortLevel(ui))?.trim();
+  return level && level !== "default" ? `${model} · ${level}` : model;
 }
 
 // The band as the terminal draws it; a press acts as a click does.
@@ -228,7 +230,7 @@ function band($: Parameters<Parameters<typeof test>[1]>[0], on: On) {
   });
 }
 
-test("with the profile off an effort bar sets the effort; pressed again it clears; on, no bars", async ($, on) => {
+test("with the profile off ‹ and › step the effort; with a profile on they hide", async ($, on) => {
   const w = world(on, {
     model: "claude-haiku-5-5",
     label: QUESTION,
@@ -238,15 +240,19 @@ test("with the profile off an effort bar sets the effort; pressed again it clear
   const ui = await band($, on);
   expect(await runText(ui)).toBe("Haiku 5.5");
   expect((await ui.find({ key: "kit-profile" }))?.text).toBe("A");
-  await ui.press({ key: "kit-effort-high" });
-  expect(w.store.effortLock).toBe("high");
-  await ui.press({ key: "kit-effort-high" });
+  await ui.press({ key: "kit-effort-up" }); // default → low
+  await ui.press({ key: "kit-effort-up" }); // → medium
+  expect(w.store.effortLock).toBe("medium");
+  expect((await effortLevel(ui))?.trim()).toBe("medium");
+  await ui.press({ key: "kit-effort-down" });
+  await ui.press({ key: "kit-effort-down" }); // → default
+  await ui.press({ key: "kit-effort-down" }); // stays
   expect(w.store.effortLock).toBe(undefined);
   await ui.press({ key: "kit-profile" }); // Off → Lean
   await ui.press({ key: "kit-profile" }); // → Balanced
   expect(w.store.mode).toBe("balanced");
   expect((await ui.find({ key: "kit-profile" }))?.text).toBe("A·B");
-  expect(await ui.find({ key: "kit-effort-max" })).toBeFalsy();
+  expect(await ui.find({ key: "kit-effort-up" })).toBeFalsy();
   expect(await runText(ui)).toContain("Haiku 5.5");
 });
 
