@@ -201,13 +201,14 @@ test("a stored switch survives a reload: no question on the stronger model", asy
 });
 
 // The model and effort the band shows beside the profile.
-// The model and, after " · ", the effort whose bar is lit.
+// The model and, after " · ", the profile's effort or the effort whose bar is lit.
 async function runText(ui: {
   find: (
     q: object,
   ) => Promise<{ text?: string; props: Record<string, unknown> } | undefined>;
 }) {
   const model = (await ui.find({ type: "Text", text: /\d\.\d/ }))?.text;
+  if (model?.includes(" · ")) return model;
   for (const l of ["low", "medium", "high", "xhigh", "max"]) {
     const bar = await ui.find({ key: `kit-effort-${l}` });
     if (bar && !bar.props.dimColor) return `${model} · ${l}`;
@@ -227,7 +228,7 @@ function band($: Parameters<Parameters<typeof test>[1]>[0], on: On) {
   });
 }
 
-test("an effort bar sets the effort by hand and turns the profile off; pressed again it clears", async ($, on) => {
+test("with the profile off an effort bar sets the effort; pressed again it clears; on, no bars", async ($, on) => {
   const w = world(on, {
     model: "claude-haiku-5-5",
     label: QUESTION,
@@ -245,9 +246,7 @@ test("an effort bar sets the effort by hand and turns the profile off; pressed a
   await ui.press({ key: "kit-profile" }); // → Balanced
   expect(w.store.mode).toBe("balanced");
   expect((await ui.find({ key: "kit-profile" }))?.text).toBe("A·B");
-  await ui.press({ key: "kit-effort-max" });
-  expect(w.store.mode).toBe("off");
-  expect(w.store.effortLock).toBe("max");
+  expect(await ui.find({ key: "kit-effort-max" })).toBeFalsy();
   expect(await runText(ui)).toContain("Haiku 5.5");
 });
 

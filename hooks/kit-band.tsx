@@ -24,14 +24,14 @@ import { openRoadmap } from "./roadmap-open";
 import type { Usage } from "./roadmap-parts";
 import { PANE } from "./roadmap-view";
 
-// The band above the prompt, one line (it wraps only when narrow), an open menu (a bordered
+// The band above the prompt, one line that never wraps, an open menu (a bordered
 // block) above it: shown while the pointer rests on its button, kept open by a press. Left:
 // context and plan usage with the time until each resets (register.tsx measures it after each
 // turn); the context figure is a button opening Compact and Clear, run just after the press.
-// Right: switches a press cycles: the profile
-// (A·L, A·B, A·Q for Lean, Balanced, Quality from auto-model.ts, A dim for off), the model
-// beside it, then the effort as five bars, the running level lit: a press sets it by hand and
-// turns the profile off, the lit bar pressed again gives the session's own back. GPT (on or off, codex-run.ts; a ChatGPT window from half used), the
+// Right: switches a press cycles: the profile (A·L, A·B, A·Q for Lean, Balanced, Quality from
+// auto-model.ts, A dim for off), the model beside it with the profile's effort, or with the
+// profile off the effort as five bars, the level set by hand lit (pressed again: the session's
+// own). GPT (on or off, codex-run.ts; a ChatGPT window from half used), the
 // limit hold (limit-guard.ts): off, Limit (pause at the plan limit, the cache warm while work
 // is open) or Always (also warm while idle, keep-warm.ts), with the pings so far. Then Git (⎇,
 // git-menu.ts) with /commit first and the dashboard pane (▤). The plan-limit pause with Resume
@@ -136,8 +136,8 @@ export function kitBand(on: On) {
     return (
       <Box flexDirection="column">
         {menus}
-        <Box justifyContent="space-between" gap={2} flexWrap="wrap">
-          <Box key="kit-usage" gap={2} flexWrap="wrap">
+        <Box justifyContent="space-between" gap={2}>
+          <Box key="kit-usage" gap={2} flexShrink={1}>
             {trigger(
               "ctx",
               <Button
@@ -154,7 +154,7 @@ export function kitBand(on: On) {
               </Text>
             ))}
           </Box>
-          <Box key="kit-actions" gap={1} flexWrap="wrap">
+          <Box key="kit-actions" gap={1} flexShrink={0}>
             <Button
               key="kit-profile"
               label={run.auto ? `A·${profileName(now).charAt(0)}` : "A"}
@@ -165,26 +165,27 @@ export function kitBand(on: On) {
               }}
             />
             <Text key="kit-run" dimColor>
-              {runLine(run.model, undefined)}
+              {runLine(run.model, run.auto ? run.effort : undefined)}
             </Text>
-            <Box key="kit-effort" gap={0}>
-              {EFFORTS.map((l, i) => (
-                <Button
-                  key={`kit-effort-${l}`}
-                  label={BARS[i]!}
-                  plain
-                  dimColor={run.effort !== l}
-                  onPress={() => {
-                    // A press takes the effort by hand: the profile goes off. The lit bar
-                    // pressed again with the profile off gives the session's own back.
-                    const level = !run.auto && run.effort === l ? undefined : l;
-                    void (run.auto ? setMode($, "off") : Promise.resolve())
-                      .then(() => setEffortLock($, level))
-                      .then(() => $.ui.invalidate("ui.render"));
-                  }}
-                />
-              ))}
-            </Box>
+            {run.auto ? null : (
+              <Box key="kit-effort" gap={0}>
+                {EFFORTS.map((l, i) => (
+                  <Button
+                    key={`kit-effort-${l}`}
+                    label={BARS[i]!}
+                    plain
+                    dimColor={run.effort !== l}
+                    onPress={() => {
+                      // The lit bar pressed again gives the session's own effort back.
+                      const level = run.effort === l ? undefined : l;
+                      void setEffortLock($, level).then(() =>
+                        $.ui.invalidate("ui.render"),
+                      );
+                    }}
+                  />
+                ))}
+              </Box>
+            )}
             <Button
               key="kit-gpt"
               label={gpt ? `GPT${gptTight}` : "GPT off"}

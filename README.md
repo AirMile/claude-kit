@@ -885,7 +885,7 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   These figures measure the integration, not summary quality or guaranteed dollar savings.
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
-- **The band** above the prompt, one line (it wraps when narrow): usage at the left
+- **The band** above the prompt, one line: usage at the left
   (`114k  5h 55% · 2h 53m  7d 12% · 4d 3h`, each limit with the time until it resets), then
   the profile, the model, the effort bars, GPT, the limit button, `⎇` and `▤`
   (the dashboard; `▤ Close` closes it). The context figure and `⎇` open a menu in its own block above the
@@ -893,12 +893,12 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   the running turn ends; **Commit** (runs `/kit:commit`), Diff, Pull, Push, PR, Branch. The
   rest are switches a press cycles, none depending on another:
   - **Profile**: `A·L` → `A·B` → `A·Q` (Lean, Balanced, Quality) → `A` dim (off). Beside it
-    the model kit set for the last prompt (`Opus 5.5`), which can differ from the session
-    setting in the app's model picker; with the profile off you pick the model in that picker.
-  - **Effort**: `▁▃▅▇█` (low, medium, high, xhigh, max), the running level lit. A press sets
-    that level by hand and turns the profile off; it holds over new chats and restarts. The lit
-    bar pressed again gives the session's own effort back. The engine lowers a level the
-    model lacks.
+    the model and effort kit set for the last prompt (`Opus 5.5 · medium`), which can differ
+    from the session setting in the app's model picker.
+  - **Effort**, only with the profile off (you pick the model in the app's picker):
+    `▁▃▅▇█` (low, medium, high, xhigh, max), the level set by hand lit; it holds over new
+    chats and restarts. The lit bar pressed again gives the session's own effort back. The
+    engine lowers a level the model lacks.
   - **GPT**: `GPT` or `GPT off` (may GPT take delegated work). A ChatGPT window from half used
     shows on it (`GPT 5h 62%`).
   - **Limit**: `⏸ Limit` (pause at the plan limit, the cache warm while work is open; the
