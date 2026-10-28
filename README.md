@@ -886,18 +886,19 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt, one line (it wraps when narrow): usage at the left
-  (`ctx 114k  5h 55% · 2h 53m  7d 12% · 4d 3h`, each limit with the time until it resets), then
-  the profile, its model and effort, GPT, the limit button, `⎇` and `▤`
-  (the dashboard; `▤ Close` closes it). **ctx** and `⎇` open a menu in its own block above the
+  (`114k  5h 55% · 2h 53m  7d 12% · 4d 3h`, each limit with the time until it resets), then
+  the profile, the model, the effort bars, GPT, the limit button, `⎇` and `▤`
+  (the dashboard; `▤ Close` closes it). The context figure and `⎇` open a menu in its own block above the
   band (hover to peek, press to keep it open): **Compact** and **Clear**, run at once or when
   the running turn ends; **Commit** (runs `/kit:commit`), Diff, Pull, Push, PR, Branch. The
   rest are switches a press cycles, none depending on another:
-  - **Profile**: `Lean` → `Balanced` → `Quality` → `Profile off`. Beside it the model and
-    effort kit set for the last prompt (`Opus 5.5 · medium`), which can differ from the session
-    setting in the app's model picker. With the profile off you pick the model in that picker,
-    and the model becomes a button opening the effort: a level holds over new chats and
-    restarts until **Default** (the session's own effort); the engine lowers a level the model
-    lacks.
+  - **Profile**: `A·L` → `A·B` → `A·Q` (Lean, Balanced, Quality) → `A` dim (off). Beside it
+    the model kit set for the last prompt (`Opus 5.5`), which can differ from the session
+    setting in the app's model picker; with the profile off you pick the model in that picker.
+  - **Effort**: `▁▃▅▇█` (low, medium, high, xhigh, max), the running level lit. A press sets
+    that level by hand and turns the profile off; it holds over new chats and restarts. The lit
+    bar pressed again gives the session's own effort back. The engine lowers a level the
+    model lacks.
   - **GPT**: `GPT` or `GPT off` (may GPT take delegated work). A ChatGPT window from half used
     shows on it (`GPT 5h 62%`).
   - **Limit**: `⏸ Limit` (pause at the plan limit, the cache warm while work is open; the
@@ -1033,7 +1034,7 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   turn, sleep included; a ping's own turn does not reset them.
 
 - **`/band`** draws the band above the prompt again; folded (`[+]`)? `ctrl+x ctrl+a` unfolds it.
-- **Usage**: `ctx 114k  5h 55% · 2h 53m  7d 75% · 4d 3h` at the band's left: context, then the
+- **Usage**: `114k  5h 55% · 2h 53m  7d 75% · 4d 3h` at the band's left: context, then the
   5-hour and 7-day limits, each with the time until it resets; updated after
   every turn.
 

@@ -1,17 +1,15 @@
 import type { EngineInterface } from "claude-code";
 
 import { GIT_ITEMS, gitAction } from "./git-menu";
-import { EFFORTS } from "./model-policy";
-import { reset, setEffortLock } from "./model-switch";
+import { reset } from "./model-switch";
 
-// The band's menus (kit-band.tsx draws and opens them): the effort (with the profile off), the
-// context (Compact, Clear) and Git, each a row of choices beside its name.
+// The band's menus (kit-band.tsx draws and opens them): the context (Compact, Clear) and Git,
+// each a row of choices beside its name.
 
-export type Menu = "effort" | "ctx" | "git";
+export type Menu = "ctx" | "git";
 
 export type MenuState = {
   ui: ReturnType<EngineInterface["ui"]["resolve"]>;
-  effort: string | undefined;
   done: () => void;
 };
 
@@ -39,28 +37,7 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
   );
 
   let body = null;
-  if (m === "effort") {
-    const levels = ["default", ...EFFORTS] as const;
-    body = (
-      <Box flexDirection="column" flexGrow={1} gap={1}>
-        {line(
-          "Effort",
-          levels.map((l) => (
-            <Button
-              key={`kit-effort-${l}`}
-              label={l === "default" ? "Default" : l}
-              dimColor={(s.effort ?? "default") !== l}
-              onPress={() => {
-                void setEffortLock($, l === "default" ? undefined : l).then(
-                  done,
-                );
-              }}
-            />
-          )),
-        )}
-      </Box>
-    );
-  } else if (m === "ctx") {
+  if (m === "ctx") {
     body = (
       <Box flexDirection="column" flexGrow={1} gap={1}>
         {line("Context", [

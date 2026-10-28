@@ -12,7 +12,14 @@ import {
   warmCommandRun,
 } from "./limit-guard";
 import { type Hold, nextHold } from "./limit-policy";
-import { type Mode, PROFILES, profileName, runLine } from "./model-policy";
+import {
+  EFFORTS,
+  type Mode,
+  PROFILES,
+  profileName,
+  runLine,
+} from "./model-policy";
+import { setEffortLock } from "./model-switch";
 import { openRoadmap } from "./roadmap-open";
 import type { Usage } from "./roadmap-parts";
 import { PANE } from "./roadmap-view";
@@ -22,9 +29,9 @@ import { PANE } from "./roadmap-view";
 // context and plan usage with the time until each resets (register.tsx measures it after each
 // turn); the context figure is a button opening Compact and Clear, run just after the press.
 // Right: switches a press cycles: the profile
-// (Lean, Balanced, Quality from auto-model.ts, Off), its model and effort beside it (with the
-// profile off a button opening the effort, Default: the session's own; the model is then the
-// app's own picker's), GPT (on or off, codex-run.ts; a ChatGPT window from half used), the
+// (A·L, A·B, A·Q for Lean, Balanced, Quality from auto-model.ts, A dim for off), the model
+// beside it, then the effort as five bars, the running level lit: a press sets it by hand and
+// turns the profile off, the lit bar pressed again gives the session's own back. GPT (on or off, codex-run.ts; a ChatGPT window from half used), the
 // limit hold (limit-guard.ts): off, Limit (pause at the plan limit, the cache warm while work
 // is open) or Always (also warm while idle, keep-warm.ts), with the pings so far. Then Git (⎇,
 // git-menu.ts) with /commit first and the dashboard pane (▤). The plan-limit pause with Resume
@@ -40,6 +47,8 @@ export const bandCommand: CommandSpec = {
 // A GPT window on the GPT switch is noise until half of it is used.
 const NOTE_FROM = 50;
 const MODES: readonly Mode[] = [...PROFILES, "off"];
+// One bar per effort level, lowest first, as model-policy.ts's EFFORTS.
+const BARS = ["▁", "▃", "▅", "▇", "█"];
 
 const HOLD_LABEL: Record<Hold, string> = {
   off: "⏸ Off",
@@ -84,24 +93,25 @@ export function kitBand(on: On) {
 
     const state = {
       ui: $.ui.resolve(e),
-      effort: run.effort,
       done,
     };
 
     // Each menu is drawn: the pressed one open, the others hidden until the pointer rests on
     // their button (or on the menu itself), which shares its hover scope. A press still opens
     // it for the keyboard.
-    const MENUS: Menu[] = ["effort", "ctx", "git"];
+    const MENUS: Menu[] = ["ctx", "git"];
     const menus = MENUS.map((m) => {
       const body = menuBody($, m, state);
       if (!body) return null;
       const open = menu === m;
       // The blank line below the block belongs to the hovered Box (padding, not margin), so the
-      // pointer crossing it from the button keeps the menu shown.
+      // pointer crossing it from the button keeps the menu shown. Each block sits above its
+      // button's side: the context menu left, Git right.
       return (
         <Box
           key={`kit-menu-${m}`}
           flexDirection="column"
+          alignItems={m === "ctx" ? "flex-start" : "flex-end"}
           paddingBottom={1}
           display={open ? "flex" : "none"}
           hover={open ? undefined : { scope: `kit-${m}`, display: "flex" }}
@@ -132,7 +142,7 @@ export function kitBand(on: On) {
               "ctx",
               <Button
                 key="kit-ctx"
-                label={ctx ? `ctx ${ctx.value}` : "ctx"}
+                label={ctx ? ctx.value : "–"}
                 onPress={() => unfold($, "ctx")}
               />,
             )}
@@ -147,25 +157,34 @@ export function kitBand(on: On) {
           <Box key="kit-actions" gap={1} flexWrap="wrap">
             <Button
               key="kit-profile"
-              label={run.auto ? profileName(now) : "Profile off"}
+              label={run.auto ? `A·${profileName(now).charAt(0)}` : "A"}
               dimColor={!run.auto}
               onPress={() => {
                 const after = MODES[(MODES.indexOf(now) + 1) % MODES.length]!;
                 void setMode($, after).then(() => $.ui.invalidate("ui.render"));
               }}
             />
-            {run.auto ? (
-              <Text dimColor>{runLine(run.model, run.effort)}</Text>
-            ) : (
-              trigger(
-                "effort",
+            <Text key="kit-run" dimColor>
+              {runLine(run.model, undefined)}
+            </Text>
+            <Box key="kit-effort" gap={0}>
+              {EFFORTS.map((l, i) => (
                 <Button
-                  key="kit-run"
-                  label={runLine(run.model, run.effort)}
-                  onPress={() => unfold($, "effort")}
-                />,
-              )
-            )}
+                  key={`kit-effort-${l}`}
+                  label={BARS[i]!}
+                  plain
+                  dimColor={run.effort !== l}
+                  onPress={() => {
+                    // A press takes the effort by hand: the profile goes off. The lit bar
+                    // pressed again with the profile off gives the session's own back.
+                    const level = !run.auto && run.effort === l ? undefined : l;
+                    void (run.auto ? setMode($, "off") : Promise.resolve())
+                      .then(() => setEffortLock($, level))
+                      .then(() => $.ui.invalidate("ui.render"));
+                  }}
+                />
+              ))}
+            </Box>
             <Button
               key="kit-gpt"
               label={gpt ? `GPT${gptTight}` : "GPT off"}
