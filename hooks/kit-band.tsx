@@ -168,7 +168,7 @@ export function kitBand(on: On) {
               <Text key={`kit-usage-${u.label}`} wrap="truncate-end">
                 <Text dimColor>{`${u.label} `}</Text>
                 <Text bold>{u.value}</Text>
-                {u.note ? <Text dimColor>{`·${u.note}`}</Text> : null}
+                {u.note ? <Text dimColor>{` ${u.note}`}</Text> : null}
               </Text>
             ))}
           </Box>
