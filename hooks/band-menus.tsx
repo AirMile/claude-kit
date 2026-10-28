@@ -110,6 +110,16 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
     body = (
       <Box flexDirection="column" flexGrow={1} gap={1}>
         {line("Git", [
+          ...GIT_ITEMS.map((g) => (
+            <Button
+              key={`kit-git-${g}`}
+              label={g}
+              onPress={() => {
+                done();
+                void gitAction($, g);
+              }}
+            />
+          )),
           <Button
             key="kit-git-Commit"
             label="✓ Commit"
@@ -122,16 +132,6 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
                 );
             }}
           />,
-          ...GIT_ITEMS.map((g) => (
-            <Button
-              key={`kit-git-${g}`}
-              label={g}
-              onPress={() => {
-                done();
-                void gitAction($, g);
-              }}
-            />
-          )),
         ])}
       </Box>
     );

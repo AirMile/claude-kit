@@ -5,7 +5,8 @@ import type { EngineInterface } from "claude-code";
 // push, so a click on Push is a request, not a bypass. Branch needs a name: it fills the
 // prompt box for the person to finish.
 
-export const GIT_ITEMS = ["Diff", "Pull", "Push", "PR", "Branch"] as const;
+// Left to right: least used first, most used at the right (Commit, in band-menus.tsx, is last).
+export const GIT_ITEMS = ["Branch", "PR", "Diff", "Pull", "Push"] as const;
 export type GitItem = (typeof GIT_ITEMS)[number];
 
 const PROMPTS: Record<Exclude<GitItem, "Branch">, string> = {

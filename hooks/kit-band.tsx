@@ -36,7 +36,7 @@ import { PANE } from "./roadmap-view";
 // profile (◔ ◑ ● for Lean, Balanced, Quality from auto-model.ts, ○ dim for off), GPT (on or off, codex-run.ts), the
 // limit hold (limit-guard.ts): off, Limit (pause at the plan limit, the cache warm while work
 // is open) or Warm (also warm while idle, keep-warm.ts), with the pings so far. Then Git (⎇,
-// git-menu.ts) with /commit first and the skills menu (▤: kit's skills by stage on hover; a press opens or closes the
+// git-menu.ts) with /commit at the right (most used) and the rest by use to the left and the skills menu (▤: kit's skills by stage on hover; a press opens or closes the
 // dashboard pane). The plan-limit pause with Resume
 // now (limit-guard.ts) follows on its own line. It yields to a survey. /band draws it again;
 // /warm toggles the hold's keep warm.
