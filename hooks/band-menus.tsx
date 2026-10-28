@@ -145,25 +145,11 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
       />
     );
     body = (
-      <Box flexDirection="column" flexGrow={1} gap={1}>
-        <Box gap={3} flexWrap="wrap">
-          {STAGES.map(([name, skills]) => (
-            <Box key={`kit-stage-${name}`} flexDirection="column">
-              <Text dimColor>{name}</Text>
-              <Box gap={1} flexWrap="wrap">
-                {[
-                  ...(name === "Plan" && !s.isSetUp
-                    ? [skill("setup", "Setup", "kit:setup")]
-                    : []),
-                  ...skills.map(([k, l, c, a]) => skill(k, l, c, a)),
-                ]}
-              </Box>
-            </Box>
-          ))}
-        </Box>
+      <Box flexDirection="column" flexGrow={1}>
         {line("Panel", [
           <Button
             key="kit-dashboard"
+            variant="primary"
             label={s.isOpen ? "▤ Close dashboard" : "▤ Open dashboard"}
             onPress={() => {
               done();
@@ -171,6 +157,14 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
             }}
           />,
         ])}
+        {STAGES.map(([name, skills]) =>
+          line(name, [
+            ...(name === "Plan" && !s.isSetUp
+              ? [skill("setup", "Setup", "kit:setup")]
+              : []),
+            ...skills.map(([k, l, c, a]) => skill(k, l, c, a)),
+          ]),
+        )}
       </Box>
     );
   }
