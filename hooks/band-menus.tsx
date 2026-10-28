@@ -58,8 +58,15 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
   const { Box, Button, Text } = s.ui;
   const { done } = s;
   // A line of a menu: its name in a narrow column, its choices beside it.
-  const line = (name: string, items: unknown[]) => (
-    <Box key={`kit-line-${name}`} gap={1}>
+  // The skills' rows are three cells high: a button draws taller than one cell row, so a
+  // shorter row lets the buttons of neighbouring rows touch.
+  const line = (name: string, items: unknown[], tall = false) => (
+    <Box
+      key={`kit-line-${name}`}
+      gap={1}
+      minHeight={tall ? 3 : undefined}
+      alignItems={tall ? "center" : undefined}
+    >
       <Box width={8} flexShrink={0}>
         <Text dimColor>{name}</Text>
       </Box>
@@ -130,7 +137,7 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
       <Button
         key={`kit-skill-${key}`}
         label={label}
-        variant={key === "setup" ? "primary" : "secondary"}
+        variant="secondary"
         onPress={() => {
           done();
           soon($, async () => {
@@ -146,25 +153,28 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
     );
     body = (
       <Box flexDirection="column" flexGrow={1} gap={1}>
+        {STAGES.map(([name, skills]) =>
+          line(
+            name,
+            [
+              ...(name === "Plan" && !s.isSetUp
+                ? [skill("setup", "Setup", "kit:setup")]
+                : []),
+              ...skills.map(([k, l, c, a]) => skill(k, l, c, a)),
+            ],
+            true,
+          ),
+        )}
         {line("Panel", [
           <Button
             key="kit-dashboard"
-            variant="primary"
             label={s.isOpen ? "▤ Close dashboard" : "▤ Open dashboard"}
             onPress={() => {
               done();
               s.toggleDashboard();
             }}
           />,
-        ])}
-        {STAGES.map(([name, skills]) =>
-          line(name, [
-            ...(name === "Plan" && !s.isSetUp
-              ? [skill("setup", "Setup", "kit:setup")]
-              : []),
-            ...skills.map(([k, l, c, a]) => skill(k, l, c, a)),
-          ]),
-        )}
+        ], true)}
       </Box>
     );
   }
