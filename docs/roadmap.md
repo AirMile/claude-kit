@@ -10,4 +10,8 @@
 
 - [x] **native-compaction** · preserve task continuity through native compaction · spec: docs/specs/native-compaction.md
 
+## v0.15.50 · plan usage
+
+- [ ] **window-sync** · start ChatGPT's 5h window together with Claude's · spec: docs/specs/window-sync.md
+
 ## Later
