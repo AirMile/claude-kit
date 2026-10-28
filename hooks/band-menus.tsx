@@ -58,13 +58,13 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
   const { Box, Button, Text } = s.ui;
   const { done } = s;
   // A line of a menu: its name in a narrow column, its choices beside it.
-  // The skills' rows are three cells high: a button draws taller than one cell row, so a
-  // shorter row lets the buttons of neighbouring rows touch.
+  // The skills' rows are two cells high: a button draws taller than one cell row, so a
+  // one-cell row lets the buttons of neighbouring rows touch.
   const line = (name: string, items: unknown[], tall = false) => (
     <Box
       key={`kit-line-${name}`}
       gap={1}
-      minHeight={tall ? 3 : undefined}
+      minHeight={tall ? 2 : undefined}
       alignItems={tall ? "center" : undefined}
     >
       <Box width={8} flexShrink={0}>
@@ -152,7 +152,7 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
       />
     );
     body = (
-      <Box flexDirection="column" flexGrow={1} gap={1}>
+      <Box flexDirection="column" flexGrow={1}>
         {STAGES.map(([name, skills]) =>
           line(
             name,
