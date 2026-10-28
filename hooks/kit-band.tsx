@@ -2,6 +2,8 @@ import type { CommandSpec, EngineInterface, On } from "claude-code";
 
 import { getMode, runState, setMode } from "./auto-model";
 import { type Menu, menuBody } from "./band-menus";
+import { METERS_SCOPE, meterCard, meterLine, meterRows } from "./band-meters";
+import { balance } from "./balance";
 import { gptOn, setGptOn } from "./codex-run";
 import { warmInfo } from "./keep-warm";
 import {
@@ -28,11 +30,11 @@ import { PANE } from "./roadmap-view";
 
 // The band above the prompt, one line that never wraps, an open menu (a bordered
 // block) above it: shown while the pointer rests on its button, kept open by a press. Left:
-// context and plan usage with the time until each resets (register.tsx measures it after each
-// turn); the context figure is a button opening Compact and Clear, run just after the press.
+// context and plan usage, Claude's share with ChatGPT's beside it and the times until reset in
+// a card on hover (band-meters.tsx; register.tsx measures it after each turn); the context figure is a button opening Compact and Clear, run just after the press.
 // Right: the model with the profile's effort, or with the profile off the effort between ‹
 // and ›, a step down or up (below low: the session's own); then switches a press cycles: the
-// profile (A·L, A·B, A·Q for Lean, Balanced, Quality from auto-model.ts, A dim for off), GPT (on or off, codex-run.ts; a ChatGPT window from half used), the
+// profile (A·L, A·B, A·Q for Lean, Balanced, Quality from auto-model.ts, A dim for off), GPT (on or off, codex-run.ts), the
 // limit hold (limit-guard.ts): off, Limit (pause at the plan limit, the cache warm while work
 // is open) or Warm (also warm while idle, keep-warm.ts), with the pings so far. Then Git (⎇,
 // git-menu.ts) with /commit first and the skills menu (▤: kit's skills by stage on hover; a press opens or closes the
@@ -42,12 +44,11 @@ import { PANE } from "./roadmap-view";
 
 export const bandCommand: CommandSpec = {
   name: "band",
-  description: "Show kit's band above the prompt (usage, run, git, skills, dashboard)",
+  description:
+    "Show kit's band above the prompt (usage, run, git, skills, dashboard)",
   immediate: true,
 };
 
-// A GPT window on the GPT switch is noise until half of it is used.
-const NOTE_FROM = 50;
 const MODES: readonly Mode[] = [...PROFILES, "off"];
 // The effort steps ‹ and › walk with the profile off: the session's own, then low to max.
 const LEVELS: readonly (Effort | undefined)[] = [undefined, ...EFFORTS];
@@ -74,7 +75,8 @@ function unfold($: EngineInterface, next: Menu | null) {
 export function kitBand(on: On) {
   on("ui.render", { component: "AbovePrompt" }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e);
-    const { Box, Button, Text } = $.ui.resolve(e);
+    const ui = $.ui.resolve(e);
+    const { Box, Button, Text } = ui;
     const panes = await $.ui.panes().catch(() => []);
     const isOpen = panes.some((p) => p.id === PANE && p.isPlaced);
     const now = await getMode($);
@@ -83,25 +85,25 @@ export function kitBand(on: On) {
     const hold = await getHold($);
     const gpt = await gptOn($);
     const ctx = usage.find((u) => u.label === "ctx");
-    const meters = usage.filter((u) => u !== ctx && !u.label.startsWith("gpt"));
-    const gptTight = usage
-      .filter((u) => u.label.startsWith("gpt") && u.pct >= NOTE_FROM)
-      .map((u) => ` ${u.label.slice(4)} ${u.value}`)
-      .join("");
+    const rows = meterRows(usage);
     const done = () => unfold($, null);
     // With the profile off, ‹ and › move the hand-set effort one level.
     const at = LEVELS.indexOf(run.effort as Effort | undefined);
     const step = (by: number) => {
       const to = at + by;
       if (to < 0 || to >= LEVELS.length) return;
-      void setEffortLock($, LEVELS[to]).then(() => $.ui.invalidate("ui.render"));
+      void setEffortLock($, LEVELS[to]).then(() =>
+        $.ui.invalidate("ui.render"),
+      );
     };
     const close = (
       <Button key="kit-menu-close" label="×" dimColor onPress={done} />
     );
 
     const root = await $.session.root();
-    const isSetUp = await $.fs.exists(inRoot(root, "AGENTS.md")).catch(() => true);
+    const isSetUp = await $.fs
+      .exists(inRoot(root, "AGENTS.md"))
+      .catch(() => true);
     const toggleDashboard = () => {
       const toggle = isOpen ? $.ui.close({ id: PANE }) : openRoadmap($);
       void toggle.then(() => $.ui.invalidate("ui.render"));
@@ -153,6 +155,7 @@ export function kitBand(on: On) {
 
     return (
       <Box flexDirection="column">
+        {meterCard(ui, rows, balance(await $.clock.now()).band)}
         {menus}
         <Box justifyContent="space-between" gap={2}>
           <Box key="kit-usage" gap={2} flexShrink={1}>
@@ -164,13 +167,13 @@ export function kitBand(on: On) {
                 onPress={() => unfold($, "ctx")}
               />,
             )}
-            {meters.map((u) => (
-              <Text key={`kit-usage-${u.label}`} wrap="truncate-end">
-                <Text dimColor>{`${u.label} `}</Text>
-                <Text bold>{u.value}</Text>
-                {u.note ? <Text dimColor>{` ${u.note}`}</Text> : null}
-              </Text>
-            ))}
+            <Box
+              key="kit-meters"
+              gap={2}
+              hover={{ scope: METERS_SCOPE, backgroundColor: "#1e293b" }}
+            >
+              {meterLine(ui, rows)}
+            </Box>
           </Box>
           <Box key="kit-actions" gap={1} flexShrink={0}>
             <Text key="kit-run" dimColor>
@@ -206,7 +209,7 @@ export function kitBand(on: On) {
             />
             <Button
               key="kit-gpt"
-              label={gpt ? `GPT${gptTight}` : "GPT off"}
+              label={gpt ? "GPT" : "GPT off"}
               dimColor={!gpt}
               onPress={() => {
                 void setGptOn($, !gpt).then(() => $.ui.invalidate("ui.render"));
