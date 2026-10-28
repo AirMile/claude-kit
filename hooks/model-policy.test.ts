@@ -102,9 +102,9 @@ test("only the three profiles and off are modes", async () => {
 });
 
 test("the band's run line names the model and the effort once known", async () => {
-  expect(runLine("claude-opus-5-5[1m]", "medium")).toBe("Opus 5.5 · med");
-  expect(runLine("claude-opus-5-5", "xhigh")).toBe("Opus 5.5 · xhi");
-  expect(runLine("claude-opus-5-5", "high")).toBe("Opus 5.5 · hi");
+  expect(runLine("claude-opus-5-5[1m]", "medium")).toBe("Opus 5.5 · m");
+  expect(runLine("claude-opus-5-5", "xhigh")).toBe("Opus 5.5 · xh");
+  expect(runLine("claude-opus-5-5", "high")).toBe("Opus 5.5 · h");
   expect(runLine("claude-opus-5-5", "max")).toBe("Opus 5.5 · max");
   expect(runLine("claude-haiku-5-5", undefined)).toBe("Haiku 5.5");
 });

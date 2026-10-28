@@ -86,7 +86,7 @@ export function kitBand(on: On) {
     const hold = await getHold($);
     const gpt = await gptOn($);
     const ctx = usage.find((u) => u.label === "ctx");
-    const rows = meterRows(usage);
+    const rows = meterRows(usage, gpt);
     const done = () => unfold($, null);
     // With the profile off, ‹ and › move the hand-set effort one level.
     const at = LEVELS.indexOf(run.effort as Effort | undefined);
@@ -156,7 +156,7 @@ export function kitBand(on: On) {
 
     return (
       <Box flexDirection="column">
-        {meterCard(ui, rows, balance(await $.clock.now()).band)}
+        {gpt ? meterCard(ui, rows, balance(await $.clock.now()).band) : null}
         {menus}
         <Box justifyContent="space-between" gap={2}>
           <Box key="kit-usage" gap={2} flexShrink={1}>
@@ -171,7 +171,11 @@ export function kitBand(on: On) {
             <Box
               key="kit-meters"
               gap={2}
-              hover={{ scope: METERS_SCOPE, backgroundColor: "#1e293b" }}
+              hover={
+                gpt
+                  ? { scope: METERS_SCOPE, backgroundColor: "#1e293b" }
+                  : undefined
+              }
             >
               {meterLine(ui, rows)}
             </Box>

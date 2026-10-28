@@ -5,7 +5,7 @@ import type { Usage } from "./roadmap-parts";
 
 // The band's plan meters: per window Claude's share, ChatGPT's dim beside it and Claude's time
 // until reset (`5h 30%·2% 3h29m`); both plans' resets and the balance in a card above the band
-// while the pointer rests on the meters.
+// while the pointer rests on the meters. With GPT off: Claude's share only, and no card.
 
 type Ui = ReturnType<EngineInterface["ui"]["resolve"]>;
 export type MeterRow = { label: string; claude?: Usage; gpt?: Usage };
@@ -13,12 +13,12 @@ export type MeterRow = { label: string; claude?: Usage; gpt?: Usage };
 export const METERS_SCOPE = "kit-meters";
 const WINDOWS = ["5h", "wk"] as const;
 
-// The two windows, each with whichever plan reported it.
-export function meterRows(usage: readonly Usage[]): MeterRow[] {
+// The two windows, each with whichever plan reported it; with GPT off, Claude's alone.
+export function meterRows(usage: readonly Usage[], gptOn = true): MeterRow[] {
   return WINDOWS.map((label) => ({
     label,
     claude: usage.find((u) => u.label === label),
-    gpt: usage.find((u) => u.label === `gpt ${label}`),
+    gpt: gptOn ? usage.find((u) => u.label === `gpt ${label}`) : undefined,
   })).filter((r) => r.claude || r.gpt);
 }
 
