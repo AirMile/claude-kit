@@ -1,6 +1,7 @@
 import type { CommandSpec, EngineInterface, On } from "claude-code";
 
 import { checkOf, checkPassed } from "./flow-check";
+import { promptLevels, raiseLevels, showLevels } from "./flow-levels";
 import { classifyPrompt } from "./flow-prompt";
 import {
   endEntry,
@@ -37,8 +38,9 @@ import { readTurn } from "./read-watch";
 // (auto-model.ts), edits, turn ends and compactions (register.tsx, compaction.ts), shell
 // checks (below), the verifier's answer (fresh-start.ts's turn.complete) and GPT's changes
 // (delegate.ts). The worktree's git fingerprint is the evidence; the task is kept per session
-// in $.store, so a reload or restart keeps it. It sends the track's notes, holds a turn that
-// ends on unchecked changes, and logs it all for 14 days.
+// in $.store, so a reload or restart keeps it. It sends the track's notes and task-policy's
+// decision (its levels on the task and in the band), holds a turn that ends on unchecked
+// changes, and logs it all for 14 days.
 
 export const flowCommand: CommandSpec = {
   name: "flow",
@@ -62,6 +64,15 @@ async function load($: EngineInterface) {
   if (loadedFor === id) return;
   loadedFor = id;
   task = await loadTask($, id);
+  showLevels(task?.levels);
+}
+
+// Flow growth or a failing check: the open task's levels go up, with the note for it.
+async function raise($: EngineInterface, why: string) {
+  if (!task) return undefined;
+  const raised = await raiseLevels($, task.levels, task.id, why);
+  if (raised) task = { ...task, levels: raised.levels };
+  return raised?.note;
 }
 
 async function save($: EngineInterface) {
@@ -89,9 +100,16 @@ export async function flowPrompt(
   const p = await worktreePrint($);
   promptPrint = p;
   const build = BUILD.test(text);
-  // A short reply ("ja") continues an open task; without one it is a request of its own.
-  const thin = !!task && isThin(text);
-  const { change, note } = await classifyPrompt($, text, kind, build, thin);
+  // A short reply ("ja") continues an open task; without one it is a request of its own, and
+  // so is /build, however short.
+  const thin = !!task && !build && isThin(text);
+  const { change, verify, explore, ready } = await classifyPrompt(
+    $,
+    text,
+    kind,
+    build,
+    thin,
+  );
   const step = onPrompt({
     task,
     kind,
@@ -107,6 +125,21 @@ export async function flowPrompt(
   if (step.ended)
     await log($, endEntry(step.ended, ending(step.ended, p), now));
   task = step.task;
+  const kept = step.event === "continue" || step.event === "escalate";
+  const decided = await promptLevels($, {
+    text,
+    kind,
+    change,
+    verify,
+    explore,
+    ready,
+    build,
+    thin,
+    prev: kept ? task?.levels : undefined,
+    grew: step.event === "escalate",
+    task: task?.id,
+  });
+  if (task && decided.levels) task = { ...task, levels: decided.levels };
   await save($);
   if (step.event === "start" || step.event === "escalate")
     await log($, {
@@ -119,7 +152,7 @@ export async function flowPrompt(
       reason:
         step.event === "escalate" ? "the prompt asked for more" : undefined,
     });
-  return [step.note, note].filter(Boolean).join("\n") || undefined;
+  return [step.note, decided.note].filter(Boolean).join("\n") || undefined;
 }
 
 // A file written or edited, by this chat or one of its subagents: the note for the tool's
@@ -152,7 +185,10 @@ export async function flowEdit(
     track: task.track,
     reason: `${task.files.length} files`,
   });
-  return fromAgent ? undefined : step.note;
+  const raised = await raise($, `grew to ${task.track}`);
+  await save($);
+  if (fromAgent) return undefined;
+  return raised ? `${step.note}\n${raised}` : step.note;
 }
 
 // GPT changed files through mcp__kit__delegate: they count as this chat's changes.
@@ -242,6 +278,7 @@ export async function resetFlow($: EngineInterface) {
   await load($);
   if (task) await log($, endEntry(task, "reset", await $.clock.now()));
   task = undefined;
+  showLevels(undefined);
   promptPrint = undefined;
   endedOnQuestion = false;
   await save($);
@@ -257,14 +294,15 @@ export function flow(on: On) {
     const startPrint = watch ? await worktreePrint($) : undefined;
     const ran = await next(e);
     if (!watch || !check || ran.deny !== undefined || !task) return ran;
-    task = onCheck(
-      task,
-      checkPassed(check, ran.isError === true, ran.text ?? ""),
-      startedAt,
-      startPrint,
-    );
+    const passed = checkPassed(check, ran.isError === true, ran.text ?? "");
+    task = onCheck(task, passed, startedAt, startPrint);
+    // The task's first failing check raises its levels once; later ones are the same work.
+    const note =
+      !passed && task.failed === 1
+        ? await raise($, "a failing check")
+        : undefined;
     await save($);
-    return ran;
+    return note ? { ...ran, context: [...(ran.context ?? []), note] } : ran;
   });
 
   on("command.run", { command: "flow" }, async ($, e) => {

@@ -690,6 +690,10 @@ Without the tool (in Codex itself, or an older kit) the skill runs `codex exec` 
 the models from `scripts/codex-status.js`. GPT models are named by family and the newest version
 in Codex's own catalog is used, so a new release (Terra 6.1, say) is picked up without a kit
 update. Needed per device: the Codex CLI installed and `codex login` done once, with ChatGPT.
+kit checks this by itself: it looks for Codex in the usual install places (Homebrew, npm, bun, the
+Codex app), not only on the PATH; tells apart "not installed" from "not logged in" in a toast and
+in `/gpt`; and looks again every 30 seconds until Codex is ready, so installing it mid-session
+needs no restart.
 
 ### /launch
 
@@ -980,10 +984,34 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
 
   Flow is always on: there is no switch. `/flow` reports 14 days: tasks per first pick, how many grew after it (too light?) or ended
   heavy with two files or fewer and no spec (too heavy?), holds, how tasks ended (verified,
-  unresolved, unverified), and the last ten picks and holds, numbered. `/flow mark 3
-  too-light` (or `too-heavy`, `hold-right`, `hold-wrong`) adds your judgment, which counts
+  unresolved, unverified), and the last ten picks and holds, numbered.
+  `/flow mark 3 too-light` (or `too-heavy`, `hold-right`, `hold-wrong`) adds your judgment, which counts
   alone can't give. Flow stays off the band; `/flow` shows its tasks.
-- **Delegation**: flow's notes (and `/build`) hand self-contained work to the tool
+
+  **Task systems**: next to the track, every typed prompt gets a level per system, from the
+  same classifiers plus one for what it needs verified (cosmetic, behaviour, shared code,
+  risky: migration, auth, data loss), shown in the band as `D1 E1 V1`:
+
+  ```
+  Define   D0 answer directly   D1 goal, bounds, testable outcome   D2 GPT researches
+           first (also planning and heavy work)   D3 two blind proposals, Sol and Astra
+  Execute  E0 here (a one-line tweak, an answer)   E1 one GPT worker (default)
+           E2 a stronger worker, split briefs   E3 parallel analysis, one writer
+  Verify   V0 the answer's sources   V1 a covering check or a visual look
+           V2 + a review by the other family   V3 adversarial: failure paths, integration
+  Refactor R0 (this increment always)
+  ```
+
+  One note says the levels, who executes, the next step and the evidence; it is the only place
+  that hands work to `mcp__kit__delegate`. No note for all-zero levels or a short reply (it
+  keeps the open task's levels). "Met z'n drieën", "laat sol en astra meedenken" or "council"
+  sets D3 for that prompt. Budget lowers Execute and parallelism, never Verify: no GPT room →
+  E0, no room for an Astra run (about 18 points of GPT's 5h window) → D2, with the reason in
+  the note. The task growing or its first failing check raises E and V by one. Each decision
+  is logged with both 5h meters; `/flow` shows the counts per level and how many E1+
+  decisions saw a GPT run before the next one.
+
+- **Delegation**: flow's decision note (and `/build`) hands self-contained work to the tool
   `mcp__kit__delegate` with a role. The mod picks Claude or GPT by role and by which plan has
   room, on the newest model per family:
 
@@ -1011,6 +1039,7 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   for you), hands self-contained criteria to `build`, and adds a review by the other family to
   its verify step. Not free: the brief, the report and the diff review still cost Claude
   tokens, so it pays off for work with many steps, not for a one-line fix.
+
 - **/gpt**: the newest model per family and the ChatGPT meters; `/gpt on` and `/gpt off` set
   the GPT switch. `/gpt pin terra gpt-5.6-terra`
   holds a family on a version (a new release that disappoints); `/gpt unpin terra` lets go.

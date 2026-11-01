@@ -4,6 +4,7 @@ import { getMode, runState, setMode } from "./auto-model";
 import { type Menu, menuBody } from "./band-menus";
 import { meterLine, meterRows } from "./band-meters";
 import { gptOn, setGptOn } from "./codex-run";
+import { flowLevels } from "./flow-levels";
 import { warmInfo } from "./keep-warm";
 import {
   getHold,
@@ -91,6 +92,7 @@ export function kitBand(on: On) {
     const pause = await limitInfo($);
     const hold = await getHold($);
     const gpt = await gptOn($);
+    const levels = flowLevels(); // task-policy's last decision
     const ctx = usage.find((u) => u.label === "ctx");
     const rows = meterRows(usage, gpt);
     const done = () => unfold($, null);
@@ -184,6 +186,11 @@ export function kitBand(on: On) {
             </Box>
           </Box>
           <Box key="kit-actions" gap={1} flexShrink={0}>
+            {levels ? (
+              <Text key="kit-levels" dimColor>
+                {levels}
+              </Text>
+            ) : null}
             {run.auto ? null : (
               <Box key="kit-effort" gap={0}>
                 <Button
@@ -195,8 +202,7 @@ export function kitBand(on: On) {
                 />
                 <Text key="kit-effort-level">
                   {" "}
-                  {run.effort ? cell(run.effort) : "default"}
-                  {" "}
+                  {run.effort ? cell(run.effort) : "default"}{" "}
                 </Text>
                 <Button
                   key="kit-effort-up"

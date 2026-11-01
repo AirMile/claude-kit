@@ -1,4 +1,10 @@
-import { band, gptTight, lean, type Band, type Meters } from "./delegate-policy";
+import {
+  band,
+  gptTight,
+  lean,
+  type Band,
+  type Meters,
+} from "./delegate-policy";
 
 // Shared delegation state, without a dependency on flow or delegate.
 export type MeterState = { meters: Meters; observedAt: number; ok: boolean };
@@ -21,7 +27,17 @@ export function setBalance(next: Balance) {
   current = next;
 }
 
-export function balance(now: number): { ready: boolean; leaning: boolean; band: Band } {
+// The last meters seen, for flow's decision log.
+export const balanceMeters = (): { claude: Meters; gpt: Meters } => ({
+  claude: current.claude.meters,
+  gpt: current.gpt.meters,
+});
+
+export function balance(now: number): {
+  ready: boolean;
+  leaning: boolean;
+  band: Band;
+} {
   const { enabled, claude, gpt } = current;
   if (claude.ok && gpt.ok)
     currentBand = band(currentBand, lean(claude.meters, gpt.meters, now));

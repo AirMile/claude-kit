@@ -4,6 +4,7 @@ import { expect, test } from "claude-code/testing";
 import { EXPLORE_LABELS } from "./explore-first";
 import { CHANGE_LABELS } from "./flow-policy";
 import { LABELS } from "./model-policy";
+import { VERIFY_LABELS } from "./task-policy";
 
 // Drive the installed mod through prompts and tools; never pass the test's $ to a module.
 function world(
@@ -141,43 +142,57 @@ const measure = (percentUsed: number, resetsAt: string) =>
     changed: ["rateLimits"],
   }) as never;
 
-test("an explore note accompanies the flow note and both classifiers see the same input", async ($, on) => {
+test("explore raises Define to D2; all three classifiers see the same input; the decision is logged", async ($, on) => {
   const w = world(on, { explore: true, change: true });
   await $.command.run({ command: "gpt", args: "" });
   await prompt($, "Change the retry handling in this repository");
-  expect(String(w.prompts[0]?.context)).toContain("kit flow (medium)");
-  expect(String(w.prompts[0]?.context)).toContain(
-    "kit: start by handing the exploring",
-  );
+  const context = String(w.prompts[0]?.context);
+  expect(context).toContain("kit flow (medium)");
+  expect(context).toContain("kit task: D2 E1 V1.");
+  expect(context).toContain("role research");
+  expect(context).toContain("role build");
   const classifiers = w.classified.filter(
     (c) =>
       c.labels.includes(EXPLORE_LABELS.explore) ||
-      c.labels.includes(CHANGE_LABELS.none),
+      c.labels.includes(CHANGE_LABELS.none) ||
+      c.labels.includes(VERIFY_LABELS.cosmetic),
   );
-  expect(classifiers.length).toBe(2);
-  expect(classifiers[0]?.text).toBe(classifiers[1]?.text);
+  expect(classifiers.length).toBe(3);
+  expect(new Set(classifiers.map((c) => c.text)).size).toBe(1);
   expect(classifiers.every((c) => c.model === "haiku")).toBe(true);
-  expect(
-    (w.store.flowLog as { event: string }[]).filter(
-      (e) => e.event === "explore-note",
-    ).length,
-  ).toBe(1);
+  const decisions = (
+    w.store.flowLog as { event: string; levels?: string; gpt5h?: number }[]
+  ).filter((e) => e.event === "decision");
+  expect(decisions.length).toBe(1);
+  expect(decisions[0]?.levels).toBe("D2 E1 V1");
+  expect(decisions[0]?.gpt5h).toBe(10);
 });
 
-test("questions explore too; thin replies, build prompts and GPT off do not", async ($, on) => {
+test("questions explore too; thin replies, build prompts and GPT off skip the explore classifier", async ($, on) => {
   const w = world(on, { explore: true });
   await $.command.run({ command: "gpt", args: "" });
+  const explored = () =>
+    w.classified.filter((c) => c.labels.includes(EXPLORE_LABELS.explore))
+      .length;
   await prompt($);
-  expect(String(w.prompts.at(-1)?.context)).toContain(
-    "kit: start by handing the exploring",
-  );
+  expect(String(w.prompts.at(-1)?.context)).toContain("kit task: D2 E0 V0.");
+  expect(explored()).toBe(1);
   await prompt($, "ja");
-  expect(String(w.prompts.at(-1)?.context)).not.toContain("start by handing");
+  expect(String(w.prompts.at(-1)?.context)).not.toContain("kit task");
   await prompt($, "/kit:build retries");
-  expect(String(w.prompts.at(-1)?.context)).not.toContain("start by handing");
+  expect(explored()).toBe(1);
   await $.command.run({ command: "gpt", args: "off" });
   await prompt($);
-  expect(String(w.prompts.at(-1)?.context)).not.toContain("start by handing");
+  expect(explored()).toBe(1);
+  expect(String(w.prompts.at(-1)?.context)).not.toContain("kit task");
+});
+
+test("council asks set D3 for that prompt; without room for Astra it becomes D2", async ($, on) => {
+  const w = world(on, { change: true });
+  await $.command.run({ command: "gpt", args: "" });
+  await prompt($, "Laat sol en astra meedenken over de retry handling");
+  expect(String(w.prompts.at(-1)?.context)).toContain("kit task: D3 E1 V1.");
+  expect(String(w.prompts.at(-1)?.context)).toContain("family astra");
 });
 
 test("read notes preserve tool context, exclude subagents and checks, and reset on a prompt", async ($, on) => {

@@ -33,22 +33,17 @@ const ask = (over: Partial<Parameters<typeof onPrompt>[0]>) =>
 test("a prompt's change picks the track; /build is heavy; a question or none starts nothing", async () => {
   expect(ask({}).task?.track).toBe("light");
   expect(ask({}).task?.basePrint).toBe("p0");
-  expect(ask({}).note).toContain("a one-line tweak: make it here");
-  expect(ask({}).note).toContain(
-    "hand it to mcp__kit__delegate (role build) as one brief",
-  );
+  expect(ask({}).note).toContain("run a check that covers it");
   expect(ask({ change: "heavy" }).note).toContain("Commit or push nothing");
   expect(ask({ build: true, change: undefined }).task?.track).toBe("heavy");
   expect(ask({ kind: "question", change: undefined }).task).toBe(undefined);
-  expect(ask({ kind: "planning", change: "none" }).note).toContain(
-    "role research",
-  );
+  expect(ask({ kind: "planning", change: "none" }).note).toBe(undefined);
   expect(ask({ change: "medium" }).note).toContain(
     "checks that cover the change",
   );
-  expect(ask({ change: "medium" }).note).toContain(
-    "A self-contained piece you can describe up front: hand it to mcp__kit__delegate (role build) and review its diff here.",
-  );
+  // Who executes is task-policy's note alone.
+  for (const change of ["light", "medium", "heavy"] as const)
+    expect(ask({ change }).note).not.toContain("mcp__kit__delegate");
   expect(changeOfLabel(CHANGE_LABELS.medium)).toBe("medium");
 });
 
@@ -227,7 +222,7 @@ test("the log keeps 14 days, records each task's end, and takes the user's marks
   expect(out).toContain("too-light 1");
   expect(
     report([
-      { at: 1, event: "explore-note", text: "" },
+      { at: 0, event: "decision", text: "", levels: "D2 E1 V1" },
       { at: 2, event: "read-note", text: "5 calls, 42 chars" },
       {
         at: 3,
@@ -266,9 +261,33 @@ test("the log keeps 14 days, records each task's end, and takes the user's marks
       },
     ]),
   ).toContain(
-    "explore notes 1 · read notes 1 · delegated 2 (gpt 1, claude 1) · not delegated 2 · failed 1",
+    "read notes 1 · delegated 2 (gpt 1, claude 1) · not delegated 2 · failed 1",
   );
+  expect(out).toContain("decisions: none yet");
   expect(out).toContain(
     "end medium (from light) · 1 files · 1 checks · verified: src/a.ts [too-light]",
   );
+});
+
+test("/flow counts decisions per level and which E1+ ones saw a GPT run", async () => {
+  const out = report([
+    { at: 1, event: "decision", text: "", levels: "D1 E1 V1" },
+    { at: 2, event: "delegate", text: "build", provider: "gpt", outcome: "ok" },
+    { at: 3, event: "decision", text: "", levels: "D0 E0 V0" },
+    {
+      at: 4,
+      event: "delegate",
+      text: "research",
+      provider: "claude",
+      outcome: "ok",
+    },
+    { at: 5, event: "decision", text: "", levels: "D3 E2 V3" },
+    { at: 6, event: "levels", text: "a failing check", levels: "D3 E3 V3" },
+    { at: 7, event: "decision", text: "", levels: "D1 E1 V2" },
+  ]);
+  expect(out).toContain(
+    "decisions 4: D0 1 D1 2 D2 0 D3 1 · E0 1 E1 2 E2 1 E3 0 · V0 1 V1 1 V2 1 V3 1 · raised 1",
+  );
+  // Only the first E1+ decision was followed by a GPT run; a Claude run does not count.
+  expect(out).toContain("E1+ decisions with a GPT run: 1 of 3");
 });

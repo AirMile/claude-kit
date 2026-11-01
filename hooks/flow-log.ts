@@ -20,7 +20,7 @@ export type Ending =
 export type LogEntry = {
   at: number;
   task?: number;
-  event: string; // task events, explore-note, read-note, delegate
+  event: string; // task events, decision, levels, read-note, delegate
   text: string; // the prompt's first 60 characters, or the files it is about
   track?: Track;
   first?: Track;
@@ -37,6 +37,9 @@ export type LogEntry = {
   provider?: "gpt" | "claude" | "none";
   durationMs?: number;
   mark?: Mark;
+  levels?: string; // task-policy's levels, as the band shows them ("D1 E1 V1")
+  claude5h?: number; // both 5h meters when the levels were decided
+  gpt5h?: number;
 };
 
 export const KEEP_MS = 14 * 86_400_000;
@@ -93,6 +96,42 @@ const line = (e: LogEntry, n: number): string => {
   return `  ${n}. ${what}: ${e.text || "-"}${e.mark ? ` [${e.mark}]` : ""}`;
 };
 
+const levelOf = (e: LogEntry, system: string): number | undefined => {
+  const m = e.levels?.match(new RegExp(`${system}(\\d)`));
+  return m ? Number(m[1]) : undefined;
+};
+
+// The decisions per level, and how many that wanted GPT to execute (E1+) saw a GPT run before
+// the next decision: whether the note alone moves work to GPT.
+export function decisionLines(log: readonly LogEntry[]): string[] {
+  const decisions = log.filter((e) => e.event === "decision");
+  if (!decisions.length) return ["decisions: none yet"];
+  const per = (system: string, top: number) =>
+    Array.from({ length: top + 1 }, (_, n) => {
+      const c = decisions.filter((e) => levelOf(e, system) === n).length;
+      return `${system}${n} ${c}`;
+    }).join(" ");
+  let wanted = 0;
+  let ran = 0;
+  log.forEach((e, i) => {
+    if (e.event !== "decision" || (levelOf(e, "E") ?? 0) < 1) return;
+    wanted++;
+    const after = log.slice(i + 1);
+    const end = after.findIndex((n) => n.event === "decision");
+    if (
+      (end < 0 ? after : after.slice(0, end)).some(
+        (n) => n.event === "delegate" && n.provider === "gpt",
+      )
+    )
+      ran++;
+  });
+  return [
+    `decisions ${decisions.length}: ${per("D", 3)} · ${per("E", 3)} · ${per("V", 3)} · ` +
+      `raised ${log.filter((e) => e.event === "levels").length}`,
+    `E1+ decisions with a GPT run: ${ran} of ${wanted}`,
+  ];
+}
+
 // /flow's report: the first picks against how the tasks ended, the holds, the user's marks.
 export function report(log: readonly LogEntry[]): string {
   const ends = log.filter((e) => e.event === "end");
@@ -112,7 +151,8 @@ export function report(log: readonly LogEntry[]): string {
       `ending with 2 files or fewer and no spec (too heavy?): ${count((e) => e.first === "heavy" && (e.files ?? 0) <= 2 && !e.spec, ends)}`,
     `holds ${count((e) => e.event === "block")} · ended ${(["verified", "unresolved", "unverified"] as const).map((o) => `${o} ${count((e) => e.outcome === o, ends)}`).join(" · ")}`,
     `your marks: ${MARKS.map((m) => `${m} ${count((e) => e.mark === m)}`).join(" · ")}`,
-    `explore notes ${count((e) => e.event === "explore-note")} · read notes ${count((e) => e.event === "read-note")} · delegated ${delegated.length} (gpt ${count((e) => e.provider === "gpt", delegated)}, claude ${count((e) => e.provider === "claude", delegated)}) · not delegated ${count((e) => e.provider === "none", delegates)} · failed ${count((e) => e.provider !== "none" && e.outcome === "failed", delegates)}`,
+    ...decisionLines(log),
+    `read notes ${count((e) => e.event === "read-note")} · delegated ${delegated.length} (gpt ${count((e) => e.provider === "gpt", delegated)}, claude ${count((e) => e.provider === "claude", delegated)}) · not delegated ${count((e) => e.provider === "none", delegates)} · failed ${count((e) => e.provider !== "none" && e.outcome === "failed", delegates)}`,
   ];
   const last = notable(log);
   if (last.length) lines.push("last:", ...last.map((e, i) => line(e, i + 1)));

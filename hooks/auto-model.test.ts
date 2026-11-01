@@ -2,6 +2,7 @@ import type { On } from "claude-code";
 import { expect, test } from "claude-code/testing";
 
 import { CHANGE_LABELS } from "./flow-policy";
+import { VERIFY_LABELS } from "./task-policy";
 
 // kit's own mod is loaded around the test; these hooks only answer what is beneath it.
 function world(
@@ -12,6 +13,7 @@ function world(
     answer?: string;
     labels?: string[]; // classifier answers in order, then `label`
     change?: string; // flow's change classifier answer
+    verify?: string; // task-policy's verify classifier answer (default: behaviour)
     turns?: number;
     percent?: number;
     store?: Record<string, unknown>;
@@ -45,7 +47,9 @@ function world(
   on("model.classify", async (_$, e) => ({
     value: e.labels.includes(CHANGE_LABELS.none)
       ? opts.change
-      : (queue.shift() ?? opts.label),
+      : e.labels.includes(VERIFY_LABELS.cosmetic)
+        ? (opts.verify ?? VERIFY_LABELS.behaviour)
+        : (queue.shift() ?? opts.label),
   }));
   // $.ui.ask is a tool.call of AskUserQuestion beneath; answered by question text.
   on("tool.call", { tool: "AskUserQuestion" }, async (_$, e) => {
@@ -336,6 +340,9 @@ test("flow sends a track note with a change task; a question gets none", async (
   });
   await $.prompt.submit({ text: "rebuild the importer", origin: TYPED });
   expect(String(w.sent[0]?.context)).toContain("kit flow (heavy)");
+  // The decision note rides along; without GPT room Execute drops to E0, Verify stays.
+  expect(String(w.sent[0]?.context)).toContain("kit task: D2 E0 V2.");
+  expect(String(w.sent[0]?.context)).toContain("GPT has no room: E0");
   await $.prompt.submit({ text: "what does this do?", origin: TYPED });
   expect(w.sent[1]?.context ?? []).toEqual([]);
 });
@@ -353,6 +360,9 @@ test("flow works with the profile off and stays off the band", async ($, on) => 
   await $.prompt.submit({ text: "add a submit button", origin: TYPED });
   expect(String(w.sent[0]?.context)).toContain("kit flow (light)");
   expect(await ui.find({ type: "Text", text: /flow light/ })).toBeFalsy();
+  expect((await ui.find({ type: "Text", text: /^D\d E\d V\d/ }))?.text).toBe(
+    "D1 E0 V1",
+  );
 });
 
 test("a /build kit started on the user's click gets the profile's model and effort", async ($, on) => {

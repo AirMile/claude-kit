@@ -26,7 +26,10 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   Codex side, its catalog, the ChatGPT meters, the GPT switch and a run, in `hooks/codex-run.ts`;
   `/gpt` command in `hooks/gpt-command.ts`), ChatGPT's 5h window started with a new Claude one
   (`hooks/window-sync.ts` on the pure `hooks/window-sync-policy.ts`), shared delegation balance (`hooks/balance.ts`, meters in `hooks/delegate-balance.ts`),
-  explore-first prompts (`hooks/explore-first.ts`, classifiers in `hooks/flow-prompt.ts`),
+  task systems (the pure `hooks/task-policy.ts`: per typed prompt a Define/Execute/Verify/Refactor
+  level and the one note that names who executes; `hooks/flow-levels.ts` decides, raises and logs
+  them with both 5h meters and feeds the band, flow keeps them on the task; classifiers in
+  `hooks/flow-prompt.ts`, the explore label in `hooks/explore-first.ts`),
   read budgets (`hooks/read-budget.ts`, observed by `hooks/read-watch.ts`), a pause before the plan limit with
   cache keep-alive (`hooks/limit-guard.ts` on the pure `hooks/limit-policy.ts`), keep-alive forks by hand or
   for the pause (`hooks/keep-warm.ts`, `/warm`), `/band` (the roadmap

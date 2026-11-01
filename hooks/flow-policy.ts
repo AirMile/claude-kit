@@ -1,8 +1,10 @@
 import type { Kind } from "./model-policy";
+import type { Levels } from "./task-policy";
 
 // Flow, pure: every change task gets a track (light, medium, heavy) from what the prompt asks
 // and grows heavier as the work shows its size, never lighter. A track's note goes out once, at
-// the start or on growth; the procedure itself stays in the build skill. Before a turn ends
+// the start or on growth; the procedure itself stays in the build skill (who executes is
+// task-policy.ts's note). Before a turn ends
 // with changed code, flow wants evidence it saw itself: the worktree as it is now (git's
 // fingerprint, which also sees shell, subagent and GPT edits) must be the one a passing check
 // ran on, and heavy work with a spec also needs the kit:verifier's PASS on it. Without git it
@@ -51,6 +53,7 @@ export type Task = {
   blockedRound?: string; // the round of changes the last hold was for
   stopAsked: boolean; // the user said to skip verifying
   unverified: boolean; // let through without evidence
+  levels?: Levels; // task-policy's decision for it, raised as it grows
 };
 
 export const newTask = (
@@ -98,23 +101,17 @@ export function verified(t: Task, print: string | undefined): boolean {
 
 const NOTE: Record<Track, string> = {
   light:
-    "kit flow (light): a one-line tweak: make it here. More than that (several tweaks asked " +
-    "together, or a change you can describe up front with its files): hand it to " +
-    "mcp__kit__delegate (role build) as one brief and review its diff here. Then run a check " +
-    "that covers it (the project's test, typecheck or lint for those files).",
+    "kit flow (light): a small local change. When it is in, run a check that covers it (the " +
+    "project's test, typecheck or lint for those files).",
   medium:
     "kit flow (medium): before editing, state 2-4 acceptance criteria in the chat; test first " +
     "where it can be tested; then run the checks that cover the change (the full suite when " +
-    "shared code changed). A self-contained piece you can describe up front: hand it to " +
-    "mcp__kit__delegate (role build) and review its diff here.",
+    "shared code changed).",
   heavy:
     "kit flow (heavy): follow the kit:build skill (its Feature or Fix path) up to and " +
     "including Verify: a spec, plan mode, the build, then the kit:verifier agent. Commit or " +
     "push nothing (the spec commit included) unless the user asks.",
 };
-const RESEARCH =
-  "kit flow: reading code or docs widely, or weighing options, can go to mcp__kit__delegate " +
-  "(role research); keep the decision here.";
 
 export const trackNote = (track: Track, from?: Track): string =>
   from
@@ -159,12 +156,7 @@ export function onPrompt(i: {
   }
   const ended = i.task;
   if (!want || want === "none")
-    return {
-      task: undefined,
-      ended,
-      event: "none",
-      note: i.kind === "planning" && want === "none" ? RESEARCH : undefined,
-    };
+    return { task: undefined, ended, event: "none" };
   const task = { ...newTask(i.id, want, i.print), stopAsked: skip };
   return { task, ended, event: "start", note: NOTE[want] };
 }
