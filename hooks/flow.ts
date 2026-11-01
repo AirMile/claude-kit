@@ -1,7 +1,7 @@
 import type { CommandSpec, EngineInterface, On } from "claude-code";
 
 import { checkOf, checkPassed } from "./flow-check";
-import { promptLevels, raiseLevels, showLevels } from "./flow-levels";
+import { promptLevels, raiseLevels, redrawBand, setPhase, showLevels } from "./flow-levels";
 import { classifyPrompt } from "./flow-prompt";
 import {
   endEntry,
@@ -168,6 +168,7 @@ export async function flowEdit(
   const step = onEdit(task, path, now, now, promptPrint);
   if (!step) return undefined;
   task = step.task;
+  if (setPhase("e")) redrawBand($);
   await save($);
   if (step.started)
     await log($, {
@@ -227,6 +228,7 @@ export async function flowStop(
   task = v.task;
   await save($);
   const now = await $.clock.now();
+  if (v.ended && setPhase(undefined)) redrawBand($);
   if (v.ended) await log($, endEntry(v.ended, "verified", now));
   else if (before && v.outcome !== "none")
     await log($, {
@@ -241,7 +243,10 @@ export async function flowStop(
 
 // A subagent this chat started (auto-model.ts's agent.spawn), until its answer comes.
 export function flowSpawned(agentId: string | undefined, type: string) {
-  if (agentId && type === "kit:verifier") spawned.set(agentId, type);
+  if (agentId && type === "kit:verifier") {
+    spawned.set(agentId, type);
+    setPhase("v");
+  }
 }
 
 // A subagent's turn ended (turn.complete): the verifier's PASS or FAIL counts for the task.
@@ -296,6 +301,7 @@ export function flow(on: On) {
     if (!watch || !check || ran.deny !== undefined || !task) return ran;
     const passed = checkPassed(check, ran.isError === true, ran.text ?? "");
     task = onCheck(task, passed, startedAt, startPrint);
+    if (setPhase("v")) redrawBand($);
     // The task's first failing check raises its levels once; later ones are the same work.
     const note =
       !passed && task.failed === 1

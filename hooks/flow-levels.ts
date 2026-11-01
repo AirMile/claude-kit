@@ -22,12 +22,27 @@ import {
 
 let shown: Levels | undefined; // the last decision's levels, for the band
 
-// The band's levels cell: the open task's, else the last prompt's.
-export const flowLevels = (): string | undefined =>
-  shown ? levelsText(shown) : undefined;
+// The band's levels cell: only the system in play now (define on a prompt, execute while
+// code changes, verify while a check or the verifier runs) and only when its level is above 0.
+type Phase = "d" | "e" | "v" | "r";
+let phase: Phase | undefined;
+
+export const flowLevels = (): string | undefined => {
+  const n = shown && phase ? shown[phase] : 0;
+  return phase && n > 0 ? `${phase.toUpperCase()}${n}` : undefined;
+};
+
+// Sets the active system; true when it changed, so the caller redraws the band.
+export function setPhase(next: Phase | undefined): boolean {
+  if (phase === next) return false;
+  phase = next;
+  return true;
+}
+
 
 export const showLevels = (l: Levels | undefined) => {
   shown = l;
+  phase = l ? "d" : undefined;
 };
 
 const meters = () => {
@@ -35,7 +50,7 @@ const meters = () => {
   return { claude5h: m.claude.five_hour?.pct, gpt5h: m.gpt.five_hour?.pct };
 };
 
-function redraw($: EngineInterface) {
+export function redrawBand($: EngineInterface) {
   try {
     $.ui.invalidate("ui.render");
   } catch {
@@ -64,7 +79,7 @@ export async function promptLevels(
 ): Promise<{ levels: Levels | undefined; note?: string }> {
   if (i.thin && i.prev) {
     shown = i.prev;
-    redraw($);
+    redrawBand($);
     return { levels: i.prev };
   }
   const room = roomOf(i.ready, balanceMeters().gpt);
@@ -81,6 +96,7 @@ export async function promptLevels(
     prev,
   });
   shown = d.levels;
+  phase = "d";
   await log($, {
     task: i.task,
     event: "decision",
@@ -91,7 +107,7 @@ export async function promptLevels(
     reason: d.reasons.join("; ") || undefined,
     ...meters(),
   });
-  redraw($);
+  redrawBand($);
   const l = d.levels;
   const was = i.prev; // what the task had before this prompt
   const rose = !was || l.d > was.d || l.e > was.e || l.v > was.v || l.r > was.r;
@@ -122,6 +138,6 @@ export async function raiseLevels(
     reason: d.reasons.join("; ") || undefined,
     ...meters(),
   });
-  redraw($);
+  redrawBand($);
   return { levels: d.levels, note: decisionNote(d) };
 }
