@@ -98,8 +98,10 @@ export function verified(t: Task, print: string | undefined): boolean {
 
 const NOTE: Record<Track, string> = {
   light:
-    "kit flow (light): make the change, then run a check that covers it (the project's test, " +
-    "typecheck or lint for those files).",
+    "kit flow (light): a one-line tweak: make it here. More than that (several tweaks asked " +
+    "together, or a change you can describe up front with its files): hand it to " +
+    "mcp__kit__delegate (role build) as one brief and review its diff here. Then run a check " +
+    "that covers it (the project's test, typecheck or lint for those files).",
   medium:
     "kit flow (medium): before editing, state 2-4 acceptance criteria in the chat; test first " +
     "where it can be tested; then run the checks that cover the change (the full suite when " +

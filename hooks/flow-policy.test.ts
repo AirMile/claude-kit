@@ -33,6 +33,10 @@ const ask = (over: Partial<Parameters<typeof onPrompt>[0]>) =>
 test("a prompt's change picks the track; /build is heavy; a question or none starts nothing", async () => {
   expect(ask({}).task?.track).toBe("light");
   expect(ask({}).task?.basePrint).toBe("p0");
+  expect(ask({}).note).toContain("a one-line tweak: make it here");
+  expect(ask({}).note).toContain(
+    "hand it to mcp__kit__delegate (role build) as one brief",
+  );
   expect(ask({ change: "heavy" }).note).toContain("Commit or push nothing");
   expect(ask({ build: true, change: undefined }).task?.track).toBe("heavy");
   expect(ask({ kind: "question", change: undefined }).task).toBe(undefined);
