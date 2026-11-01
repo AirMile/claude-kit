@@ -3,7 +3,7 @@ Criteria are checked [x] when built AND verified. -->
 
 # task-systems
 
-Status: manual
+Status: done
 Design: —
 
 ## Goal
@@ -84,11 +84,10 @@ Refactor R0 skip (default)   R1 local simplification   R2 separate design + chan
 
 ## Handoff
 
-Built and verified (see ## Verify); left: the manual band check, then Finish. Not committed
-(flow started this; commit only when Miles asks). The working tree also
-holds unrelated uncommitted Codex work (codex-run.ts, delegate.ts, gpt-command.ts,
-band-menus.tsx, register.tsx, skills/codex, codex-find/-window/-state): don't mix it into this
-feature's commit. This feature's files: task-policy.ts (+test, written by GPT Terra, reviewed),
+Done: code landed in f851ec9. The band's levels cell was later removed on purpose (2b6fff7
+showed only the active level, ff43fc0 dropped the cell), so the manual band check lapsed and
+criterion 1's band clause no longer holds; levels still go to the note and the log. This
+feature's files: task-policy.ts (+test, written by GPT Terra, reviewed),
 flow-levels.ts, flow.ts, flow-prompt.ts, flow-policy.ts, flow-log.ts, explore-first.ts (test
 deleted), balance.ts, kit-band.tsx, tests auto-model/flow/flow-policy/read-watch, README,
 AGENTS.md, this spec, roadmap line.
@@ -129,4 +128,4 @@ Improvement notes:
 - The budget reason says "GPT has no room" also when GPT is switched off in the band.
 
 Manual: the band's levels cell in a real terminal (`claude --plugin-dir .`): skipped
-(2026-11-01). Miles judges it in daily use over the coming days; Finish after that.
+(2026-11-01), then lapsed (2026-11-02): ff43fc0 removed the cell after daily use. Closed.

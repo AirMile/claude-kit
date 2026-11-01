@@ -3,7 +3,7 @@ Criteria are checked [x] when built AND verified. -->
 
 # window-sync
 
-Status: verifying
+Status: done
 Design: —
 
 ## Goal
@@ -19,7 +19,7 @@ Measured (codex-status.js, 28 Oct): while ChatGPT's window is idle, its `resetsA
 
 ## Acceptance criteria
 
-- [ ] Happy: after a turn in a Claude 5h window that is in use (pct > 0) and started ≤ 30 min
+- [x] Happy: after a turn in a Claude 5h window that is in use (pct > 0) and started ≤ 30 min
       ago, with ChatGPT's 5h window idle (pct 0 and `resetsAt` passed or reading as "now + 5h")
       and GPT on, kit sends one Codex ping (newest Luna, effort low, read-only, ephemeral) and
       shows one toast. After that, ChatGPT's `resetsAt` lies within 30 min of Claude's.
@@ -82,14 +82,14 @@ Open points (blind second plan by Sol, differences):
 
 ## Handoff
 
-- Built, verified and fixed (all uncommitted); see `## Verify`. Status stays `verifying`
-  until the two manual items are done; criterion 1 stays open until the live check.
+- Done: code landed in 6691d6d; the live check passed on 2 Nov (see `## Verify`). Nothing
+  left to resume.
 - Also in this change, on the user's request: the band shows short effort words (`med`, `hi`,
   `xhi`; `low`/`max` as is) via `effortLabel` in `hooks/model-policy.ts`, used by `runLine`
   and the ‹ › stepper in `hooks/kit-band.tsx`.
 - The user asked: commit everything (incl. the earlier `hooks/band-meters.tsx` change, version
   0.15.50) and update the plugin (`claude plugin marketplace update airmile && claude plugin
-  update kit@airmile`). No push.
+update kit@airmile`). No push.
 
 ## Verify
 
@@ -106,6 +106,10 @@ Open points (blind second plan by Sol, differences):
   `window sync: <time>`, both 5h resets ≤ 30 min apart, no second ping in that window.
   (2) a stub `codex` that sleeps silently: after ~70 s `/gpt` shows `failed at`, the stub
   process is gone.
+- Manual (2 Nov): (1) pass. `$.store` `windowSync` holds one ping, Claude window start
+  31 Oct 17:00Z, ping 17:02:04Z, `ok: true`, so both 5h resets lie ~2 min apart; no second
+  ping since (later Claude windows met a ChatGPT window that was already running). (2) skipped
+  on the user's call: `window-sync.test.ts` covers a silent Codex past the 60 s deadline.
 - Improvement notes: `now` is taken before the status read, so the gap can pass 30 min by
   about a minute at the edge.
 

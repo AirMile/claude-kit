@@ -12,8 +12,8 @@
 
 ## v0.15.50 · plan usage
 
-- [ ] **window-sync** · start ChatGPT's 5h window together with Claude's · spec: docs/specs/window-sync.md
-- [ ] **task-systems** · route each request over Define/Execute/Verify/Refactor levels, GPT as default worker · spec: docs/specs/task-systems.md
+- [x] **window-sync** · start ChatGPT's 5h window together with Claude's · spec: docs/specs/window-sync.md
+- [x] **task-systems** · route each request over Define/Execute/Verify/Refactor levels, GPT as default worker · spec: docs/specs/task-systems.md
 - [ ] **task-runner** · Claude submits one brief, the mod runs and observes the GPT steps itself
 - [ ] **task-verify** · enforce V2/V3 in the flow gate for small tasks too; unverified work stays open
 - [ ] **task-depth** · D3 council (Sol + Astra blind + critique) in one tool call, and R1/R2 refactor with re-verify
@@ -29,3 +29,9 @@
 - [ ] **agent-brief-cap** · fixed return format and answer cap for Claude subagents, plus a cumulative read budget per task
 
 ## Later
+
+- **window-sync-now** · take `now` after the status read, so the 30-minute gap can't pass by about a minute at the edge
+- **council-test-name** · `hooks/read-watch.test.ts` council test promises the D2 fallback but only asserts D3: rename it or add the case
+- **flow-split** · `hooks/flow.ts` is 322 lines against the ~300 budget: move more glue to `flow-levels.ts`
+- **claude5h-log-test** · no test asserts `claude5h` in the decision log
+- **gpt-off-reason** · the budget reason says "GPT has no room" also when GPT is switched off in the band
