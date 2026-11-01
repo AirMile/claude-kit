@@ -14,7 +14,7 @@
 
 - [x] **window-sync** · start ChatGPT's 5h window together with Claude's · spec: docs/specs/window-sync.md
 - [x] **task-systems** · route each request over Define/Execute/Verify/Refactor levels, GPT as default worker · spec: docs/specs/task-systems.md
-- [ ] **task-runner** · Claude submits one brief, the mod runs and observes the GPT steps itself
+- [ ] **task-runner** · Claude submits one brief, the mod runs and observes the GPT steps itself · spec: docs/specs/task-runner.md
 - [ ] **task-verify** · enforce V2/V3 in the flow gate for small tasks too; unverified work stays open
 - [ ] **task-depth** · D3 council (Sol + Astra blind + critique) in one tool call, and R1/R2 refactor with re-verify
 
