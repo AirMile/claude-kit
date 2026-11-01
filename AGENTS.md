@@ -93,7 +93,7 @@ product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.m
 ## Conventions
 
 - Skill and agent files: English. Runtime output follows the user's language setting.
-- Lean on native Claude Code features (plan mode, subagents, `/simplify`, `/security-review`,
+- Lean on native Claude Code features (subagents, `/simplify`, `/security-review`,
   AGENTS.md loading) instead of rebuilding them.
 - Never push without the user's OK (`hooks/push-guard.cjs`), except `/build` landing per `Land:`
   and a plain push in auto mode (a force push still asks).

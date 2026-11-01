@@ -6,7 +6,7 @@ import { inRoot } from "./spec";
 import { list } from "./theme-view";
 
 // Opens the roadmap pane (roadmap-view.tsx draws it): the tool /product calls, with items for
-// a read-only draft (plan mode) or none for docs/roadmap.md live. It never opens on its own:
+// a read-only draft (before approval) or none for docs/roadmap.md live. It never opens on its own:
 // the band's Roadmap button (kit-band.tsx) and /panel open it by hand, /panel anywhere
 // (without docs/roadmap.md the pane says to run /product).
 
@@ -14,7 +14,7 @@ export const roadmapTool: ToolSpec = {
   name: "roadmap_view",
   description:
     "Open kit's roadmap pane. No items → it shows docs/roadmap.md live and editable. With " +
-    "items → a read-only draft (plan mode): items in order, ## Later excluded; state open, " +
+    "items → a read-only draft (before approval): items in order, ## Later excluded; state open, " +
     "progress (spec linked, unchecked) or done; phase = the item's heading without '## '.",
   inputSchema: {
     type: "object",

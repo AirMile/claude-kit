@@ -22,8 +22,8 @@ Turns an idea into two files every later step reads: `docs/product.md` (what and
 
 1. **Intake.** Use the arg as the idea; empty → one open question: "Describe the idea: what is
    it, for whom, and what made you want it now?" Read any existing code/README for context.
-2. **Plan mode.** Call `EnterPlanMode` before the first question; the product + roadmap draft is the
-   artefact the user approves.
+2. **Approval.** The product + roadmap draft is the artefact the user approves; write no file
+   before that.
 3. **Rounds** (1-3, stop when enough): up to 4 parallel AskUserQuestion calls per round, options
    concrete to _this_ idea, recommended first. Round 1 covers: audience, MVP size, core experience
    (multiSelect), and stack (or "repo defaults" when code exists). Later rounds target gaps: key
@@ -32,8 +32,8 @@ Turns an idea into two files every later step reads: `docs/product.md` (what and
    - Visual choices (layout, look) → show 2-3 ASCII/markdown mocks, don't ask blind.
    - Competing designs → print a short trade-off table before the question.
    - Two free-text answers in a row → switch to open questions.
-4. **Draft** both files (formats below) in the plan file, **show** the draft, and
-   `ExitPlanMode`. Reject → revise (show again).
+4. **Draft** both files (formats below) in the chat, **show** the draft, and ask: Accept /
+   Revise. Revise → show again.
 5. **Accept** → write `docs/product.md` and `docs/roadmap.md`, show it live. Report and point
    to next step.
 

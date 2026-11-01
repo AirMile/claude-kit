@@ -8,7 +8,7 @@ kit is the successor to `claude-config` v1. v1 grew to 42 skills, ~15k lines of 
 instructions and its own state engine (JSON state files, a backlog server, checkpoints, a sync
 branch). Most of the friction came from that machinery, not from the actual work. kit keeps the
 workflow and drops the machinery: all state is plain markdown in your repo, and wherever Claude
-Code already has a native feature (plan mode, subagents, `AGENTS.md` loading, `/simplify`,
+Code already has a native feature (subagents, `AGENTS.md` loading, `/simplify`,
 `/security-review`) kit uses it instead of rebuilding it.
 
 ```
@@ -399,7 +399,7 @@ Turn an idea into `docs/product.md` + `docs/roadmap.md`, or update them later.
 **New**
 
 1. Takes your idea (or asks one open question).
-2. Enters **plan mode**: the draft product.md and roadmap are what you approve.
+2. Shows the draft product.md and roadmap in the chat: that is what you approve.
 3. Runs 1–3 rounds of clickable questions (audience, MVP size, core experience, stack, then
    gaps). Vision and naming are asked as open questions; visual choices are shown as small
    mocks; competing designs get a trade-off table first.
@@ -513,7 +513,7 @@ It's logged in the feature's spec under `## Fixes` and committed as `fix:`.
 
 #### Feature path
 
-1. **Define (plan mode).** Reads docs/product.md (non-goals!), decisions, the roadmap line and the code
+1. **Define (your approval).** Reads docs/product.md (non-goals!), decisions, the roadmap line and the code
    it touches. Asks only what it can't answer itself (usually 0–3 questions). Drafts the spec:
    criteria split into happy / edge / error, the approach with files, an ASCII wireframe for UI,
    and which test covers which criterion. More than 6 criteria → it proposes a split. It also
@@ -603,7 +603,7 @@ there is one. Without the MCP an exported frame PNG works, but its values are es
 it (variants, prototype interactions), verified by computed values; extra animation is a
 separate `/build` item.
 
-**Steps**: find tokens (none → `/theme` first, or a small set as CSS variables) → **plan mode**
+**Steps**: find tokens (none → `/theme` first, or a small set as CSS variables) → **a plan you approve**
 with sections, reused components, a figma → token mapping table, motion, assets, the mobile
 layout and (Payload) a CMS table → build (flex/grid, semantic HTML, real copy, exported assets)
 → **verify loop** (max 3 rounds: screenshot vs frame, console errors, computed values, motion)
@@ -634,7 +634,7 @@ project's own idiom so `/convert`, `/build` and the frontend rule use tokens ins
 
 1. **Detect** existing tokens (Tailwind v4 `@theme`, `tailwind.config`, `:root` variables, a
    theme file). Found → update mode.
-2. **Propose in plan mode**: semantic color roles (`bg`, `surface`, `fg`, `muted`, `border`,
+2. **Propose for your approval**: semantic color roles (`bg`, `surface`, `fg`, `muted`, `border`,
    `primary`, …) with dark values, a neutral scale, type families and scale, spacing, radii,
    shadows and motion (with `prefers-reduced-motion`). Every text/background pair gets a
    **computed** WCAG contrast ratio (≥ 4.5:1 body, ≥ 3:1 large/UI); failing pairs are fixed
@@ -664,7 +664,7 @@ appear in Claude's skill list, so it costs no context).
    default, ambiguous line, missing failure path, over-strict rule, duplicate of a native
    feature, hand-done deterministic work (→ script), or a new capability (pushed back on first).
    No causing line → it's probably model behaviour; no edit for a one-off.
-3. **Propose in plan mode** as before → after snippets with the line delta per file. Deleting
+3. **Propose for your approval** as before → after snippets with the line delta per file. Deleting
    and replacing beat adding; net growth needs a one-sentence reason; budgets still hold.
 4. **Check**: budgets, `claude plugin validate`, the push-guard test when hooks changed, a real
    run of a touched script.
@@ -956,7 +956,7 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   medium  a bounded behaviour change: 2-4 criteria in the chat, test first, the checks
           that cover it (the full suite when shared code changed)
   heavy   a new capability, a shared interface, a migration, unclear scope: the build
-          skill up to and including Verify (spec, plan mode, the verifier), committing
+          skill up to and including Verify (spec you approve, the verifier), committing
           and pushing nothing unless you ask; /build is always heavy
   ```
 
@@ -1077,7 +1077,7 @@ columns, above the prompt otherwise):
   and effort, turns, how long, cost where the host reports it, compactions, the context by
   category as a bar like `/context`, the files this chat wrote or edited and the subagents it
   ran, counted since the mod loaded; a `/clear` starts over). A draft
-  (plan mode) shows the roadmap alone. It never
+  (before approval) shows the roadmap alone. It never
   opens by itself: the band's **▤** button opens it (in any project), `/product`
   opens it too, and so does `/panel`. The Roadmap tab shows `docs/roadmap.md` live (below), or
   **Make a roadmap** (`/product`) without one. At the bottom of the pane, under every tab, in
@@ -1223,7 +1223,7 @@ small changes; use `/build` once it's a feature.
 
 ```
 you   /build
-kit   Next open item: habit-crud. (enters plan mode, reads product.md + code)
+kit   Next open item: habit-crud. (reads product.md + code, drafts the spec)
 kit   One question: should deleting a habit also delete its history?  [Yes / Keep history / …]
 you   Keep history
 kit   (plan: 3 criteria, approach, tests, wireframe)          → you accept
@@ -1302,7 +1302,7 @@ and grades what happened: files written, tools called, the order of calls, text 
 | Case                      | What it guards                                                                                                      |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `build-routes-small`      | a one-line change takes the small path: no spec, no plan mode                                                       |
-| `build-routes-feature`    | a roadmap feature goes through plan mode with happy/edge/error criteria, no code edits yet                          |
+| `build-routes-feature`    | a roadmap feature stops for approval with happy/edge/error criteria, no code edits yet                          |
 | `build-routes-fix`        | a bug is reproduced (tests run) before the code is edited, and actually fixed                                       |
 | `build-resumes`           | `/build` with no argument resumes the in-progress spec and starts the verifier                                      |
 | `commit-blocks-env`       | `staging-check.js` runs and a `.env` file never ends up in the commit                                               |

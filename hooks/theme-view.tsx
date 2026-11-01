@@ -1,6 +1,6 @@
 import type { EngineInterface, On, ToolSpec } from "claude-code";
 
-// The theme pane. /theme passes its proposal as data (it is shown in plan mode, before
+// The theme pane. /theme passes its proposal as data (it is shown before approval, before
 // anything is written). The mod computes WCAG contrast and returns it to the model. Desktop
 // draws an Svg with the real fonts (a glyph subset fetched and embedded: the Svg sandbox
 // loads nothing itself); the terminal gets swatches and text.

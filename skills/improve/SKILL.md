@@ -61,9 +61,9 @@ case, adapt `fixture.sh`, `prompt.md` and the graders, and prefer free graders (
 **fail** on the current skill, otherwise it doesn't capture the problem. Needs a human answer
 to reproduce → skip and say so.
 
-## 3. Propose (plan mode)
+## 3. Propose
 
-`EnterPlanMode`. For each observation: the cause (`path:line`), the class, and the change as a
+For each observation: the cause (`path:line`), the class, and the change as a
 before → after snippet. End with the line delta per file:
 
 ```
@@ -78,7 +78,8 @@ Rules for the proposal:
 - Changing a file format → update its header template in the owning skill and every reader.
 - Keep skill files in English.
 
-`ExitPlanMode`. Reject → revise. Accept → apply exactly the approved changes.
+Ask for the OK (AskUserQuestion: Apply / Revise); no edit before it. Revise → revise. Apply →
+apply exactly the approved changes.
 
 ## 4. Check
 

@@ -37,7 +37,7 @@ Library API involved → check current docs (context7) before fixing.
 
 Spawn one Explore subagent (`model: sonnet`) with: the symptom, the repro, what was tried and
 why it failed, and the files suspected. Ask for: the causal chain with `path:line` evidence and
-one recommended fix. Then present that fix as a short plan (plan mode) before applying it.
+one recommended fix. Then present that fix as a short plan before applying it.
 
 Regression with a known good commit → `git bisect run <throwaway script>` (exit 0 good, 1 bad;
 clean tree first), then `git bisect reset`.

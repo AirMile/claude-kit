@@ -60,11 +60,11 @@ stylesheet; say what you added.
 the plan, build and verify steps below. No Payload → components take their content as props;
 copy comes from the frame or `docs/product.md`.
 
-## 5. Plan (plan mode)
+## 5. Plan
 
-Inside `/build` the spec's Approach already holds the sections and the CMS table: no plan mode;
+Inside `/build` the spec's Approach already holds the sections and the CMS table: no approval round;
 write the mapping, motion, responsive and asset tables below in the chat, then build.
-Standalone: `EnterPlanMode`, then write a short plan:
+Standalone: write a short plan in the chat:
 
 - **Sections**: the page split top to bottom, with the component per section (reuse existing
   components first; grep before creating).
@@ -83,7 +83,7 @@ Standalone: `EnterPlanMode`, then write a short plan:
   and reuse the site's existing collapse pattern (its carousel, tabs, breakpoints) first.
 - **CMS table** when `payload.md` applies.
 
-`ExitPlanMode`. Reject → adjust.
+Open choices left → ask before building; none → build.
 
 ## 6. Build
 

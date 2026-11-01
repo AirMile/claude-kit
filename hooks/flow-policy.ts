@@ -109,7 +109,7 @@ const NOTE: Record<Track, string> = {
     "shared code changed).",
   heavy:
     "kit flow (heavy): follow the kit:build skill (its Feature or Fix path) up to and " +
-    "including Verify: a spec, plan mode, the build, then the kit:verifier agent. Commit or " +
+    "including Verify: a spec you approve, the build, then the kit:verifier agent. Commit or " +
     "push nothing (the spec commit included) unless the user asks.",
 };
 

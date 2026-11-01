@@ -29,9 +29,9 @@ From the argument, or one AskUserQuestion (recommended first):
 | URL                              | browser: computed `color`, `background-color`, `font-family`, `font-size`, `border-radius` of key elements                                                 |
 | `from-code`                      | grep raw hex/rgb/hsl, px font sizes and spacing in the code; cluster near-duplicates; propose tokens that replace them                                     |
 
-## 2. Propose (plan mode)
+## 2. Propose
 
-`EnterPlanMode`, then draft:
+Draft (no file written yet):
 
 - **Color**: brand + accent, a neutral scale (50 … 950), and semantic roles: `bg`, `surface`,
   `fg`, `muted`, `border`, `primary`, `primary-fg`, `success`, `warning`, `danger`. Dark theme
@@ -56,7 +56,7 @@ spacing, radius, shadow in px). It shows them in kit's theme pane (real fonts on
 returns the contrast table; ✗ pairs → adjust and call again. Tool missing (Claude Code before
 2.1.287) → the table in the plan is the preview.
 
-`ExitPlanMode`. Reject → revise the plan and preview.
+Show it and ask: Accept / Revise. Revise → adjust the proposal and preview.
 
 ## 3. Write (in the project's idiom)
 

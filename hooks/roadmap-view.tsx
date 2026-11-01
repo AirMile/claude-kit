@@ -37,7 +37,7 @@ let sent = 0; // when a button last ran a command: presses right after it are a 
 // Phases the user folded or unfolded against the default (a finished phase starts folded).
 const toggled = new Set<string>();
 
-// Called when the pane opens (/product or session start): a draft (plan mode), or null for the live roadmap.
+// Called when the pane opens (/product or session start): a draft (before approval), or null for the live roadmap.
 export function roadmapOpened(next: Draft | null, name: string): void {
   [draft, product, needsLoad, note] = [next, name, true, ""];
   [specs, away] = [{}, {}]; // a draft's cards must not show the live pane's specs

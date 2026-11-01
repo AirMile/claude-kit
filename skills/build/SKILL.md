@@ -72,16 +72,16 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
 
 ## 4. Feature
 
-### 4a. Define (plan mode)
+### 4a. Define
 
-1. `EnterPlanMode`. Read `docs/product.md` (non-goals!), `docs/decisions.md`, the roadmap line, and
+1. Read `docs/product.md` (non-goals!), `docs/decisions.md`, the roadmap line, and
    the code the feature touches. Ask only what you can't answer from those: one question at a
    time, or one AskUserQuestion with concrete options for a real design fork (recommended first).
    Usually 0-3 questions. An unknown the running app can answer (a timing, a count, a log
    line) → measure it or ask for that reading now; don't guess. `docs/seo.md` § Pages has this
    slug → its main term in title and h1, a first paragraph that answers it directly, its
    questions as H2s each with a direct answer, its schema types and links become criteria.
-2. Draft the spec in the plan file using
+2. Draft the spec in the chat using
    `${CLAUDE_SKILL_DIR}/references/spec-template.md`: criteria per happy/edge/error,
    Approach with files, ASCII wireframe for UI, Tests mapping. More than 6 criteria → propose a
    split first. Also check: does this make another roadmap item obsolete? Say so in the plan.
@@ -91,13 +91,14 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
    `Design:` set → Approach lists the sections; on a Payload project also convert's CMS table
    (`${CLAUDE_SKILL_DIR}/../convert/references/payload.md` § 3) and a criterion "every visible text, image and list
    item is editable in the CMS".
-3. `ExitPlanMode`. Reject → revise. Accept →
+3. Show the draft and get the OK before writing any file (AskUserQuestion: Accept / Revise;
+   plan mode only when it helps). Revise → show again. Accept →
    - write the plan text as `docs/specs/<slug>.md` (`Status: defined`); no slug yet → derive one
      and, when `docs/roadmap.md` exists, add a roadmap line (first phase with open items);
    - a roadmap line → add `· spec: docs/specs/<slug>.md` to it;
    - a decision with a rejected alternative → append to `docs/decisions.md`;
    - commit just these docs right away (`docs(<slug>): add spec`): that commit is the claim
-     other sessions see, and the resume point if this chat dies. With a remote, the plan says
+     other sessions see, and the resume point if this chat dies. With a remote, the draft says
      the branch will be pushed so teammates see the claim; accepting it is the OK, so push
      (`KIT_PUSH_OK=1 git push -u origin HEAD`).
 4. Safe point (the cleanest one): AskUserQuestion: Continue here (Recommended when this chat is
@@ -119,9 +120,10 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
    external boundaries: network, third-party APIs, time, file system), then the code. Already
    met by earlier code → its test may pass at once; say so. Follow `AGENTS.md` conventions.
    Library API you're unsure of → context7, don't guess.
-4. A criterion, an Out-of-scope line or a file in Approach must change → stop, `EnterPlanMode`
-   with the revised Approach (keep built work that still fits); accept → update the spec, commit
-   it alone (`docs(<slug>): revise spec`) so a resume sees it, continue.
+4. A criterion's behaviour or an Out-of-scope line must change → stop, show the delta and ask
+   once; accept → update the spec, commit it alone (`docs(<slug>): revise spec`) so a resume sees
+   it, continue. Only Approach details change (a file more, a split) → update the spec and its
+   Handoff, no question.
 5. Run the full test suite + typecheck/lint once at the end. Fix until green; change a test's
    expectation only when this spec changes that behaviour. A failure already in the baseline is
    pre-existing: list it under `## Verify` and in the report, don't fix it.

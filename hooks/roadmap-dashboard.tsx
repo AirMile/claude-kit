@@ -4,7 +4,7 @@ import { later } from "./roadmap-later";
 import { chatTab, messagesTab, tabRow } from "./roadmap-tabs";
 
 // The dashboard pane (its title is the product): tabs (roadmap-tabs.tsx) over the shown one.
-// Session and Messages: roadmap-tabs.tsx. A draft (plan mode) shows the roadmap alone. The
+// Session and Messages: roadmap-tabs.tsx. A draft (before approval) shows the roadmap alone. The
 // skills, commit, compact and clear are in the band above the prompt (kit-band.tsx, the ▤ and
 // other menus). Pure, like roadmap-parts.tsx.
 
