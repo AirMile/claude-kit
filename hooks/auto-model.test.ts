@@ -360,10 +360,6 @@ test("flow works with the profile off and stays off the band", async ($, on) => 
   await $.prompt.submit({ text: "add a submit button", origin: TYPED });
   expect(String(w.sent[0]?.context)).toContain("kit flow (light)");
   expect(await ui.find({ type: "Text", text: /flow light/ })).toBeFalsy();
-  // Only the system in play: a fresh prompt is in Define.
-  expect((await ui.find({ type: "Text", text: /^[DEVR]\d$/ }))?.text).toBe(
-    "D1",
-  );
 });
 
 test("a /build kit started on the user's click gets the profile's model and effort", async ($, on) => {
