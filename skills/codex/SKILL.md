@@ -1,7 +1,7 @@
 ---
 name: codex
 description: Run a GPT model through the Codex CLI for an opinion, review, research or implementation. Use when the user asks for GPT (Sol, Astra, Luna, Terra), or when kit's delegation sends work to Codex.
-allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/scripts/codex-status.js)
+allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/scripts/codex-status.js), Bash(node ${CLAUDE_SKILL_DIR}/scripts/codex-window.js *)
 ---
 
 # Codex
@@ -56,3 +56,9 @@ as it says.
   an error), then do the work here or ask.
 - **After**: an implementation → review `git diff` and run the checks yourself. Report what GPT
   found or did apart from your own judgment: where you agree, where not, why.
+
+## Scheduled window start
+
+A cloud routine that opens Claude's 5h window cannot reach Codex. For ChatGPT's window use
+`node ${CLAUDE_SKILL_DIR}/scripts/codex-window.js install HH:MM ...` (macOS launchd, same local
+times as the routine; `ping`, `status`, `uninstall` also exist). Install only on the user's OK.

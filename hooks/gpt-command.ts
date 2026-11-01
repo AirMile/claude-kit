@@ -3,6 +3,7 @@ import type { CommandSpec, EngineInterface } from "claude-code";
 import { balance } from "./balance";
 import { FAMILIES, newest, type Family } from "./delegate-policy";
 import {
+  codexHint,
   gptOn,
   gptStatus,
   pins,
@@ -33,8 +34,11 @@ function statusText(
   });
   const pct = (k: "five_hour" | "seven_day") =>
     st.limits[k] ? `${Math.round(st.limits[k]!.pct)}%` : "?";
+  const hint = codexHint(st);
   lines.push(
-    st.error
+    hint
+      ? `Codex: ${hint}`
+      : st.error
       ? `Codex: ${st.error}`
       : `ChatGPT ${st.limits.plan ?? ""}: 5h ${pct("five_hour")} · weekly ${pct("seven_day")}`,
   );

@@ -14,6 +14,7 @@ import {
 import {
   changed,
   codexArgs,
+  codexHint,
   gptOn,
   gptStatus,
   pins,
@@ -137,7 +138,7 @@ async function delegate(
   const st: GptStatus =
     on || family
       ? await gptStatus($)
-      : { argv: null, models: [], limits: {}, at: 0 };
+      : { argv: null, state: "missing", models: [], limits: {}, at: 0 };
   const now = await $.clock.now();
   const usage = await $.session.usage().catch(() => undefined);
   noteClaudeLimits(usage?.rateLimits ?? [], now);
@@ -167,7 +168,7 @@ async function delegate(
       input.role,
     );
   if (!st.argv)
-    return "Not delegated: Codex is not available here. Do it here.";
+    return `Not delegated: ${codexHint(st) ?? "Codex is not available here"}. Do it here.`;
   const writes = r.sandbox === "workspace-write";
   if (writes && writing)
     return "Not started: another GPT run that writes is still going. Wait for it, or make this a read-only role.";

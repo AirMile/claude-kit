@@ -61,16 +61,19 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
   // The skills' rows are two cells high: a button draws taller than one cell row, so a
   // one-cell row lets the buttons of neighbouring rows touch. They end at the right edge,
   // above the band's button that opens the menu.
-  const line = (name: string, items: unknown[], tall = false) => (
+  // The context row puts its name after the buttons (nameLast).
+  const line = (name: string, items: unknown[], tall = false, nameLast = false) => (
     <Box
       key={`kit-line-${name}`}
       gap={1}
       minHeight={tall ? 2 : undefined}
       alignItems={tall ? "center" : undefined}
     >
-      <Box width={8} flexShrink={0}>
-        <Text dimColor>{name}</Text>
-      </Box>
+      {nameLast ? null : (
+        <Box width={8} flexShrink={0}>
+          <Text dimColor>{name}</Text>
+        </Box>
+      )}
       <Box
         gap={1}
         flexWrap="wrap"
@@ -79,6 +82,11 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
       >
         {items as never}
       </Box>
+      {nameLast ? (
+        <Box flexShrink={0}>
+          <Text dimColor>{name}</Text>
+        </Box>
+      ) : null}
     </Box>
   );
 
@@ -103,7 +111,7 @@ export function menuBody($: EngineInterface, m: Menu, s: MenuState) {
               soon($, () => reset($, "clear"));
             }}
           />,
-        ])}
+        ], false, true)}
       </Box>
     );
   } else if (m === "git") {

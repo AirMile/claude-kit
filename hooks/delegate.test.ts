@@ -181,7 +181,13 @@ test("a review runs read-only with the brief and asks for ranked findings", asyn
 
 test("without Codex a change is built here and research goes to Claude, saying why", async ($, on) => {
   const w = world(on, {
-    status: { argv: null, models: [], limits: {}, error: "codex not found" },
+    status: {
+      argv: null,
+      state: "missing",
+      models: [],
+      limits: {},
+      error: "codex not found",
+    },
   });
   const out = await delegate($, {
     role: "build",

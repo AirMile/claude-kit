@@ -17,11 +17,14 @@ import {
 const PINS_KEY = "gptPins";
 const GPT_KEY = "gpt";
 const FRESH_MS = 10 * 60_000;
+const RETRY_MS = 30_000; // Codex missing or not logged in: look again soon, the user may be fixing it
 const MAX_RUN_MS = 45 * 60_000;
 
 type Limits = Meters & { plan?: string };
+export type CodexState = "missing" | "login" | "ready";
 export type GptStatus = {
   argv: string[] | null;
+  state: CodexState;
   models: CatalogModel[];
   limits: Limits;
   error?: string;
@@ -71,15 +74,31 @@ async function readStatus($: EngineInterface): Promise<GptStatus> {
   } catch {
     got = undefined;
   }
+  const state: CodexState =
+    got?.state ?? (got?.argv && !got.error ? "ready" : "missing");
+  const before = status?.state;
   status = {
     argv: got?.argv ?? null,
+    state,
     models: got?.models ?? [],
     limits: got?.limits ?? {},
     error: got ? got.error : "codex-status.js gave no answer",
     at,
   };
   await refreshBalance($);
+  // Fixed while the session runs (installed, logged in): say so once, without a restart.
+  if (before && before !== "ready" && state === "ready")
+    $.ui.toast("kit: Codex is ready, GPT can be used now", { timeoutMs: 10_000 });
   return status;
+}
+
+// What the user does next, per state; null when Codex is ready.
+export function codexHint(st: Pick<GptStatus, "state">): string | null {
+  if (st.state === "missing")
+    return "Codex is not installed or not found. Install the Codex CLI (npm i -g @openai/codex), then run `codex login` and choose ChatGPT. kit looks again by itself.";
+  if (st.state === "login")
+    return "Codex is installed but not logged in with ChatGPT. Run `codex login` and choose ChatGPT. kit looks again by itself.";
+  return null;
 }
 
 export async function gptStatus(
@@ -87,7 +106,8 @@ export async function gptStatus(
   force = false,
 ): Promise<GptStatus> {
   const now = await $.clock.now();
-  if (!force && status && now - status.at < FRESH_MS) return status;
+  const wait = status?.state === "ready" ? FRESH_MS : RETRY_MS;
+  if (!force && status && now - status.at < wait) return status;
   loading ??= readStatus($).finally(() => {
     loading = undefined;
   });

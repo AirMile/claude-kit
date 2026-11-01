@@ -2,7 +2,7 @@ import type { EngineInterface, Register, SessionUsage } from "claude-code";
 
 import { autoModel, modeCommand } from "./auto-model";
 import { freshStart, freshTool } from "./fresh-start";
-import { gptCached, gptOn, gptStatus } from "./codex-run";
+import { codexHint, gptCached, gptOn, gptStatus } from "./codex-run";
 import { delegateTool, delegation, gptCommand } from "./delegate";
 import { noteClaudeLimits } from "./delegate-balance";
 import { flow, flowCommand, flowEdit, flowStop, resetFlow } from "./flow";
@@ -125,7 +125,12 @@ export const register: Register = (on) => {
     await $.command.register(gptCommand);
     await $.command.register(flowCommand);
     await refresh($);
-    if (await gptOn($)) void gptStatus($).then(() => refresh($)); // without waiting
+    if (await gptOn($))
+      void gptStatus($).then((st) => {
+        if (st.state !== "ready")
+          $.ui.toast(`kit: ${codexHint(st)}`, { timeoutMs: 15_000 });
+        return refresh($);
+      }); // without waiting
     return started;
   });
 
