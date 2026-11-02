@@ -4,32 +4,19 @@ import {
   type Author,
   type Family,
   FAMILIES,
-  newest,
-  parseModel,
   type Role,
   ROLES,
-  route,
   type Route,
 } from "./delegate-policy";
-import {
-  changed,
-  codexArgs,
-  codexHint,
-  gptOn,
-  gptStatus,
-  pins,
-  type Run,
-  runCodex,
-  type GptStatus,
-} from "./codex-run";
-import { balance } from "./balance";
+import { gptOn } from "./codex-run";
 import { gptCommandRun } from "./gpt-command";
-import { flowDelegated } from "./flow";
 import {
-  claudeMeters,
-  noteClaudeLimits,
-  noteGptMeters,
-} from "./delegate-balance";
+  acquireWriter,
+  FOOTER,
+  releaseWriter,
+  routeDelegation,
+  runDelegated,
+} from "./delegate-run";
 
 export { gptCommand } from "./gpt-command";
 
@@ -71,9 +58,6 @@ export const delegateTool: ToolSpec = {
   },
 };
 
-const threads = new Map<string, Family>();
-let writing = false; // a GPT run that writes is going: one at a time in this checkout
-
 type Input = {
   role: Role;
   brief: string;
@@ -99,21 +83,6 @@ function readInput(e: unknown): Input | string {
   return { role, brief: i.brief, author, family, thread };
 }
 
-const SHAPE =
-  "Conclusion first; evidence as file:line; uncertainties. No command logs, " +
-  "file contents beyond short quotes, or diffs.";
-const FOOTER: Record<Role, string> = {
-  search: `Read only: change no files. Aim for 2000 characters or less. ${SHAPE}`,
-  research: `Read only: change no files. Aim for 4000 characters or less. ${SHAPE}`,
-  plan: `Read only: change no files. Aim for 4000 characters or less. ${SHAPE}`,
-  review:
-    "Read only: change no files. Review the uncommitted changes (git status, git diff, new " +
-    "files too) against the brief above. List findings most severe first as [P0] to [P3] with " +
-    `file:line and why; no fixes. No findings → say so. Aim for 4000 characters or less. ${SHAPE}`,
-  build: `Follow the project's AGENTS.md. Commit, push and deploy nothing. Aim for 2000 characters or less. ${SHAPE} Include checks run and their results.`,
-  "build+": `Follow the project's AGENTS.md. Commit, push and deploy nothing. Aim for 4000 characters or less. ${SHAPE} Include checks run and their results.`,
-};
-
 function claudeAnswer(
   r: Extract<Route, { provider: "claude" }>,
   why: string,
@@ -132,88 +101,27 @@ async function delegate(
   input: Input,
   toolUseId: string,
 ): Promise<string> {
-  const on = await gptOn($);
-  const family = input.family ?? (input.thread ? threads.get(input.thread) : undefined);
-  // With GPT off, Codex is read only for a family the user named.
-  const st: GptStatus =
-    on || family
-      ? await gptStatus($)
-      : { argv: null, state: "missing", models: [], limits: {}, at: 0 };
-  const now = await $.clock.now();
-  const usage = await $.session.usage().catch(() => undefined);
-  noteClaudeLimits(usage?.rateLimits ?? [], now);
-  const claude = claudeMeters();
-  const gpt = st.argv && !st.error ? st.limits : undefined;
-  noteGptMeters(on, gpt, now, st.at);
-  const r = route({
-    role: input.role,
-    author: input.author,
-    family,
-    band: balance(now).band,
-    gptOn: on,
-    models: newest(st.models, await pins($)),
-    claude,
-    gpt,
-    now,
-  });
-  if (r.provider === "none") return `Not delegated: ${r.reason}.`;
-  if (r.provider === "claude")
-    return claudeAnswer(
-      r,
-      !on
-        ? "GPT is off in the band"
-        : st.error
-          ? `Codex: ${st.error}`
-          : "Claude has the room or the role",
-      input.role,
-    );
-  if (!st.argv)
-    return `Not delegated: ${codexHint(st) ?? "Codex is not available here"}. Do it here.`;
+  const picked = await routeDelegation($, input);
+  if (picked.provider === "none") return `Not delegated: ${picked.reason}.`;
+  if (picked.provider === "claude")
+    return claudeAnswer(picked.r, picked.why, input.role);
+  if (picked.provider === "unavailable")
+    return `Not delegated: ${picked.reason}. Do it here.`;
+  const { r, argv } = picked;
   const writes = r.sandbox === "workspace-write";
-  if (writes && writing)
+  if (writes && !acquireWriter())
     return "Not started: another GPT run that writes is still going. Wait for it, or make this a read-only role.";
-  if (writes) writing = true;
   try {
-    const root = await $.session.root();
     const brief = `${input.brief.trim()}\n\n${FOOTER[input.role]}`;
-    const before = await changed($, root);
-    let last = 0;
-    const show = async (line: string) => {
-      const t = await $.clock.now();
-      if (t - last < 2000) return;
-      last = t;
-      try {
-        $.ui.notice(toolUseId, `GPT ${r.name} · ${input.role} · ${line}`);
-      } catch {
-        // the call's dialog is gone: nothing to show it under
-      }
-    };
-    let run: Run;
-    try {
-      run = await runCodex(
-        $,
-        [...st.argv, ...codexArgs(r, root, input.thread)],
-        brief,
-        root,
-        show,
-      );
-    } catch (err) {
-      // Codex did not start, or its stream broke: say so rather than leave the call unanswered.
-      run = {
-        answer: "",
-        commands: 0,
-        error: `Codex did not run: ${String(err)}`,
-      };
-    } finally {
-      void gptStatus($, true); // the ChatGPT meters moved
-    }
-    const familyRun = parseModel({ id: r.model })?.family;
-    if (run.thread && familyRun) threads.set(run.thread, familyRun);
-    const files = [...(await changed($, root))]
-      .filter(([path, hash]) => before.get(path) !== hash)
-      .map(([path]) => path);
-    if (writes) await flowDelegated($, files); // GPT's changes count
-    const head = `GPT ${r.name} (${input.role}, ${r.sandbox}, effort ${r.effort})`;
+    const { run, files, head: info } = await runDelegated(
+      $,
+      r,
+      argv,
+      brief,
+      toolUseId,
+      input.thread,
+    );
+    const head = `GPT ${info.name} (${input.role}, ${info.sandbox}, effort ${info.effort})`;
     if (run.error && !run.answer)
       return `${head} failed: ${run.error}\nSay why to the user, then do it here or on Claude.`;
     const answer = run.answer.trim();
@@ -236,7 +144,7 @@ async function delegate(
       .filter(Boolean)
       .join("\n");
   } finally {
-    if (writes) writing = false;
+    if (writes) releaseWriter();
   }
 }
 

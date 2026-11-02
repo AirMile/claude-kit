@@ -13,13 +13,46 @@ export function readTurn() {
 export function readWatch(on: On) {
   on(
     "tool.call",
-    { tool: ["Read", "Grep", "Glob", "Bash", "mcp__kit__delegate"] },
+    {
+      tool: [
+        "Read",
+        "Grep",
+        "Glob",
+        "Bash",
+        "mcp__kit__delegate",
+        "mcp__kit__run_task",
+      ],
+    },
     async ($, e, next) => {
       const turn = reads;
-      const started = e.tool === "mcp__kit__delegate" ? await $.clock.now() : 0;
+      const delegated =
+        e.tool === "mcp__kit__delegate" || e.tool === "mcp__kit__run_task";
+      const started = delegated ? await $.clock.now() : 0;
       const ran = await next(e);
-      const ended = e.tool === "mcp__kit__delegate" ? await $.clock.now() : 0;
+      const ended = delegated ? await $.clock.now() : 0;
       if (e.agentId || ran.deny !== undefined) return ran;
+      if (e.tool === "mcp__kit__run_task") {
+        const first =
+          (
+            ran.text ?? (typeof ran.result === "string" ? ran.result : "")
+          ).split("\n")[0] ?? "";
+        const provider =
+          first.startsWith("run_task ") && !first.startsWith("run_task not run")
+            ? "gpt"
+            : "none";
+        if (turn === reads && provider === "gpt") {
+          turn.calls = 0;
+          turn.chars = 0;
+        }
+        await log($, {
+          event: "delegate",
+          text: "run_task",
+          provider,
+          outcome: first.startsWith("run_task pass") ? "ok" : "failed",
+          durationMs: ended - started,
+        });
+        return ran;
+      }
       if (e.tool === "mcp__kit__delegate") {
         const result =
           ran.text ?? (typeof ran.result === "string" ? ran.result : "");

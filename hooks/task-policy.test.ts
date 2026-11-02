@@ -172,5 +172,10 @@ test("display levels, notes and equality", () => {
   expect(sameLevels({ d: 1, e: 1, v: 1, r: 1 }, ask().levels)).toBe(false);
   const note = decisionNote(ask());
   expect(note).toContain("kit task: D1 E1 V1");
-  expect(note).toContain("mcp__kit__delegate");
+  expect(note).toContain(
+    "Give one brief with its covering check to mcp__kit__run_task (role build); review its diff here.",
+  );
+  expect(decisionNote(ask({ change: "heavy" }))).toContain(
+    "Use mcp__kit__run_task (role build+) for briefs one at a time, each with its covering check; review each diff here.",
+  );
 });

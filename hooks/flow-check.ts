@@ -62,6 +62,11 @@ export function checkOf(command: string): Check | undefined {
   return undefined;
 }
 
+// An argv run without a shell (mcp__kit__run_task): its own command only, so `;` or `|` inside
+// an argument never makes it a check.
+export const isCheckArgv = (argv: readonly string[]): boolean =>
+  RUNNER.test(argv.join(" ").replace(PREFIX, ""));
+
 // Words a failing run prints; a count of zero ("0 failed") is not a failure.
 const FAILED =
   /\b[1-9]\d* (?:failed|failing|errors?)\b|^\s*FAIL\b|\bFAILED\b|\bTests?:\s+\d+ failed|✗|✖|\berror TS\d+|\bError:/m;

@@ -1,130 +1,9 @@
-import type { On } from "claude-code";
 import { expect, test } from "claude-code/testing";
 
 import { EXPLORE_LABELS } from "./explore-first";
 import { CHANGE_LABELS } from "./flow-policy";
-import { LABELS } from "./model-policy";
+import { world } from "./read-watch-fixture";
 import { VERIFY_LABELS } from "./task-policy";
-
-// Drive the installed mod through prompts and tools; never pass the test's $ to a module.
-function world(
-  on: On,
-  opts: {
-    explore?: boolean;
-    change?: boolean;
-    off?: boolean;
-    delegate?: "ok" | "claude" | "failed" | "partial" | "none";
-  } = {},
-) {
-  const store: Record<string, unknown> = { mode: "off", gpt: !opts.off };
-  const prompts: { context?: readonly string[] }[] = [];
-  const classified: {
-    text: string;
-    labels: readonly string[];
-    model?: string;
-  }[] = [];
-  const resetsAt = "2026-11-03T12:00:00Z";
-  let gptPct = 10;
-  let elapsed = 0;
-  on("session.id", async () => ({ value: "s1" }));
-  on("session.root", async () => ({ value: "/p/app" }));
-  on("session.usage", async () => ({
-    value: { context: { percent: 10 }, rateLimits: [] },
-  }));
-  on("session.measure", async (_$, e) => ({ changed: e.changed }));
-  on("clock.now", async () => ({
-    value: Date.parse("2026-10-27T12:00:00Z") + elapsed,
-  }));
-  on("ui.log", async () => ({ value: undefined }));
-  on("ui.invalidate", async () => ({ value: undefined }));
-  on("store.get", async (_$, e) => ({ value: store[e.key] }));
-  on("store.set", async (_$, e) => {
-    store[e.key] = e.value;
-    return { value: undefined };
-  });
-  on("model.classify", async (_$, e) => {
-    classified.push({
-      text: e.text,
-      labels: e.labels,
-      model: e.options?.model,
-    });
-    return {
-      value: e.labels.includes(EXPLORE_LABELS.explore)
-        ? opts.explore
-          ? EXPLORE_LABELS.explore
-          : EXPLORE_LABELS.direct
-        : e.labels.includes(CHANGE_LABELS.none)
-          ? opts.change
-            ? CHANGE_LABELS.medium
-            : CHANGE_LABELS.none
-          : opts.change
-            ? LABELS.routine
-            : LABELS.question,
-    };
-  });
-  on("process.run", async (_$, e) => ({
-    value:
-      e.argv[0] === "node"
-        ? {
-            exitCode: 0,
-            stdout: JSON.stringify({
-              argv: ["/bin/codex"],
-              models: opts.delegate ? [{ id: "gpt-6-luna" }] : [],
-              limits: {
-                five_hour: { pct: 10 },
-                seven_day: { pct: gptPct, resetsAt },
-              },
-            }),
-            stderr: "",
-          }
-        : { exitCode: 1, stdout: "", stderr: "" },
-  }));
-  on("process.spawn", async function* () {
-    elapsed += 50;
-    if (opts.delegate !== "failed")
-      yield {
-        stream: "stdout" as const,
-        text:
-          JSON.stringify({
-            type: "item.completed",
-            item: { type: "agent_message", text: "Done." },
-          }) + "\n",
-      };
-    if (opts.delegate === "failed" || opts.delegate === "partial")
-      yield {
-        stream: "stdout" as const,
-        text:
-          JSON.stringify({
-            type: "turn.failed",
-            error: { message: "offline" },
-          }) + "\n",
-      };
-    return { value: { code: 0, signal: null } };
-  });
-  on("prompt.submit", async (_$, e) => {
-    prompts.push({ context: e.context });
-    return { text: e.text };
-  });
-  on(
-    "tool.call",
-    { tool: ["Read", "Grep", "Glob", "Bash", "Edit", "Write"] },
-    async (_$, e) => ({
-      result: "ok" as never,
-      isError: e.tool === "Read" && e.file_path.includes("broken"),
-      text: "x".repeat(e.tool === "Read" ? (e.limit ?? 1) : 1),
-      context: ["existing context"],
-    }),
-  );
-  return {
-    store,
-    prompts,
-    classified,
-    resetsAt,
-    gpt: (pct: number) => {
-      gptPct = pct;
-    },
-  };
-}
 
 type T$ = Parameters<Parameters<typeof test>[1]>[0];
 const prompt = ($: T$, text = "Find the retry logic in this repository") =>
@@ -291,6 +170,31 @@ for (const outcome of ["ok", "claude", "failed", "partial", "none"] as const) {
         outcome === "claude" ? "claude" : outcome === "none" ? "none" : "gpt",
       outcome: ok ? "ok" : "failed",
       durationMs: outcome === "claude" || outcome === "none" ? 0 : 50,
+    });
+  });
+}
+
+for (const status of ["pass", "failing", "stopped", "not run"] as const) {
+  test(`run_task measurement and read reset: ${status}`, async ($, on) => {
+    const w = world(on, { runTask: status, off: status === "not run" });
+    await prompt($);
+    for (let i = 0; i < 4; i++) await read($);
+    const out = await $.tool.call({
+      tool: "mcp__kit__run_task",
+      brief: "Fix the retry.",
+      checks: [["/cover"]],
+    } as never);
+    expect(String(out.result)).toContain(`run_task ${status}`);
+    expect((await read($)).context?.length).toBe(status === "not run" ? 2 : 1);
+    const entries = (w.store.flowLog as Record<string, unknown>[]).filter(
+      (e) => e.event === "delegate",
+    );
+    expect(entries[0]).toMatchObject({
+      event: "delegate",
+      text: "run_task",
+      provider: status === "not run" ? "none" : "gpt",
+      outcome: status === "pass" ? "ok" : "failed",
+      durationMs: status === "not run" ? 0 : status === "failing" ? 150 : 50,
     });
   });
 }

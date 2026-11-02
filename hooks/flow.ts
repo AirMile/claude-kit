@@ -1,59 +1,33 @@
-import type { CommandSpec, EngineInterface, On } from "claude-code";
+import type { EngineInterface, On } from "claude-code";
 
 import { checkOf, checkPassed } from "./flow-check";
+import { flowCommandRun } from "./flow-command";
 import { promptLevels, raiseLevels } from "./flow-levels";
 import { classifyPrompt } from "./flow-prompt";
-import {
-  endEntry,
-  type Ending,
-  type Mark,
-  MARKS,
-  marked,
-  report,
-} from "./flow-log";
-import {
-  changed,
-  newTask,
-  onCheck,
-  onEdit,
-  onPrompt,
-  onVerifier,
-  stopVerdict,
-  type Task,
-  verified,
-  verifierPassed,
-} from "./flow-policy";
-import {
-  loadTask,
-  log,
-  readLog,
-  saveTask,
-  worktreePrint,
-  writeLog,
-} from "./flow-store";
+import { endEntry, type Ending } from "./flow-log";
+import * as policy from "./flow-policy";
+import { loadTask, log, saveTask, worktreePrint } from "./flow-store";
 import { isThin, type Kind } from "./model-policy";
 import { readTurn } from "./read-watch";
+import type { Levels } from "./task-policy";
 
-// Flow (always on; /flow reports it): this chat's open change task, fed by its prompts
-// (auto-model.ts), edits, turn ends and compactions (register.tsx, compaction.ts), shell
-// checks (below), the verifier's answer (fresh-start.ts's turn.complete) and GPT's changes
-// (delegate.ts). The worktree's git fingerprint is the evidence; the task is kept per session
-// in $.store, so a reload or restart keeps it. It sends the track's notes and task-policy's
-// decision (its levels on the task and in the band), holds a turn that ends on unchecked
-// changes, and logs it all for 14 days.
+export { flowCommand } from "./flow-command";
 
-export const flowCommand: CommandSpec = {
-  name: "flow",
-  description: "kit: the change workflow's report, and marking a pick",
-  argumentHint: "[mark <n> too-heavy|too-light|hold-right|hold-wrong]",
-  immediate: true,
-};
+// Flow (always on; /flow reports it, flow-command.ts): this chat's open change task, fed by its
+// prompts (auto-model.ts), edits, turn ends and compactions (register.tsx, compaction.ts), shell
+// checks (below) and mcp__kit__run_task's (task-runner.ts), the verifier's answer
+// (fresh-start.ts's turn.complete) and GPT's changes (delegate-run.ts). The worktree's git
+// fingerprint is the evidence; the task is kept per session in $.store, so a reload or restart
+// keeps it. It sends the track's notes and task-policy's decision (its levels on the task and
+// in the band), holds a turn that ends on unchecked changes, and logs it all for 14 days.
+
+export type CheckStart = { startedAt: number; startPrint: string | undefined };
 
 const BUILD =
   /^\s*\/(kit:)?build\b|<command-name>\/?(kit:)?build<\/command-name>/;
 
 let loadedFor: string | undefined; // the session whose task is in memory
-let task: Task | undefined; // this chat's open change task
+let task: policy.Task | undefined; // this chat's open change task
 let promptPrint: string | undefined; // the worktree when the last prompt came in
 let endedOnQuestion = false; // the last turn ended on a question to the user
 const spawned = new Map<string, string>(); // subagent id → its type, until it answers
@@ -78,14 +52,44 @@ async function save($: EngineInterface) {
   await saveTask($, loadedFor ?? (await $.session.id().catch(() => "")), task);
 }
 
-const ending = (t: Task, p: string | undefined): Ending =>
-  !changed(t, p)
-    ? "no change"
-    : verified(t, p)
-      ? "verified"
-      : t.unverified
-        ? "unverified"
-        : "unresolved";
+export async function flowLevels(
+  $: EngineInterface,
+): Promise<Levels | undefined> {
+  await load($);
+  return task?.levels;
+}
+
+// A check counts for the worktree it started on, whoever ran it (a subagent's too).
+export async function flowCheckStart(
+  $: EngineInterface,
+): Promise<CheckStart | undefined> {
+  await load($);
+  if (!task) return undefined;
+  return { startedAt: await $.clock.now(), startPrint: await worktreePrint($) };
+}
+
+export async function flowCheckEnd(
+  $: EngineInterface,
+  start: CheckStart,
+  passed: boolean,
+): Promise<string | undefined> {
+  await load($);
+  if (!task) return undefined;
+  task = policy.onCheck(task, passed, start.startedAt, start.startPrint);
+  // The task's first failing check raises its levels once; later ones are the same work.
+  const note =
+    !passed && task.failed === 1
+      ? await raise($, "a failing check")
+      : undefined;
+  await save($);
+  return note;
+}
+
+const ending = (t: policy.Task, p: string | undefined): Ending => {
+  if (!policy.changed(t, p)) return "no change";
+  if (policy.verified(t, p)) return "verified";
+  return t.unverified ? "unverified" : "unresolved";
+};
 
 // A typed prompt, already sorted into its kind: the note to send with it.
 export async function flowPrompt(
@@ -102,14 +106,9 @@ export async function flowPrompt(
   // A short reply ("ja") continues an open task; without one it is a request of its own, and
   // so is /build, however short.
   const thin = !!task && !build && isThin(text);
-  const { change, verify, explore, ready } = await classifyPrompt(
-    $,
-    text,
-    kind,
-    build,
-    thin,
-  );
-  const step = onPrompt({
+  const labels = await classifyPrompt($, text, kind, build, thin);
+  const { change, verify, explore, ready } = labels;
+  const step = policy.onPrompt({
     task,
     kind,
     change,
@@ -164,7 +163,7 @@ export async function flowEdit(
 ): Promise<string | undefined> {
   await load($);
   const now = await $.clock.now();
-  const step = onEdit(task, path, now, now, promptPrint);
+  const step = policy.onEdit(task, path, now, now, promptPrint);
   if (!step) return undefined;
   task = step.task;
   await save($);
@@ -210,7 +209,7 @@ export async function flowStop(
     p !== promptPrint
   ) {
     const now = await $.clock.now();
-    task = newTask(now, "light", promptPrint);
+    task = policy.newTask(now, "light", promptPrint);
     await log($, {
       task: task.id,
       event: "start",
@@ -220,7 +219,7 @@ export async function flowStop(
     });
   }
   const before = task;
-  const v = stopVerdict(task, lastMessage, p);
+  const v = policy.stopVerdict(task, lastMessage, p);
   endedOnQuestion = (lastMessage ?? "").trim().endsWith("?");
   promptPrint = p; // the next turn's changes count from here
   task = v.task;
@@ -252,9 +251,9 @@ export async function flowAnswer(
   if (!spawned.delete(agentId)) return;
   await load($);
   if (!task) return;
-  task = onVerifier(
+  task = policy.onVerifier(
     task,
-    verifierPassed(answer),
+    policy.verifierPassed(answer),
     await $.clock.now(),
     await worktreePrint($),
   );
@@ -283,40 +282,15 @@ export async function resetFlow($: EngineInterface) {
 }
 
 export function flow(on: On) {
-  // A check counts for the worktree it started on, whoever ran it (a subagent's too).
   on("tool.call", { tool: "Bash" }, async ($, e, next) => {
     const check = checkOf(e.command);
-    if (check) await load($);
-    const watch = check && task;
-    const startedAt = watch ? await $.clock.now() : 0;
-    const startPrint = watch ? await worktreePrint($) : undefined;
+    const start = check ? await flowCheckStart($) : undefined;
     const ran = await next(e);
-    if (!watch || !check || ran.deny !== undefined || !task) return ran;
+    if (!start || !check || ran.deny !== undefined) return ran;
     const passed = checkPassed(check, ran.isError === true, ran.text ?? "");
-    task = onCheck(task, passed, startedAt, startPrint);
-    // The task's first failing check raises its levels once; later ones are the same work.
-    const note =
-      !passed && task.failed === 1
-        ? await raise($, "a failing check")
-        : undefined;
-    await save($);
+    const note = await flowCheckEnd($, start, passed);
     return note ? { ...ran, context: [...(ran.context ?? []), note] } : ran;
   });
 
-  on("command.run", { command: "flow" }, async ($, e) => {
-    const [verb, n, what] = e.args.trim().toLowerCase().split(/\s+/);
-    let note = "";
-    if (verb === "mark") {
-      const next = MARKS.includes(what as Mark)
-        ? marked(await readLog($), Number(n), what as Mark)
-        : undefined;
-      if (next) await writeLog($, next);
-      note = next
-        ? `Marked ${n} as ${what}.\n`
-        : `No mark: /flow mark <n> ${MARKS.join("|")}.\n`;
-    }
-    return {
-      text: note + report(await readLog($)),
-    };
-  });
+  on("command.run", { command: "flow" }, flowCommandRun);
 }

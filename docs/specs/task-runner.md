@@ -3,7 +3,7 @@ Criteria are checked [x] when built AND verified. -->
 
 # task-runner
 
-Status: defined
+Status: manual
 Design: —
 
 ## Goal
@@ -16,21 +16,21 @@ observation, not GPT's report. Increment 2 of task-systems.
 
 ## Acceptance criteria
 
-- [ ] Happy: `run_task({brief, checks: argv[][] (1-3), role?: build|build+})` routes like
+- [x] Happy: `run_task({brief, checks: argv[][] (1-3), role?: build|build+})` routes like
       delegate's build role, runs Codex once, then runs each check with `$.process.run` (no
       shell, session root, ≤ 10 min each). Result ≤ 4000 chars: status (pass / failing /
       stopped / not run), model + thread, rounds, changed files, per-check exit code, GPT's
       final message cut to 1500 chars, what's left (review the diff; V2+ → delegate review).
-- [ ] Happy: a failing check → the same thread gets a fix brief with that check's argv + the
+- [x] Happy: a failing check → the same thread gets a fix brief with that check's argv + the
       last 60 output lines; all checks run again. At most 2 fix rounds; still failing →
       status `failing` with that tail, never "pass".
-- [ ] Edge: every check result reaches flow the way a Bash check does (onCheck with the start
+- [x] Edge: every check result reaches flow the way a Bash check does (onCheck with the start
       fingerprint, first failure raises the levels), GPT's files per round via flowDelegated;
       the log records run_task as a GPT run, so the E1+ → GPT-run ratio in `/flow` counts it.
-- [ ] Edge: not started (no Codex run, no check) for an empty brief or checks, GPT off, Codex
+- [x] Edge: not started (no Codex run, no check) for an empty brief or checks, GPT off, Codex
       missing, a Claude/none route, or another writing GPT run (lock shared with delegate);
       the reason is stated.
-- [ ] Error: a Codex error, a check that can't start or times out, or the 30-min total
+- [x] Error: a Codex error, a check that can't start or times out, or the 30-min total
       deadline → stop, status `stopped` with round, files and error so far; the lock is
       released.
 - [ ] Safety: tool.check never auto-allows run_task (its checks run outside Codex's sandbox,
@@ -77,11 +77,50 @@ observation, not GPT's report. Increment 2 of task-systems.
 
 ## Handoff
 
-Spec accepted 2026-11-02 (2 fix rounds). Research (Sol, thread 01a19969…) and blind plan
-(Sol, thread 01a1996b…) agree on a separate tool + extracting delegate's run. Next: run the
-full suite as baseline, then extract `delegate-run.ts` first (delegate tests must stay green),
-then the pure policy with its test.
+Built 2026-11-02 via 4 delegate build+ briefs (Sol 6.1), each diff reviewed here; nothing
+committed (kit flow heavy: commit only when the user asks). Baseline was 168 pass / 0 fail;
+now 204 pass / 0 fail, tsc clean outside `*.test.ts`, mod validates in a scratch copy.
+
+- `delegate-run.ts`: routeDelegation / acquireWriter+releaseWriter / runDelegated; the
+  runner holds the lock over all rounds. `flow.ts`: flowCheckStart/End shared with Bash,
+  flowLevels; `/flow` moved to `flow-command.ts` (flow.ts 296 lines).
+- `task-runner.ts` declares `McpToolInputs.mcp__kit__run_task` in the generator's exact
+  shape: `.claude-plugin/types/claude-code-mcp` is generated per machine (gitignored) and
+  lacks the tool until a save with it connected; a differently written type would clash.
+- Test fixtures split out (`task-runner-fixture.ts`, `read-watch-fixture.ts`) for line size.
+- Verified (see below); one fix round applied here. Left: the manual permission-prompt check
+  of criterion 6 (`claude --plugin-dir .`), then Finish. At Finish: drop Later `flow-split`
+  (obsolete) and add the improvement notes below under Later. Open: `/build` 4b.2 still
+  names delegate `build` for criteria, while the E1/E2 notes now say run_task.
 
 ## Verify
 
-—
+2026-11-02 · kit:verifier: criteria 1-6 pass on code + tests; criterion 6's real prompt is
+manual. Other-family review (Claude Sonnet; the code came from GPT): no P0, one P1.
+Fix round 1 (done here; 209 pass / 0 fail, tsc clean outside tests, mod validates):
+
+- P1: the runner recorded every argv in flow, so `["true"]` would open the verify gate.
+  Now only an argv `isCheckArgv` (flow-check.ts, the same runner list as Bash, no `;`/`|`
+  splitting since there is no shell) is recorded; tests for `true`, `echo "x; vitest"`.
+- A check passing right at the 30-min deadline made the run `stopped`: now only a check the
+  deadline skipped stops it (tests: pass at the deadline, deadline between two checks).
+- A Codex error in round ≥ 2 showed the previous round's check lines: cleared per round.
+- `flowLevels` failing after the lock release no longer loses the result.
+
+Manual · permission prompt (criterion 6): skipped 2026-11-02, since `claude --plugin-dir .`
+ran on API billing, which the user doesn't want. Criterion 6 stays open until it can be
+checked on the subscription (e.g. after installing a bumped version).
+
+Re-verify after fix round 1 (kit:verifier): automated criteria PASS, 209 pass / 0 fail;
+isCheckArgv checked on real argvs (`echo "x; vitest"` no, `npx vitest run` yes).
+
+Improvement notes (for Later):
+
+- The permission test registers its own "ask" handler, so it can't fail if an allow is
+  added later: assert that no tool.check is registered for run_task instead.
+
+- `pass` while GPT changed nothing: say "pass, no changes" or stop.
+- A timed-out check may keep running (`$.process.run`'s contract doesn't say it kills the
+  child); timeout vs "could not start" is guessed from elapsed time and the message.
+- read-watch counts a `stopped` run where Codex never started as a GPT run (and resets the
+  read budget); tail is stdout+stderr concatenated, so stderr-biased.

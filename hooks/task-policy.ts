@@ -126,8 +126,8 @@ const DEFINE: Record<Level, string> = {
 };
 const EXECUTE: Record<Level, string> = {
   0: "Make it here.",
-  1: "Give one brief to mcp__kit__delegate (role build); review its diff here.",
-  2: "Use mcp__kit__delegate (role build+) for briefs one at a time; review each diff here.",
+  1: "Give one brief with its covering check to mcp__kit__run_task (role build); review its diff here.",
+  2: "Use mcp__kit__run_task (role build+) for briefs one at a time, each with its covering check; review each diff here.",
   3: "Use parallel analysis briefs (research/search), with one writer per checkout.",
 };
 const VERIFY: Record<Level, string> = {

@@ -20,11 +20,14 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, switches kept by `hooks/model-switch.ts`, `/mode`), flow (`hooks/flow.ts` on the pure `hooks/flow-policy.ts`, `hooks/flow-check.ts` and
   `hooks/flow-log.ts`, storage and git fingerprint in `hooks/flow-store.ts`: each change task's
   track light/medium/heavy, its note at the start or on growth, the verify gate on `classic.Stop`
-  from the worktree's git fingerprint, the checks it saw and the verifier's answer, `/flow`),
+  from the worktree's git fingerprint, the checks it saw and the verifier's answer, `/flow` in `hooks/flow-command.ts`),
   `mcp__kit__delegate` (`hooks/delegate.ts` on the pure `hooks/delegate-policy.ts`: work handed
   to Claude or GPT by role and by which plan has room, the newest GPT model per family; the
   Codex side, its catalog, the ChatGPT meters, the GPT switch and a run, in `hooks/codex-run.ts`;
-  `/gpt` command in `hooks/gpt-command.ts`), ChatGPT's 5h window started with a new Claude one
+  `/gpt` command in `hooks/gpt-command.ts`; its GPT run, route and writer lock in
+  `hooks/delegate-run.ts`), `mcp__kit__run_task` (`hooks/task-runner.ts` on the pure
+  `hooks/task-runner-policy.ts`: one GPT change, the chat's checks run by the mod, fixes on the
+  same thread), ChatGPT's 5h window started with a new Claude one
   (`hooks/window-sync.ts` on the pure `hooks/window-sync-policy.ts`), shared delegation balance (`hooks/balance.ts`, meters in `hooks/delegate-balance.ts`),
   task systems (the pure `hooks/task-policy.ts`: per typed prompt a Define/Execute/Verify/Refactor
   level and the one note that names who executes; `hooks/flow-levels.ts` decides, raises and logs
@@ -81,8 +84,10 @@ product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.m
   purpose per file, ≤ ~300 lines each (larger → split). It reads only specs (`Status` +
   criteria), `docs/roadmap.md` and read-only git state (spec commits and
   worktrees on other branches); it writes only through `roadmap-file.ts` and
-  `$.store` (worktree marks, pins). It starts Codex only for `mcp__kit__delegate` and the window-sync ping: what a
-  writing run changes is Codex's work, in Codex's sandbox, reviewed by the chat. Flow reads the
+  `$.store` (worktree marks, pins). It starts Codex only for `mcp__kit__delegate`,
+  `mcp__kit__run_task` and the window-sync ping: what a writing run changes is Codex's work, in
+  Codex's sandbox, reviewed by the chat. The only other commands it runs for the chat are the
+  check argvs the chat passes to `run_task` (as the user, after the permission prompt). Flow reads the
   chat's own tool calls (Edit/Write, Bash), subagents' answers and read-only git state (`ls-files`,
   diff, `hash-object` without `-w`), and holds a turn's end; it writes only `$.store` (its
   open task per session, a 14-day log).

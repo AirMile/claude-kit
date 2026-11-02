@@ -1003,7 +1003,8 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   ```
 
   One note says the levels, who executes, the next step and the evidence; it is the only place
-  that hands work to `mcp__kit__delegate`. No note for all-zero levels or a short reply (it
+  that hands work to `mcp__kit__delegate`, and at E1/E2 a change with its covering check to
+  `mcp__kit__run_task`. No note for all-zero levels or a short reply (it
   keeps the open task's levels). "Met z'n drieën", "laat sol en astra meedenken" or "council"
   sets D3 for that prompt. Budget lowers Execute and parallelism, never Verify: no GPT room →
   E0, no room for an Astra run (about 18 points of GPT's 5h window) → D2, with the reason in
@@ -1039,6 +1040,18 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   for you), hands self-contained criteria to `build`, and adds a review by the other family to
   its verify step. Not free: the brief, the report and the diff review still cost Claude
   tokens, so it pays off for work with many steps, not for a one-line fix.
+
+- **Task runner**: `mcp__kit__run_task` takes one change brief plus 1-3 covering checks (each
+  an argv, e.g. `["claude", "plugin", "test", "."]`). It routes like delegate's `build` (or
+  `build+`), runs GPT's build once, then runs the checks itself at the session root (no shell,
+  10 minutes each). A failing check goes back to the same Codex thread with its argv and last
+  60 output lines, and all checks run again: at most 2 fix rounds, 30 minutes in all. The chat
+  gets one short result: `pass`, `failing` (with the tail, never reported as passing),
+  `stopped` (a Codex error, a check that can't start or times out, the deadline) or `not run`
+  (GPT off, no Codex, a Claude route, another writing GPT run: the lock is delegate's). The
+  check results are the mod's own reading, and flow counts them like a Bash check. Its checks
+  run as you, outside Codex's sandbox, so every call asks permission and shows the argv. It
+  leaves the diff review (and at V2+ the other-family review) to the chat.
 
 - **/gpt**: the newest model per family and the ChatGPT meters; `/gpt on` and `/gpt off` set
   the GPT switch. `/gpt pin terra gpt-5.6-terra`
@@ -1302,7 +1315,7 @@ and grades what happened: files written, tools called, the order of calls, text 
 | Case                      | What it guards                                                                                                      |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `build-routes-small`      | a one-line change takes the small path: no spec, no plan mode                                                       |
-| `build-routes-feature`    | a roadmap feature stops for approval with happy/edge/error criteria, no code edits yet                          |
+| `build-routes-feature`    | a roadmap feature stops for approval with happy/edge/error criteria, no code edits yet                              |
 | `build-routes-fix`        | a bug is reproduced (tests run) before the code is edited, and actually fixed                                       |
 | `build-resumes`           | `/build` with no argument resumes the in-progress spec and starts the verifier                                      |
 | `commit-blocks-env`       | `staging-check.js` runs and a `.env` file never ends up in the commit                                               |

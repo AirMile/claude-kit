@@ -4,6 +4,7 @@ import { autoModel, modeCommand } from "./auto-model";
 import { freshStart, freshTool } from "./fresh-start";
 import { codexHint, gptCached, gptOn, gptStatus } from "./codex-run";
 import { delegateTool, delegation, gptCommand } from "./delegate";
+import { runTaskTool, taskRunner } from "./task-runner";
 import { noteClaudeLimits } from "./delegate-balance";
 import { flow, flowCommand, flowEdit, flowStop, resetFlow } from "./flow";
 import { noteFile, resetChat } from "./chat-facts";
@@ -31,6 +32,7 @@ import { syncWindows } from "./window-sync";
 // - fresh_start: /build's safe point clears the chat and resumes (fresh-start).
 // - delegate: work handed to Claude or GPT through Codex by role and room, ChatGPT's meters in
 //   the band while GPT is on, /gpt (delegate).
+// - run_task: a GPT change, host checks and repairs on the same thread (task-runner).
 // - flow: each change task's track, its notes and the check before a turn ends, /flow (flow).
 // - window sync: ChatGPT's 5h window started with a new Claude one (window-sync).
 
@@ -107,6 +109,7 @@ export const register: Register = (on) => {
   freshStart(on);
   readWatch(on);
   delegation(on);
+  taskRunner(on);
   flow(on);
   autoModel(on);
   kitBand(on);
@@ -118,6 +121,7 @@ export const register: Register = (on) => {
     await $.tool.register(themeTool);
     await $.tool.register(freshTool);
     await $.tool.register(delegateTool);
+    await $.tool.register(runTaskTool);
     await $.command.register(panelCommand);
     await $.command.register(modeCommand);
     await $.command.register(warmCommand);
