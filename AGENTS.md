@@ -97,6 +97,10 @@ product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.m
 - A rule that needs a second paragraph of exceptions is a sign to cut it, not to extend it
 - Check: `wc -l skills/*/SKILL.md`
 
+## Git
+
+- Land: merge
+
 ## Conventions
 
 - Skill and agent files: English. Runtime output follows the user's language setting.
