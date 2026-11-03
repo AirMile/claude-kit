@@ -8,6 +8,7 @@ import {
   ROLES,
   type Route,
 } from "./delegate-policy";
+import { flowNoReviewer, flowReviewStart, flowReviewEnd } from "./flow";
 import { gptOn } from "./codex-run";
 import { gptCommandRun } from "./gpt-command";
 import {
@@ -102,25 +103,31 @@ async function delegate(
   toolUseId: string,
 ): Promise<string> {
   const picked = await routeDelegation($, input);
-  if (picked.provider === "none") return `Not delegated: ${picked.reason}.`;
+  if (picked.provider === "none") {
+    if (input.role === "review") await flowNoReviewer($, picked.reason);
+    return `Not delegated: ${picked.reason}.`;
+  }
   if (picked.provider === "claude")
     return claudeAnswer(picked.r, picked.why, input.role);
-  if (picked.provider === "unavailable")
+  if (picked.provider === "unavailable") {
+    if (input.role === "review") await flowNoReviewer($, picked.reason);
     return `Not delegated: ${picked.reason}. Do it here.`;
+  }
   const { r, argv } = picked;
   const writes = r.sandbox === "workspace-write";
   if (writes && !acquireWriter())
     return "Not started: another GPT run that writes is still going. Wait for it, or make this a read-only role.";
   try {
     const brief = `${input.brief.trim()}\n\n${FOOTER[input.role]}`;
-    const { run, files, head: info } = await runDelegated(
-      $,
-      r,
-      argv,
-      brief,
-      toolUseId,
-      input.thread,
-    );
+    const start =
+      input.role === "review" ? await flowReviewStart($) : undefined;
+    const {
+      run,
+      files,
+      head: info,
+    } = await runDelegated($, r, argv, brief, toolUseId, input.thread);
+    if (input.role === "review")
+      await flowReviewEnd($, start, "gpt", run.answer, run.error);
     const head = `GPT ${info.name} (${input.role}, ${info.sandbox}, effort ${info.effort})`;
     if (run.error && !run.answer)
       return `${head} failed: ${run.error}\nSay why to the user, then do it here or on Claude.`;

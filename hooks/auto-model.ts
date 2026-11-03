@@ -303,7 +303,7 @@ export function autoModel(on: On) {
     const now = await getMode($);
     if (now === "off" || e.fork) {
       const started = await next(e);
-      flowSpawned(started.agentId, e.subagentType); // flow reads the verifier's answer
+      await flowSpawned($, started.agentId, e.subagentType, e.prompt); // flow binds verifier and review evidence
       return started;
     }
     const isEngine = e.provider.plugin === "engine";
@@ -311,7 +311,7 @@ export function autoModel(on: On) {
     // A plugin's or user's agent keeps its own definition unless kit knows its work.
     if (!isEngine && !known) {
       const started = await next(e);
-      flowSpawned(started.agentId, e.subagentType);
+      await flowSpawned($, started.agentId, e.subagentType, e.prompt);
       return started;
     }
     const kind = known ?? (await kindOf($, e.prompt)) ?? "routine";
@@ -319,7 +319,7 @@ export function autoModel(on: On) {
     const spawned = await next(
       isEngine && !e.model ? { ...e, model: p.model } : e,
     );
-    flowSpawned(spawned.agentId, e.subagentType);
+    await flowSpawned($, spawned.agentId, e.subagentType, e.prompt);
     const own = subagentEffort(askedEffort(e.tool_use_id), p.effort);
     if (spawned.agentId && own) agentEffort.set(spawned.agentId, own);
     return spawned;

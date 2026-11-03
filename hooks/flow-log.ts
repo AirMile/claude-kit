@@ -15,7 +15,7 @@ export const MARKS: readonly Mark[] = [
   "hold-wrong",
 ];
 export type Ending =
-  "verified" | "unresolved" | "unverified" | "no change" | "reset";
+  "verified" | "unresolved" | "unverified" | "no change" | "reset" | "waived";
 
 export type LogEntry = {
   at: number;
@@ -149,7 +149,7 @@ export function report(log: readonly LogEntry[]): string {
     `tasks by first pick: ${TRACKS.map((t) => `${t} ${count((e) => e.event === "start" && e.track === t)}`).join(" · ")}`,
     `grew after the first pick (too light?): ${count((e) => e.first !== e.track, ends)} · heavy ` +
       `ending with 2 files or fewer and no spec (too heavy?): ${count((e) => e.first === "heavy" && (e.files ?? 0) <= 2 && !e.spec, ends)}`,
-    `holds ${count((e) => e.event === "block")} · ended ${(["verified", "unresolved", "unverified"] as const).map((o) => `${o} ${count((e) => e.outcome === o, ends)}`).join(" · ")}`,
+    `holds ${count((e) => e.event === "block")} · ended ${(["verified", "waived", "unresolved", "unverified"] as const).map((o) => `${o} ${count((e) => e.outcome === o, ends)}`).join(" · ")}`,
     `your marks: ${MARKS.map((m) => `${m} ${count((e) => e.mark === m)}`).join(" · ")}`,
     ...decisionLines(log),
     `read notes ${count((e) => e.event === "read-note")} · delegated ${delegated.length} (gpt ${count((e) => e.provider === "gpt", delegated)}, claude ${count((e) => e.provider === "claude", delegated)}) · not delegated ${count((e) => e.provider === "none", delegates)} · failed ${count((e) => e.provider !== "none" && e.outcome === "failed", delegates)}`,

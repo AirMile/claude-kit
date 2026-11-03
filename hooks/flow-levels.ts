@@ -10,6 +10,7 @@ import {
   escalate,
   isCouncil,
   type Levels,
+  type Level,
   levelsText,
   roomOf,
   sameLevels,
@@ -48,18 +49,23 @@ export async function promptLevels(
     build: boolean;
     thin: boolean;
     prev: Levels | undefined; // the open task's, when this prompt continues it
+    gate: Level | undefined; // required Verify, independent of failing-check notes
     grew: boolean; // the prompt grew the open task's track
     task: number | undefined;
   },
-): Promise<{ levels: Levels | undefined; note?: string }> {
+): Promise<{
+  levels: Levels | undefined;
+  gateV: Level | undefined;
+  note?: string;
+}> {
   if (i.thin && i.prev) {
     redraw($);
-    return { levels: i.prev };
+    return { levels: i.prev, gateV: i.gate ?? i.prev.v };
   }
   const room = roomOf(i.ready, balanceMeters().gpt);
   // Growth raises the task's Execute and Verify by one, as an edit's growth does.
   const prev = i.grew && i.prev ? escalate(i.prev, room).levels : i.prev;
-  const d = decide({
+  const inputs = {
     kind: i.kind,
     change: i.change,
     verify: i.verify,
@@ -68,7 +74,16 @@ export async function promptLevels(
     council: isCouncil(i.text),
     room,
     prev,
-  });
+  };
+  const d = decide(inputs);
+  const gate = i.gate ?? i.prev?.v;
+  const gateV =
+    i.prev && gate !== undefined
+      ? decide({
+          ...inputs,
+          prev: { ...i.prev, v: Math.min(3, gate + (i.grew ? 1 : 0)) as Level },
+        }).levels.v
+      : d.levels.v;
   await log($, {
     task: i.task,
     event: "decision",
@@ -85,6 +100,7 @@ export async function promptLevels(
   const rose = !was || l.d > was.d || l.e > was.e || l.v > was.v || l.r > was.r;
   return {
     levels: l,
+    gateV,
     note:
       rose && Object.values(l).some((n) => n > 0) ? decisionNote(d) : undefined,
   };

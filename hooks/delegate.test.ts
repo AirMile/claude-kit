@@ -1,84 +1,7 @@
-import type { On } from "claude-code";
 import { expect, test } from "claude-code/testing";
 
-// kit's own mod is loaded around the test; these hooks only answer what is beneath it.
-const NOW = Date.parse("2026-10-27T12:00:00Z");
-const later = (h: number) => new Date(NOW + h * 3_600_000).toISOString();
-const CATALOG = [
-  "gpt-6.1-sol",
-  "gpt-6-astra",
-  "gpt-6.1-terra",
-  "gpt-6-luna",
-  "gpt-5.6-terra",
-];
-
-function world(
-  on: On,
-  opts: {
-    store?: Record<string, unknown>;
-    status?: Record<string, unknown>; // what codex-status.js prints
-    events?: string[]; // what Codex writes on stdout
-  } = {},
-) {
-  const spawned: { argv: readonly string[]; input?: string }[] = [];
-  const store: Record<string, unknown> = { ...opts.store };
-  let gitCalls = 0;
-  let statusReads = 0;
-  on("session.root", async () => ({ value: "/p/app" }));
-  on("ui.notice", async () => ({ value: undefined }));
-  on("clock.now", async () => ({ value: NOW }));
-  on("store.get", async (_$, e) => ({ value: store[e.key] }));
-  on("store.set", async (_$, e) => {
-    store[e.key] = e.value;
-    return { value: undefined };
-  });
-  on("session.usage", async () => ({
-    value: {
-      context: { window: 200_000, percent: 10 },
-      rateLimits: [{ kind: "five_hour", percentUsed: 20, resetsAt: later(3) }],
-    },
-  }));
-  on("process.run", async (_$, e) => {
-    if (e.argv[0] === "node") {
-      statusReads++;
-      const status = opts.status ?? {
-        argv: ["/bin/codex"],
-        models: CATALOG.map((id) => ({ id })),
-        limits: {
-          five_hour: { pct: 1, resetsAt: later(4) },
-          seven_day: { pct: 6, resetsAt: later(100) },
-        },
-      };
-      return {
-        value: {
-          exitCode: 0,
-          stdout: `${JSON.stringify(status)}\n`,
-          stderr: "",
-        },
-      };
-    }
-    if (e.argv[1] === "status") gitCalls++;
-    return {
-      value: {
-        exitCode: 0,
-        stdout:
-          e.argv[1] === "hash-object"
-            ? "blob\n"
-            : gitCalls > 1
-              ? " M src/a.ts\0"
-              : "",
-        stderr: "",
-      },
-    };
-  });
-  on("process.spawn", async function* (_$, e) {
-    spawned.push({ argv: e.argv, input: e.input });
-    for (const line of opts.events ?? [])
-      yield { stream: "stdout" as const, text: `${line}\n` };
-    return { value: { code: 0, signal: null } };
-  });
-  return { spawned, store, reads: () => statusReads };
-}
+import type { Task } from "./flow-policy";
+import { world, delegate } from "./delegate-fixture";
 
 const EVENTS = [
   JSON.stringify({ type: "thread.started", thread_id: "t-123" }),
@@ -95,17 +18,6 @@ const EVENTS = [
     usage: { input_tokens: 1000, output_tokens: 50 },
   }),
 ];
-
-async function delegate(
-  $: Parameters<Parameters<typeof test>[1]>[0],
-  input: Record<string, unknown>,
-) {
-  const ran = await $.tool.call({
-    tool: "mcp__kit__delegate",
-    ...input,
-  } as never);
-  return String((ran as { result?: unknown }).result ?? JSON.stringify(ran));
-}
 
 test("with room on both, a build runs on the newest Terra and only its final message comes back", async ($, on) => {
   const w = world(on, { events: EVENTS });
@@ -124,6 +36,9 @@ test("with room on both, a build runs on the newest Terra and only its final mes
   );
   expect(out).toContain("Changed: src/a.ts");
   expect(out).toContain("Added the button; npm test passes.");
+  const task = Object.values(w.store.flowTasks as Record<string, Task>)[0];
+  expect(task?.gptWrote).toBe(true);
+  expect(task?.claudeWrote).toBe(undefined);
 });
 
 test("a search runs on Luna when ChatGPT has room", async ($, on) => {
@@ -177,6 +92,13 @@ test("a review runs read-only with the brief and asks for ranked findings", asyn
   expect(argv).toContain("gpt-6.1-sol");
   expect(w.spawned[0]?.input).toContain("Review the form change.");
   expect(w.spawned[0]?.input).toContain("[P0] to [P3]");
+  expect(w.spawned[0]?.input).toContain(
+    "start the answer with a line `verdict: pass` or `verdict: fail`",
+  );
+  expect(w.spawned[0]?.input).toContain("fail = any [P0] or [P1]");
+  expect(w.spawned[0]?.input).toContain(
+    "failure-paths: <the failure paths and integration points you checked>",
+  );
 });
 
 test("without Codex a change is built here and research goes to Claude, saying why", async ($, on) => {
@@ -203,7 +125,9 @@ test("without Codex a change is built here and research goes to Claude, saying w
   });
   expect(read).toContain("Route: Claude (Codex: codex not found)");
   expect(read).toContain('model "sonnet"');
-  expect(read).toContain('Add to the subagent prompt: "Read only: change no files. Aim for 4000 characters or less. Conclusion first; evidence as file:line; uncertainties. No command logs, file contents beyond short quotes, or diffs."');
+  expect(read).toContain(
+    'Add to the subagent prompt: "Read only: change no files. Aim for 4000 characters or less. Conclusion first; evidence as file:line; uncertainties. No command logs, file contents beyond short quotes, or diffs."',
+  );
   expect(w.store.flowLog).toMatchObject([
     { event: "delegate", text: "build", provider: "none", outcome: "failed" },
     { event: "delegate", text: "research", provider: "claude", outcome: "ok" },

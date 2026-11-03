@@ -25,4 +25,6 @@
   `{ value: undefined }` (a `{ cancel }` object is not plain data and the timer is refused).
   Don't stub `ui.invalidate` around a mount: the mount redraws on it.
 - Typecheck with `npx -y -p typescript@5.6.3 tsc --noEmit -p .`; `claude plugin test` does not
-  type-check (test inputs are partial by design, so ignore errors in `*.test.ts`).
+  type-check (test inputs are partial by design, so ignore errors in `*.test.ts`). `npx -y` can
+  hang: then run the cached 5.6.3 under `~/.npm/_npx/*/node_modules/typescript/bin/tsc` with
+  `NODE_OPTIONS=--max-old-space-size=8192`. A cached tsc 6.0.3 ran out of heap on this repo.

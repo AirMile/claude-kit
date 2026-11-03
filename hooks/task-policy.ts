@@ -133,8 +133,8 @@ const EXECUTE: Record<Level, string> = {
 const VERIFY: Record<Level, string> = {
   0: "Check the answer against its sources.",
   1: "Run a covering test, typecheck or lint; visually check UI.",
-  2: "Run a covering check and get an independent other-family review via mcp__kit__delegate (role review).",
-  3: "Run covering checks and an adversarial other-family mcp__kit__delegate review (role review) of failure paths and integration.",
+  2: "Run a covering check and get an independent other-family review via mcp__kit__delegate (role review): the gate wants both on the final code.",
+  3: "Run a covering check and get an adversarial other-family review via mcp__kit__delegate (role review) of failure paths and integration (its answer has a failure-paths line): the gate wants both on the final code.",
 };
 const REFACTOR = [
   "",

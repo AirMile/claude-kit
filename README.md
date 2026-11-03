@@ -963,8 +963,8 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   One note goes out at the start and when the task grows, never on every prompt. It grows by
   what the work shows (more than 3 code files → medium; more than 8, or a migration or schema
   path → heavy) and never shrinks within a task. A short reply ("ja"), a question, or your
-  answer to the question the last turn ended on keeps the task; any other request ends it (in
-  the log as unresolved when its changes were never checked) and starts a new one. Code
+  answer to the question the last turn ended on keeps the task; a new change request folds into
+  unverified work, which stays open until verified or waived. Code
   changed outside any task (an edit, a shell command, a subagent) starts a light one. No
   roadmap needed.
 
@@ -976,15 +976,16 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   Only real runs count (a test, typecheck, lint or build command, not `echo test`); a failing
   check wipes earlier evidence; a piped check (`npm test | tail`) passes only when its output
   names no failure. Heavy work with a spec also needs the `kit:verifier`'s PASS on that code,
-  read from its own answer; a Fix needs only its check. It holds at most once per round of
-  changes and twice per task, never when the turn ends on a question to you or you said to
+  read from its own answer; V2 and V3 work also needs a review from the other model family
+  (V3 names failure paths). It holds at most once per round of changes and twice per request, never when the turn ends on a question to you or you said to
   skip verifying ("skip the checks", "zonder te testen"; "stop" alone is a request); after
-  that the task shows as `unverified`. The open task is kept per session (a reload or restart
-  keeps it), and after a compaction a note says what it still needs.
+  that the task stays open until verified or you say "skip verify" to waive it. The open task
+  is kept per session (a reload or restart keeps it), and after a compaction a note says what it still needs.
 
   Flow is always on: there is no switch. `/flow` reports 14 days: tasks per first pick, how many grew after it (too light?) or ended
-  heavy with two files or fewer and no spec (too heavy?), holds, how tasks ended (verified,
-  unresolved, unverified), and the last ten picks and holds, numbered.
+  heavy with two files or fewer and no spec (too heavy?), holds, how tasks ended (
+  verified, waived, and older unresolved or unverified endings), and the last ten picks and holds, numbered.
+  It also shows the open task and what it still needs.
   `/flow mark 3 too-light` (or `too-heavy`, `hold-right`, `hold-wrong`) adds your judgment, which counts
   alone can't give. Flow stays off the band; `/flow` shows its tasks.
 

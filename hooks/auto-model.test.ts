@@ -1,83 +1,10 @@
-import type { On } from "claude-code";
 import { expect, test } from "claude-code/testing";
 
-import { CHANGE_LABELS } from "./flow-policy";
-import { VERIFY_LABELS } from "./task-policy";
 
-// kit's own mod is loaded around the test; these hooks only answer what is beneath it.
-function world(
-  on: On,
-  opts: {
-    model: string;
-    label: string;
-    answer?: string;
-    labels?: string[]; // classifier answers in order, then `label`
-    change?: string; // flow's change classifier answer
-    verify?: string; // task-policy's verify classifier answer (default: behaviour)
-    turns?: number;
-    percent?: number;
-    store?: Record<string, unknown>;
-    drawn?: true; // a mounted band redraws on ui.invalidate: leave it to the engine
-  },
-) {
-  const asked: string[] = [];
-  const offered: string[] = [];
-  const sent: { text: string; origin: unknown; context?: readonly string[] }[] =
-    [];
-  const cleared: string[] = [];
-  const store: Record<string, unknown> = { ...opts.store };
-  on("session.root", async () => ({ value: "/p/app" }));
-  on("session.model", async () => ({ value: opts.model }));
-  on("session.turns", async () => ({ value: opts.turns ?? 0 }));
-  on("session.id", async () => ({ value: "s1" }));
-  on("session.usage", async () => ({
-    value: {
-      context: { window: 200_000, percent: opts.percent },
-      rateLimits: [],
-    },
-  }));
-  on("clock.after", async () => ({ value: undefined }));
-  on("clock.now", async () => ({ value: Date.parse("2026-10-27T12:00:00Z") }));
-  on("ui.toast", async () => ({ value: undefined }));
-  on("command.run", { command: "clear" }, async () => {
-    cleared.push("clear");
-    return { text: "" };
-  });
-  const queue = [...(opts.labels ?? [])];
-  on("model.classify", async (_$, e) => ({
-    value: e.labels.includes(CHANGE_LABELS.none)
-      ? opts.change
-      : e.labels.includes(VERIFY_LABELS.cosmetic)
-        ? (opts.verify ?? VERIFY_LABELS.behaviour)
-        : (queue.shift() ?? opts.label),
-  }));
-  // $.ui.ask is a tool.call of AskUserQuestion beneath; answered by question text.
-  on("tool.call", { tool: "AskUserQuestion" }, async (_$, e) => {
-    const { questions } = e as unknown as { questions: { question: string }[] };
-    const question = questions[0]?.question ?? "";
-    asked.push(question);
-    offered.push(JSON.stringify(questions[0]));
-    if (!opts.answer) return { deny: "dismissed" };
-    return { result: { questions, answers: { [question]: opts.answer } } };
-  });
-  if (!opts.drawn) on("ui.invalidate", async () => ({ value: undefined }));
-  on("ui.log", async () => ({ value: undefined }));
-  on("store.get", async (_$, e) => ({ value: store[e.key] }));
-  on("store.set", async (_$, e) => {
-    store[e.key] = e.value;
-    return { value: undefined };
-  });
-  on("store.delete", async (_$, e) => {
-    delete store[e.key];
-    return { value: undefined };
-  });
-  on("prompt.submit", async (_$, e) => {
-    sent.push({ text: e.text, origin: e.origin, context: e.context });
-    return { text: e.text };
-  });
-  on("classic.SessionStart", async () => ({ value: {} }));
-  return { asked, offered, sent, cleared, store };
-}
+import { world, band, runText, effortLevel } from "./auto-model-fixture";
+import { newTask, type Task } from "./flow-policy";
+import { FOOTER } from "./delegate-run";
+
 const TYPED = { kind: "composer" } as const;
 const QUESTION =
   "question: explain, look something up, a short question or a one-line change";
@@ -204,36 +131,6 @@ test("a stored switch survives a reload: no question on the stronger model", asy
   expect(w.asked).toEqual([]);
 });
 
-// The model and effort the band shows beside the profile.
-// The effort between ‹ and › (a Text is found by its text, not its key).
-async function effortLevel(ui: {
-  find: (q: object) => Promise<{ text?: string } | undefined>;
-}) {
-  const levels = /^ (default|▂|▄|▆|▇|█) $/;
-  return (await ui.find({ type: "Text", text: levels }))?.text;
-}
-
-// The model and, before it, the profile's effort or the effort set by hand.
-async function runText(ui: {
-  find: (q: object) => Promise<{ text?: string } | undefined>;
-}) {
-  const model = (await ui.find({ type: "Text", text: /\d\.\d/ }))?.text;
-  const level = (await effortLevel(ui))?.trim();
-  return level && level !== "default" ? `${level} ${model}` : model;
-}
-
-// The band as the terminal draws it; a press acts as a click does.
-function band($: Parameters<Parameters<typeof test>[1]>[0], on: On) {
-  on("ui.panes", async () => ({ value: [] }));
-  on("clock.every", () => new Promise<never>(() => {}));
-  return $.ui.mount({
-    plugin: "kit",
-    surface: "terminal",
-    component: "AbovePrompt",
-    props: { hasSurvey: false } as never,
-  });
-}
-
 test("with the profile off ‹ and › step the effort; with a profile on they hide", async ($, on) => {
   const w = world(on, {
     model: "claude-haiku-5-5",
@@ -330,48 +227,6 @@ test("the band's Git menu sends its item as a prompt", async ($, on) => {
   ]);
 });
 
-test("flow sends a track note with a change task; a question gets none", async ($, on) => {
-  const w = world(on, {
-    model: "claude-opus-5-5",
-    label: QUESTION,
-    labels: [HEAVY],
-    change: CHANGE_LABELS.heavy,
-    turns: 5,
-  });
-  await $.prompt.submit({ text: "rebuild the importer", origin: TYPED });
-  expect(String(w.sent[0]?.context)).toContain("kit flow (heavy)");
-  // The decision note rides along; without GPT room Execute drops to E0, Verify stays.
-  expect(String(w.sent[0]?.context)).toContain("kit task: D2 E0 V2.");
-  expect(String(w.sent[0]?.context)).toContain("GPT has no room: E0");
-  await $.prompt.submit({ text: "what does this do?", origin: TYPED });
-  expect(w.sent[1]?.context ?? []).toEqual([]);
-});
-
-test("flow works with the profile off and stays off the band", async ($, on) => {
-  const w = world(on, {
-    model: "claude-opus-5-5",
-    label: ROUTINE,
-    change: CHANGE_LABELS.light,
-    turns: 5,
-    drawn: true,
-    store: { mode: "off" },
-  });
-  const ui = await band($, on);
-  await $.prompt.submit({ text: "add a submit button", origin: TYPED });
-  expect(String(w.sent[0]?.context)).toContain("kit flow (light)");
-  expect(await ui.find({ type: "Text", text: /flow light/ })).toBeFalsy();
-});
-
-test("a /build kit started on the user's click gets the profile's model and effort", async ($, on) => {
-  world(on, { model: "claude-opus-5-5", label: HEAVY, turns: 5, drawn: true });
-  const ui = await band($, on);
-  await $.prompt.submit({
-    text: "/kit:build login-form",
-    origin: { kind: "plugin", name: "kit" } as never,
-  });
-  expect(await runText(ui)).toContain("▆ Opus 5.5");
-});
-
 test("the band's GPT switch turns GPT off with a press", async ($, on) => {
   const w = world(on, {
     model: "claude-opus-5-5",
@@ -387,3 +242,40 @@ test("the band's GPT switch turns GPT off with a press", async ($, on) => {
   expect((await ui.find({ key: "kit-gpt" }))?.text).toBe("GPT off");
   expect(await ui.find({ key: "kit-opinion" })).toBeFalsy();
 });
+
+for (const route of ["off", "fork", "custom", "picked"]) {
+  test(`agent.spawn forwards the review prompt on the ${route} path`, async ($, on) => {
+    const w = world(on, {
+      model: "claude-sonnet-5-5",
+      label: ROUTINE,
+      store: {
+        mode: route === "off" ? "off" : "balanced",
+        flowTasks: {
+          s1: {
+            ...newTask(1, "light"),
+            lastEditAt: 1,
+            gptWrote: true,
+            gateV: 2,
+          },
+        },
+      },
+    });
+    on("agent.spawn", async () => ({ model: "sonnet", agentId: "reviewer" }));
+    on("turn.complete", async () => ({ text: "" }));
+    await $.agent.spawn({
+      subagentType: route === "custom" ? "custom" : "general-purpose",
+      prompt: FOOTER.review,
+      fork: route === "fork",
+      provider: { plugin: route === "custom" ? "user" : "engine" },
+    } as never);
+    await $.turn.complete({
+      agentId: "reviewer",
+      answer: "verdict: pass",
+      reason: "answer",
+    } as never);
+    expect((w.store.flowTasks as { s1: Task }).s1.review).toMatchObject({
+      outcome: "pass",
+      family: "claude",
+    });
+  });
+}

@@ -1,15 +1,32 @@
 import type { Kind } from "./model-policy";
-import type { Levels } from "./task-policy";
+import type { Level, Levels } from "./task-policy";
+import {
+  changed,
+  holdText,
+  isOpen,
+  missing,
+  reminderText,
+  roundOf,
+  verified,
+  type ReviewRecord,
+} from "./flow-evidence";
 
-// Flow, pure: every change task gets a track (light, medium, heavy) from what the prompt asks
-// and grows heavier as the work shows its size, never lighter. A track's note goes out once, at
-// the start or on growth; the procedure itself stays in the build skill (who executes is
-// task-policy.ts's note). Before a turn ends
-// with changed code, flow wants evidence it saw itself: the worktree as it is now (git's
-// fingerprint, which also sees shell, subagent and GPT edits) must be the one a passing check
-// ran on, and heavy work with a spec also needs the kit:verifier's PASS on it. Without git it
-// falls back to the order of the edits and checks it saw. It holds a turn at most once per
-// round of changes and twice per task, so it can never loop. flow.ts keeps the state.
+export {
+  byPrint,
+  changed,
+  needsVerifier,
+  verified,
+  verifierPassed,
+  onVerifier,
+  onCheck,
+  onReview,
+  onNoReviewer,
+} from "./flow-evidence";
+
+// Flow, pure: change tasks get a track that only grows. Current checks, the spec's verifier
+// and the gate level's other-family review supply the evidence (flow-evidence.ts). Unverified
+// work stays open across prompts; new changes fold into it. Holds are bounded per round and
+// request, and the user can waive them. flow.ts keeps the state and task-policy.ts the levels.
 
 export type Track = "light" | "medium" | "heavy";
 export type Change = "none" | Track;
@@ -54,6 +71,13 @@ export type Task = {
   stopAsked: boolean; // the user said to skip verifying
   unverified: boolean; // let through without evidence
   levels?: Levels; // task-policy's decision for it, raised as it grows
+  gateV?: Level; // the required Verify level, raised by growth, not failing checks
+  gptWrote?: boolean; // GPT wrote source in this task
+  claudeWrote?: boolean; // Claude wrote source in this task
+  review?: ReviewRecord; // the latest review, tied to the code it started on
+  noReviewer?: { round: string; reason: string }; // no review hold for this round
+  remindedRound?: string; // the round whose open work reminder was sent
+  requestFiles?: number; // files already in the task when this request folded in
 };
 
 export const newTask = (
@@ -77,28 +101,6 @@ export const newTask = (
   unverified: false,
 });
 
-const byPrint = (t: Task, print: string | undefined): print is string =>
-  print !== undefined && t.basePrint !== undefined;
-
-// Whether code changed since the task began: by git when it can tell, else by the edits seen.
-export const changed = (t: Task, print: string | undefined): boolean =>
-  byPrint(t, print) ? print !== t.basePrint : t.lastEditAt > 0;
-
-const needsVerifier = (t: Task) => t.track === "heavy" && t.spec;
-
-export function verified(t: Task, print: string | undefined): boolean {
-  if (!changed(t, print)) return true;
-  if (byPrint(t, print))
-    return (
-      t.checkedPrint === print &&
-      (!needsVerifier(t) || t.verifiedPrint === print)
-    );
-  return (
-    t.lastCheckAt > t.lastEditAt &&
-    (!needsVerifier(t) || t.lastVerifierAt > t.lastEditAt)
-  );
-}
-
 const NOTE: Record<Track, string> = {
   light:
     "kit flow (light): a small local change. When it is in, run a check that covers it (the " +
@@ -120,18 +122,17 @@ export const trackNote = (track: Track, from?: Track): string =>
 
 // Only an explicit ask turns the gate off for a task: "stop" or "no tests" alone are requests.
 const SKIP =
-  /\b(?:skip (?:the )?(?:verify|verification|checks?|tests?)|no verif\w*|don'?t (?:verify|test)|niet (?:verifi\w*|testen)|zonder (?:te )?(?:verifi\w*|testen)|geen verificatie)\b/i;
+  /\b(?:skip (?:the )?(?:verify|verification|checks?|tests?|review)|no verif\w*|don'?t (?:verify|test)|niet (?:verifi\w*|testen)|zonder (?:te )?(?:verifi\w*|testen)|geen (?:verificatie|review)|zonder review|no review|sla (?:de )?(?:verificatie|verify|checks?|tests?|review) over)\b/i;
 
 export type PromptStep = {
   task: Task | undefined;
   ended?: Task; // the task this prompt closed
   note?: string;
-  event: "none" | "start" | "continue" | "escalate";
+  event: "none" | "start" | "continue" | "escalate" | "fold";
 };
 
-// A short reply, a question, or an answer to the question the last turn ended on keeps the open
-// task; any other request closes it (verified or not) and starts afresh, so unchecked work never
-// swallows the rest of the session.
+// Unverified work stays open: a new change request folds into it; other requests remind once
+// per round. Short replies and answers keep the task, with a reminder after an unverified end.
 export function onPrompt(i: {
   task: Task | undefined;
   kind: Kind;
@@ -147,18 +148,55 @@ export function onPrompt(i: {
   const want: Change | undefined = i.build ? "heavy" : i.change;
   if (i.task && (i.thin || i.answering || i.kind === "question")) {
     const task = { ...i.task, stopAsked: i.task.stopAsked || skip };
-    if (want && want !== "none" && RANK[want] > RANK[task.track]) {
-      const from = task.track;
-      task.track = want;
-      return { task, event: "escalate", note: trackNote(want, from) };
-    }
-    return { task, event: "continue" };
+    const from = task.track;
+    const grew = want && want !== "none" && RANK[want] > RANK[from];
+    if (grew) task.track = want;
+    return kept(
+      task,
+      grew ? "escalate" : "continue",
+      i.print,
+      grew ? trackNote(task.track, from) : undefined,
+      isOpen(task, i.print) && task.unverified,
+    );
   }
-  const ended = i.task;
+  const open = i.task && isOpen(i.task, i.print) && !skip;
+  if (i.task && open) {
+    if (!want || want === "none") return kept(i.task, "continue", i.print);
+    const from = i.task.track;
+    const grew = RANK[want] > RANK[from];
+    const task = {
+      ...i.task,
+      track: grew ? want : from,
+      blocks: 0,
+      unverified: false,
+      requestFiles: i.task.files.length,
+    };
+    return kept(
+      task,
+      grew ? "escalate" : "fold",
+      i.print,
+      grew ? trackNote(want, from) : undefined,
+    );
+  }
+  const ended = i.task && skip ? { ...i.task, stopAsked: true } : i.task;
   if (!want || want === "none")
     return { task: undefined, ended, event: "none" };
   const task = { ...newTask(i.id, want, i.print), stopAsked: skip };
   return { task, ended, event: "start", note: NOTE[want] };
+}
+
+function kept(
+  task: Task,
+  event: PromptStep["event"],
+  print: string | undefined,
+  note?: string,
+  remind = true,
+): PromptStep {
+  if (remind && task.remindedRound !== roundOf(task, print)) {
+    note = [note, reminderText(task, print)].filter(Boolean).join(" ");
+    task = { ...task, remindedRound: roundOf(task, print) };
+  }
+  return { task, event, note };
 }
 
 const DOCS = /(^|\/)docs?\/|\.(md|txt)$/i;
@@ -177,6 +215,7 @@ export function onEdit(
   now: number,
   id: number,
   basePrint: string | undefined,
+  gpt = false,
 ): Escalation | undefined {
   const p = path.replace(/\\/g, "/");
   if (SPEC.test(p))
@@ -185,62 +224,17 @@ export function onEdit(
   const t = task ? { ...task } : newTask(id, "light", basePrint);
   if (!t.files.includes(p)) t.files = [...t.files, p];
   t.lastEditAt = now;
+  if (gpt) t.gptWrote = true;
+  else t.claudeWrote = true;
+  const n = t.files.length - (t.requestFiles ?? 0);
   const want: Track =
-    t.files.length > 8 || RISKY.test(p)
-      ? "heavy"
-      : t.files.length > 3
-        ? "medium"
-        : "light";
+    n > 8 || RISKY.test(p) ? "heavy" : n > 3 ? "medium" : "light";
   if (RANK[want] > RANK[t.track]) {
     const from = t.track;
     t.track = want;
     return { task: t, started: !task, note: trackNote(want, from) };
   }
   return { task: t, started: !task };
-}
-
-// A check ran. A pass is evidence for the worktree it started on; a failure wipes earlier
-// evidence (a later lint pass must not stand in for failing tests).
-export function onCheck(
-  task: Task,
-  passed: boolean,
-  startedAt: number,
-  startPrint: string | undefined,
-): Task {
-  return passed
-    ? {
-        ...task,
-        checks: task.checks + 1,
-        lastCheckAt: startedAt,
-        checkedPrint: startPrint,
-      }
-    : {
-        ...task,
-        failed: task.failed + 1,
-        lastCheckAt: 0,
-        checkedPrint: undefined,
-      };
-}
-
-// The verifier's answer: PASS when its suite passed and no criterion failed or stayed unclear.
-export const verifierPassed = (answer: string): boolean =>
-  /^suite:\s*pass\b/im.test(answer) &&
-  !/^-\s*\[(?:fail|unclear)\]/im.test(answer);
-
-export function onVerifier(
-  task: Task,
-  passed: boolean,
-  now: number,
-  print: string | undefined,
-): Task {
-  return passed
-    ? { ...task, verifier: "pass", lastVerifierAt: now, verifiedPrint: print }
-    : {
-        ...task,
-        verifier: "fail",
-        lastVerifierAt: 0,
-        verifiedPrint: undefined,
-      };
 }
 
 export type Outcome =
@@ -257,15 +251,8 @@ export type Verdict = {
   outcome: Outcome;
 };
 
-const short = (files: string[]) =>
-  !files.length
-    ? "Code"
-    : files.length > 3
-      ? `${files.slice(0, 3).join(", ")} and ${files.length - 3} more`
-      : files.join(", ");
-
 // The turn wants to end. Verified work closes the task; otherwise hold once per round of
-// changes and twice per task, never when the turn ends on a question to the user.
+// changes and twice per request, never when the turn ends on a question to the user.
 export function stopVerdict(
   task: Task | undefined,
   lastMessage: string | undefined,
@@ -278,21 +265,14 @@ export function stopVerdict(
     return { task, outcome: "pass-question" };
   if (task.stopAsked)
     return { task: { ...task, unverified: true }, outcome: "pass-asked" };
-  const round = byPrint(task, print) ? print : String(task.lastEditAt);
-  if (task.blocks >= 2 || task.blockedRound === round)
+  const round = roundOf(task, print);
+  const review = task.noReviewer?.round !== round;
+  const wants = missing(task, print).filter(
+    (item) => review || !item.startsWith("a review:"),
+  );
+  if (task.blocks >= 2 || task.blockedRound === round || !wants.length)
     return { task: { ...task, unverified: true }, outcome: "pass-unverified" };
-  const checked = byPrint(task, print)
-    ? task.checkedPrint === print
-    : task.lastCheckAt > task.lastEditAt;
-  const block = !checked
-    ? `kit flow: ${short(task.files)} changed after the last passing check. Run the check ` +
-      "that covers the change (test, typecheck or lint, without a pipe that hides its exit " +
-      "code) and fix what fails. This project has no such check → say so and stop."
-    : task.verifier === "fail"
-      ? "kit flow: the kit:verifier reported failures on this heavy task: fix them, then run " +
-        "it again."
-      : "kit flow: the checks pass, but this heavy task's spec has no verification yet: run " +
-        "the kit:verifier agent on it before you finish.";
+  const block = holdText(task, print, review);
   return {
     task: { ...task, blocks: task.blocks + 1, blockedRound: round },
     block,

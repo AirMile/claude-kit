@@ -226,11 +226,11 @@ export function route(i: RouteInput): Route {
       : i.gpt === undefined
         ? "Codex is not available here"
         : "ChatGPT has no room or no model for this";
-    // Claude's own code is covered by its checks and the verifier: no second Claude review.
+    // A second Claude review would not be another family, so the work stays open.
     if (i.role === "review")
       return {
         provider: "none",
-        reason: `${why}; the checks and the verifier cover it`,
+        reason: `${why}; the task stays open until it has a review or the user waives it`,
       };
     return onClaude(
       i.role,

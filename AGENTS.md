@@ -18,9 +18,11 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   cycles (the profile, GPT on or off, the limit button (Limit: pause + warm while work is open, Always, Off; per chat)), the effort with ‹ › when the profile is off, git, dashboard; the menus in
   `hooks/band-menus.tsx`, the Claude·GPT meters in `hooks/band-meters.tsx`), model/effort per prompt and subagent
   (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, switches kept by `hooks/model-switch.ts`, `/mode`), flow (`hooks/flow.ts` on the pure `hooks/flow-policy.ts`, `hooks/flow-check.ts` and
-  `hooks/flow-log.ts`, storage and git fingerprint in `hooks/flow-store.ts`: each change task's
+  `hooks/flow-log.ts`, review and verifier glue in `hooks/flow-agents.ts`, evidence in
+  `hooks/flow-evidence.ts`, task state in `hooks/flow-state.ts`, storage and git fingerprint in
+  `hooks/flow-store.ts`: each change task's
   track light/medium/heavy, its note at the start or on growth, the verify gate on `classic.Stop`
-  from the worktree's git fingerprint, the checks it saw and the verifier's answer, `/flow` in `hooks/flow-command.ts`),
+  from the worktree's git fingerprint, the checks, reviews and verifier's answer; unverified work stays open, `/flow` in `hooks/flow-command.ts`),
   `mcp__kit__delegate` (`hooks/delegate.ts` on the pure `hooks/delegate-policy.ts`: work handed
   to Claude or GPT by role and by which plan has room, the newest GPT model per family; the
   Codex side, its catalog, the ChatGPT meters, the GPT switch and a run, in `hooks/codex-run.ts`;

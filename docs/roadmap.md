@@ -15,7 +15,7 @@
 - [x] **window-sync** · start ChatGPT's 5h window together with Claude's · spec: docs/specs/window-sync.md
 - [x] **task-systems** · route each request over Define/Execute/Verify/Refactor levels, GPT as default worker · spec: docs/specs/task-systems.md
 - [ ] **task-runner** · Claude submits one brief, the mod runs and observes the GPT steps itself · spec: docs/specs/task-runner.md
-- [ ] **task-verify** · enforce V2/V3 in the flow gate for small tasks too; unverified work stays open
+- [x] **task-verify** · enforce V2/V3 in the flow gate for small tasks too; unverified work stays open · spec: docs/specs/task-verify.md
 - [ ] **task-depth** · D3 council (Sol + Astra blind + critique) in one tool call, and R1/R2 refactor with re-verify
 
 ## v0.16 · smart context
@@ -40,3 +40,6 @@
 - **agents-size-check** · small Node script in `skills/lessons/scripts/` that counts AGENTS.md lines and WARNs over 100 (root) / 40 (nested); first trim kit's own root AGENTS.md (143 lines: module inventory, Evals section to nested files)
 - **knowledge-haiku** · optional `$.model.complete` helper for knowledge candidates, dropped for now (rows have no stable ids, evals can't seed a transcript, injection path); reopen after a manual sample of ~20 checkpoints shows missed lessons; `$.model.fork` fits better than `complete`
 - **knowledge-evals** · stronger evals for the knowledge checkpoint (late checkpoint after a long session, commit step 1b); the current `knowledge-*` cases score 3/3 on old and new skills, and `commit-*` cases fail on macOS with only Apple's git
+- **verdict-bold** · `hooks/flow-evidence.ts` `parseReview`: accept `Verdict: **pass**`; bold on the word only reads as no verdict, which costs an extra review
+- **spawned-cleanup** · `hooks/flow-agents.ts` `spawned`: entries for agents that never answer stay in memory, and `flowSpawned` has no try/catch around work done after the agent has started
+- **review-error-answer** · `hooks/delegate.ts`: any Codex `error` event discards a review whose answer was complete (recorded as `error`, unless it says `verdict: fail`); first check whether transient errors occur

@@ -1,15 +1,14 @@
 import { expect, test } from "claude-code/testing";
 
-import { checkOf, checkPassed, hashText } from "./flow-check";
-import { endEntry, keep, marked, notable, report } from "./flow-log";
 import {
   CHANGE_LABELS,
   changeOfLabel,
-  isSource,
   newTask,
   onCheck,
   onEdit,
   onPrompt,
+  onNoReviewer,
+  onReview,
   onVerifier,
   stopVerdict,
   type Task,
@@ -47,7 +46,7 @@ test("a prompt's change picks the track; /build is heavy; a question or none sta
   expect(changeOfLabel(CHANGE_LABELS.medium)).toBe("medium");
 });
 
-test("a reply, a question or an answer keeps the task; any other request starts afresh", async () => {
+test("a reply, a question or an answer keeps the task; open work folds", async () => {
   const task = { ...newTask(1, "heavy", "p0"), lastEditAt: 5 };
   expect(ask({ task, thin: true, change: undefined, text: "ja" }).event).toBe(
     "continue",
@@ -59,11 +58,12 @@ test("a reply, a question or an answer keeps the task; any other request starts 
   expect(ask({ task, answering: true, change: "light" }).task?.track).toBe(
     "heavy",
   );
-  // Unchecked work no longer swallows the next request: it ends and a new task starts.
-  const next = ask({ task, change: "light", id: 2 });
-  expect(next.event).toBe("start");
-  expect(next.ended?.id).toBe(1);
-  expect(next.task?.track).toBe("light");
+  // Unverified work stays open when the next change request arrives.
+  const next = ask({ task, change: "light", id: 2, print: "p1" });
+  expect(next.event).toBe("fold");
+  expect(next.ended).toBe(undefined);
+  expect(next.task?.id).toBe(1);
+  expect(next.task?.track).toBe("heavy");
   const up = ask({ task: newTask(1, "light"), thin: true, change: "heavy" });
   expect(up.note).toContain("grew from light to heavy");
 });
@@ -75,42 +75,6 @@ test("only an explicit skip turns the gate off: a stop button or 'no tests' is a
   );
   expect(ask({ text: "fix it, skip the checks" }).task?.stopAsked).toBe(true);
   expect(ask({ text: "doe het zonder te testen" }).task?.stopAsked).toBe(true);
-});
-
-test("edits grow the track at 4 and 9 files or on a migration; a spec marks the task", async () => {
-  let t: Task | undefined;
-  for (const f of ["a.ts", "b.ts", "c.ts"])
-    t = onEdit(t, `src/${f}`, 1, 1, "p0")?.task;
-  expect(t?.track).toBe("light"); // work outside a task starts a light one
-  expect(t?.basePrint).toBe("p0");
-  const four = onEdit(t, "src/d.ts", 2, 1, "p0");
-  expect(four?.note).toContain("grew from light to medium");
-  expect(onEdit(t, "db/migrations/001_users.sql", 2, 1, "p0")?.task.track).toBe(
-    "heavy",
-  );
-  expect(onEdit(t, "docs/specs/login.md", 2, 1, "p0")?.task.spec).toBe(true);
-  expect(onEdit(undefined, "docs/guide.md", 1, 1, "p0")).toBe(undefined);
-  expect(isSource(".github/workflows/ci.yml")).toBe(true);
-  expect(isSource("pages/intro.mdx")).toBe(true);
-});
-
-test("only real check runs count; a piped check passes only without failure words", async () => {
-  expect(checkOf("npm test")).toEqual({ piped: false });
-  expect(checkOf("cd app && pnpm run typecheck")).toEqual({ piped: false });
-  expect(checkOf("npx -y -p typescript@5.6.3 tsc --noEmit -p .")).toBeTruthy();
-  expect(checkOf("claude plugin test . 2>&1 | tail -3")).toEqual({
-    piped: true,
-  });
-  expect(checkOf("CI=1 vitest run src/a.test.ts")).toBeTruthy();
-  expect(checkOf("echo test")).toBe(undefined);
-  expect(checkOf("cat src/foo.test.ts")).toBe(undefined);
-  expect(checkOf("git commit -m 'test'")).toBe(undefined);
-  expect(
-    checkPassed({ piped: true }, false, "Tests: 2 failed, 10 passed"),
-  ).toBe(false);
-  expect(checkPassed({ piped: true }, false, " 0 fail\n 95 pass")).toBe(true);
-  expect(checkPassed({ piped: false }, true, "")).toBe(false);
-  expect(hashText("a")).not.toBe(hashText("b"));
 });
 
 test("with git, a check counts for the worktree it started on; a failure wipes it", async () => {
@@ -128,7 +92,7 @@ test("with git, a check counts for the worktree it started on; a failure wipes i
   expect(stopVerdict(failed, "Done.", "p1").outcome).toBe("block");
 });
 
-test("the gate holds once per round and twice per task, never on a question", async () => {
+test("the gate holds once per round and twice per request, never on a question", async () => {
   const t: Task = {
     ...newTask(1, "light"),
     files: ["src/a.ts"],
@@ -158,16 +122,28 @@ test("the gate holds once per round and twice per task, never on a question", as
   );
 });
 
-test("heavy work with a spec needs the verifier's PASS; a Fix needs only its check", async () => {
+test("heavy work needs a review; a spec also needs the verifier's PASS", async () => {
   const fix: Task = {
     ...newTask(1, "heavy", "p0"),
     files: ["src/a.ts"],
     lastEditAt: 5,
   };
-  expect(stopVerdict(onCheck(fix, true, 6, "p1"), "Done.", "p1").outcome).toBe(
-    "done",
+  const checked = onCheck(fix, true, 6, "p1");
+  expect(stopVerdict(checked, "Done.", "p1").block).toContain("review");
+  const reviewed = onReview(checked, {
+    outcome: "pass",
+    family: "gpt",
+    depth: false,
+    print: "p1",
+    at: 6,
+  });
+  expect(stopVerdict(reviewed, "Done.", "p1").outcome).toBe("done");
+  const feature = onCheck(
+    { ...fix, spec: true, gptWrote: true },
+    true,
+    6,
+    "p1",
   );
-  const feature = onCheck({ ...fix, spec: true }, true, 6, "p1");
   expect(stopVerdict(feature, "Done.", "p1").block).toContain("kit:verifier");
   const pass =
     "VERIFY login\nsuite: pass (npm test, 9 passed)\ncriteria:\n- [pass] it logs in — test";
@@ -183,111 +159,138 @@ test("heavy work with a spec needs the verifier's PASS; a Fix needs only its che
   ).toContain("reported failures");
 });
 
-test("the log keeps 14 days, records each task's end, and takes the user's marks", async () => {
-  const day = 86_400_000;
-  const t: Task = {
-    ...onCheck(
-      {
-        ...newTask(1, "light"),
-        first: "light",
-        track: "medium",
-        files: ["src/a.ts"],
-      },
-      true,
-      1,
-      undefined,
-    ),
+test("a V2 hold names check and review at once; no reviewer excuses only this round's review hold", async () => {
+  const task = {
+    ...newTask(1, "light", "p0"),
+    gateV: 2 as const,
+    lastEditAt: 5,
   };
-  let log = keep([], {
-    at: 0,
-    event: "start",
-    text: "add a button",
-    track: "light",
-    task: 1,
-  });
-  log = keep(log, endEntry(t, "verified", 2 * day));
-  log = keep(log, {
-    at: 15 * day,
-    event: "start",
-    text: "build the importer",
-    track: "heavy",
-    task: 2,
-  });
-  expect(log.length).toBe(2); // the first is older than 14 days
-  expect(notable(log)[1]?.event).toBe("end");
-  const m = marked(log, 2, "too-light");
-  expect(m?.[0]?.mark).toBe("too-light");
-  const out = report(m ?? []);
-  expect(out).toContain("grew after the first pick (too light?): 1");
-  expect(out).toContain("too-light 1");
+  const hold = stopVerdict(task, "Done.", "p1");
+  expect(hold.block).toContain("last passing check");
+  expect(hold.block).toContain("no review yet");
+  const refused = onNoReviewer(task, "GPT is off", "p1");
+  const checkHold = stopVerdict(refused, "Done.", "p1");
+  expect(checkHold.block).toContain("last passing check");
+  expect(checkHold.block).not.toContain("review");
+  const checked = onCheck(refused, true, 6, "p1");
+  const pass = stopVerdict(checked, "Done.", "p1");
+  expect(pass.outcome).toBe("pass-unverified");
+  expect(pass.task?.unverified).toBe(true);
+  expect(pass.ended).toBe(undefined);
   expect(
-    report([
-      { at: 0, event: "decision", text: "", levels: "D2 E1 V1" },
-      { at: 2, event: "read-note", text: "5 calls, 42 chars" },
-      {
-        at: 3,
-        event: "delegate",
-        text: "search",
-        provider: "gpt",
-        outcome: "ok",
-      },
-      {
-        at: 4,
-        event: "delegate",
-        text: "research",
-        provider: "claude",
-        outcome: "ok",
-      },
-      {
-        at: 5,
-        event: "delegate",
-        text: "build",
-        provider: "none",
-        outcome: "failed",
-      },
-      {
-        at: 6,
-        event: "delegate",
-        text: "search",
-        provider: "gpt",
-        outcome: "failed",
-      },
-      {
-        at: 7,
-        event: "delegate",
-        text: "build",
-        provider: "none",
-        outcome: "failed",
-      },
-    ]),
-  ).toContain(
-    "read notes 1 · delegated 2 (gpt 1, claude 1) · not delegated 2 · failed 1",
+    stopVerdict(onCheck(pass.task!, true, 8, "p2"), "Done.", "p2").block,
+  ).toContain("no review yet");
+});
+
+test("fold keeps the task and highest track, resets the request cap and counts only new files", async () => {
+  const task: Task = {
+    ...newTask(1, "light", "p0"),
+    files: ["a.ts", "b.ts", "c.ts"],
+    lastEditAt: 5,
+    blocks: 2,
+    blockedRound: "p1",
+    unverified: true,
+    gateV: 3,
+  };
+  const folded = ask({ task, print: "p1" });
+  expect(folded.event).toBe("fold");
+  expect(folded.task?.id).toBe(1);
+  expect(folded.task?.gateV).toBe(3);
+  expect(folded.task?.blocks).toBe(0);
+  expect(folded.task?.unverified).toBe(false);
+  expect(folded.task?.blockedRound).toBe("p1");
+  expect(folded.task?.requestFiles).toBe(3);
+  expect(folded.note).toContain("open work");
+  expect(stopVerdict(folded.task, "Done.", "p1").outcome).toBe(
+    "pass-unverified",
   );
-  expect(out).toContain("decisions: none yet");
-  expect(out).toContain(
-    "end medium (from light) · 1 files · 1 checks · verified: src/a.ts [too-light]",
+  let t = onEdit(folded.task, "a.ts", 6, 2, "p1")!.task;
+  t = onEdit(t, "d.ts", 7, 2, "p1")!.task;
+  expect(t.track).toBe("light");
+  for (const f of ["e", "f", "g"]) t = onEdit(t, `${f}.ts`, 8, 2, "p1")!.task;
+  expect(t.track).toBe("medium");
+  for (const f of ["h", "i", "j", "k", "l"])
+    t = onEdit(t, `${f}.ts`, 9, 2, "p1")!.task;
+  expect(t.track).toBe("heavy");
+  expect(stopVerdict(t, "Done.", "p2").outcome).toBe("block");
+  const grown = ask({ task, change: "heavy", print: "p1" });
+  expect(grown.event).toBe("escalate");
+  expect(grown.note).toContain("grew from light to heavy");
+  expect(grown.note).toContain("open work");
+});
+
+test("non-change prompts keep open work with a reminder once per git or timestamp round", async () => {
+  for (const basePrint of ["p0", undefined]) {
+    const task = { ...newTask(1, "light", basePrint), lastEditAt: 5 };
+    const next = ask({ task, print: "p1", change: "none" });
+    expect(next.event).toBe("continue");
+    expect(next.ended).toBe(undefined);
+    expect(next.note).toContain("open work");
+    const again = ask({ task: next.task, print: "p1", change: undefined });
+    expect(again.note).toBe(undefined);
+    const edited = { ...again.task!, lastEditAt: 6 };
+    expect(ask({ task: edited, print: "p2", change: "none" }).note).toContain(
+      "open work",
+    );
+    const folded = ask({ task: next.task, print: "p1" });
+    expect(folded.note).toBe(undefined);
+  }
+  const task = { ...newTask(1, "light"), lastEditAt: 5, unverified: true };
+  const reply = ask({ task, thin: true, change: "heavy", print: undefined });
+  expect(reply.note).toContain("grew from light to heavy");
+  expect(reply.note).toContain("open work");
+  expect(
+    ask({
+      task: reply.task,
+      kind: "question",
+      change: undefined,
+      print: undefined,
+    }).note,
+  ).toBe(undefined);
+  expect(ask({ task: { ...task, unverified: false }, thin: true }).note).toBe(
+    undefined,
   );
 });
 
-test("/flow counts decisions per level and which E1+ ones saw a GPT run", async () => {
-  const out = report([
-    { at: 1, event: "decision", text: "", levels: "D1 E1 V1" },
-    { at: 2, event: "delegate", text: "build", provider: "gpt", outcome: "ok" },
-    { at: 3, event: "decision", text: "", levels: "D0 E0 V0" },
-    {
-      at: 4,
-      event: "delegate",
-      text: "research",
-      provider: "claude",
-      outcome: "ok",
-    },
-    { at: 5, event: "decision", text: "", levels: "D3 E2 V3" },
-    { at: 6, event: "levels", text: "a failing check", levels: "D3 E3 V3" },
-    { at: 7, event: "decision", text: "", levels: "D1 E1 V2" },
-  ]);
-  expect(out).toContain(
-    "decisions 4: D0 1 D1 2 D2 0 D3 1 · E0 1 E1 2 E2 1 E3 0 · V0 1 V1 1 V2 1 V3 1 · raised 1",
+test("skip wording waives the ended task; verified or unchanged work still closes on a new request", async () => {
+  const task = { ...newTask(1, "light", "p0"), lastEditAt: 5 };
+  for (const text of [
+    "sla verificatie over",
+    "sla de verify over",
+    "sla check over",
+    "sla checks over",
+    "sla tests over",
+    "sla test over",
+    "sla review over",
+    "skip review",
+    "skip the review",
+    "geen review",
+    "zonder review",
+    "no review",
+  ]) {
+    const step = ask({ task, print: "p1", text });
+    expect(step.ended?.stopAsked).toBe(true);
+    expect(step.task?.stopAsked).toBe(true);
+    expect(step.event).toBe("start");
+  }
+  expect(
+    ask({ task, print: "p1", change: "none", text: "skip verify" }).ended
+      ?.stopAsked,
+  ).toBe(true);
+  expect(ask({ task, thin: true, text: "skip review" }).task?.stopAsked).toBe(
+    true,
   );
-  // Only the first E1+ decision was followed by a GPT run; a Claude run does not count.
-  expect(out).toContain("E1+ decisions with a GPT run: 1 of 3");
+  const checked = onCheck(task, true, 6, "p1");
+  for (const [t, print] of [
+    [checked, "p1"],
+    [task, "p0"],
+  ] as const) {
+    const next = ask({ task: t, print, id: 2 });
+    expect(next.event).toBe("start");
+    expect(next.ended?.id).toBe(1);
+    expect(next.task?.id).toBe(2);
+  }
+  expect(ask({ task: checked, print: "p1", change: "none" }).task).toBe(
+    undefined,
+  );
 });

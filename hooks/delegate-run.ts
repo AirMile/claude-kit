@@ -22,6 +22,7 @@ import {
 } from "./codex-run";
 import { balance } from "./balance";
 import { flowDelegated } from "./flow";
+import { REVIEW_MARK } from "./flow-evidence";
 import {
   claudeMeters,
   noteClaudeLimits,
@@ -51,7 +52,9 @@ export const FOOTER: Record<Role, string> = {
   review:
     "Read only: change no files. Review the uncommitted changes (git status, git diff, new " +
     "files too) against the brief above. List findings most severe first as [P0] to [P3] with " +
-    `file:line and why; no fixes. No findings → say so. Aim for 4000 characters or less. ${SHAPE}`,
+    `file:line and why; no fixes. No findings → say so. For this review, ${REVIEW_MARK} (fail = any [P0] or [P1]), ` +
+    "then a line `failure-paths: <the failure paths and integration points you checked>`. " +
+    `Aim for 4000 characters or less. ${SHAPE}`,
   build: `Follow the project's AGENTS.md. Commit, push and deploy nothing. Aim for 2000 characters or less. ${SHAPE} Include checks run and their results.`,
   "build+": `Follow the project's AGENTS.md. Commit, push and deploy nothing. Aim for 4000 characters or less. ${SHAPE} Include checks run and their results.`,
 };
@@ -65,7 +68,11 @@ export type RoutingInput = {
 export type GptRoute = Extract<Route, { provider: "gpt" }> & { role: Role };
 export type DelegationRoute =
   | Extract<Route, { provider: "none" }>
-  | { provider: "claude"; r: Extract<Route, { provider: "claude" }>; why: string }
+  | {
+      provider: "claude";
+      r: Extract<Route, { provider: "claude" }>;
+      why: string;
+    }
   | { provider: "unavailable"; reason: string }
   | { provider: "gpt"; r: GptRoute; argv: string[] };
 export type DelegatedRun = {
@@ -79,7 +86,8 @@ export async function routeDelegation(
   input: RoutingInput,
 ): Promise<DelegationRoute> {
   const on = await gptOn($);
-  const family = input.family ?? (input.thread ? threads.get(input.thread) : undefined);
+  const family =
+    input.family ?? (input.thread ? threads.get(input.thread) : undefined);
   // With GPT off, Codex is read only for a family the user named.
   const st: GptStatus =
     on || family

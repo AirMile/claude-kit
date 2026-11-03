@@ -188,7 +188,8 @@ test("with GPT off nothing goes to GPT unless a family is named; no Claude revie
   });
   expect(route(at({ role: "review", gptOn: false }))).toMatchObject({
     provider: "none",
-    reason: "GPT is off in the band; the checks and the verifier cover it",
+    reason:
+      "GPT is off in the band; the task stays open until it has a review or the user waives it",
   });
   expect(
     route(at({ role: "review", gptOn: false, author: "gpt" })),
@@ -212,8 +213,20 @@ test("balance bands use hysteresis on both sides", async () => {
 
 test("only search changes with the balance band", async () => {
   for (const b of ["balanced", "gpt-heavy"] as const)
-    expect(route(at({ role: "search", band: b }))).toMatchObject({ provider: "gpt", model: "gpt-6-luna" });
-  expect(route(at({ role: "search", band: "claude-safe" }))).toMatchObject({ provider: "claude", model: "haiku", subagentType: "Explore" });
-  expect(route(at({ role: "build", band: "claude-safe" }))).toMatchObject({ provider: "gpt", model: "gpt-6.1-terra" });
-  expect(route(at({ role: "search", band: "claude-safe", family: "luna" }))).toMatchObject({ provider: "gpt" });
+    expect(route(at({ role: "search", band: b }))).toMatchObject({
+      provider: "gpt",
+      model: "gpt-6-luna",
+    });
+  expect(route(at({ role: "search", band: "claude-safe" }))).toMatchObject({
+    provider: "claude",
+    model: "haiku",
+    subagentType: "Explore",
+  });
+  expect(route(at({ role: "build", band: "claude-safe" }))).toMatchObject({
+    provider: "gpt",
+    model: "gpt-6.1-terra",
+  });
+  expect(
+    route(at({ role: "search", band: "claude-safe", family: "luna" })),
+  ).toMatchObject({ provider: "gpt" });
 });
