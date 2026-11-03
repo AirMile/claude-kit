@@ -35,3 +35,8 @@
 - **flow-split** · `hooks/flow.ts` is 322 lines against the ~300 budget: move more glue to `flow-levels.ts`
 - **claude5h-log-test** · no test asserts `claude5h` in the decision log
 - **gpt-off-reason** · the budget reason says "GPT has no room" also when GPT is switched off in the band
+- **lessons-gates** · rewrite `skills/lessons`: gate 1 "not adequately conveyed by code/config" (a rule may stay although its reason is in git), gate 3 also accepts spec Handoff/Fixes/Verify, destination table (AGENTS, decisions with `Superseded by:`, Handoff, Later, feedback inbox), candidate first then read; first attempt is commit fe288f2
+- **lessons-commit-caller** · `commit` step 1b as the only automatic caller of `lessons` (drop the calls in build Small/Finish, debug.md, convert, payload.md); keep the spec Handoff when `done`, stage only the note's own changes after staging safety; measure `/commit` effort first (`hooks/model-policy.ts:78`)
+- **agents-size-check** · small Node script in `skills/lessons/scripts/` that counts AGENTS.md lines and WARNs over 100 (root) / 40 (nested); first trim kit's own root AGENTS.md (143 lines: module inventory, Evals section to nested files)
+- **knowledge-haiku** · optional `$.model.complete` helper for knowledge candidates, dropped for now (rows have no stable ids, evals can't seed a transcript, injection path); reopen after a manual sample of ~20 checkpoints shows missed lessons; `$.model.fork` fits better than `complete`
+- **knowledge-evals** · stronger evals for the knowledge checkpoint (late checkpoint after a long session, commit step 1b); the current `knowledge-*` cases score 3/3 on old and new skills, and `commit-*` cases fail on macOS with only Apple's git

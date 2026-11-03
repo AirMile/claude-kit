@@ -22,12 +22,6 @@ continue or abort).
 Read the full diff only when the stat is under ~1500 changed lines; above that, work from the
 stat plus targeted reads.
 
-## 1b. Knowledge review
-
-Run `lessons` on the changes about to be committed, unless it already ran in this chat for them
-(`feature=<slug>`: `build` did). A note it writes joins the group it came from, never forms its own,
-and is named under `notes` in the report.
-
 ## 2. Staging safety (always, before staging anything)
 
 Run `node ${CLAUDE_SKILL_DIR}/scripts/staging-check.js` (from anywhere in the repo). Exit 0 →
@@ -77,12 +71,14 @@ Conventional format:
 ```
 <type>(<scope>)!: <description>
 
-<body: why, not what; optional>
+<body: why, not what>
 ```
 
 - Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert.
 - Scope: the module, or the slug in `feature=<slug>` mode.
 - Header ≤ 72 chars, lowercase start, imperative, no period, no emoji. English always.
+- Body unless the change is self-evident: why it exists, the alternative rejected and why, any
+  constraint a future reader would trip over. Later sessions find it with `git log`, not by default.
 - Breaking change → `!` and a `BREAKING CHANGE:` footer.
 - Branch name contains `ABC-123` → use it per the repo's style.
 
@@ -144,6 +140,5 @@ COMMIT
 <hash> <subject>        (one line per commit)
 branch   <branch> · <ahead n of origin | no upstream>
 pushed   <yes | no> · <merged into <default> | PR <url> | —>
-notes    <knowledge files written, or —>
 left     <unstaged files, or —>
 ```
