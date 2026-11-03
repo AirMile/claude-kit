@@ -30,13 +30,13 @@ export const MODELS: readonly string[] = [HAIKU, SONNET, OPUS];
 
 const TABLE: Record<Profile, Record<Kind, Pick>> = {
   lean: {
-    question: { model: HAIKU, effort: "low" },
+    question: { model: SONNET, effort: "low" },
     routine: { model: SONNET, effort: "medium" },
     planning: { model: OPUS, effort: "high" },
     heavy: { model: OPUS, effort: "high" },
   },
   balanced: {
-    question: { model: HAIKU, effort: "low" },
+    question: { model: SONNET, effort: "low" },
     routine: { model: SONNET, effort: "medium" },
     planning: { model: OPUS, effort: "high" },
     heavy: { model: OPUS, effort: "xhigh" },

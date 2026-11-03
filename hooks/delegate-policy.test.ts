@@ -120,7 +120,7 @@ test("a tight Claude plan also searches on Luna; without GPT, changes are built 
   });
 });
 
-test("search falls back to Haiku Explore with GPT off, missing, tight or without Luna", async () => {
+test("search falls back to Sonnet Explore with GPT off, missing, tight or without Luna", async () => {
   for (const over of [
     { gptOn: false },
     { gpt: undefined },
@@ -130,7 +130,7 @@ test("search falls back to Haiku Explore with GPT off, missing, tight or without
   ])
     expect(route(at({ role: "search", ...over }))).toMatchObject({
       provider: "claude",
-      model: "haiku",
+      model: "sonnet",
       subagentType: "Explore",
     });
 });
@@ -219,7 +219,7 @@ test("only search changes with the balance band", async () => {
     });
   expect(route(at({ role: "search", band: "claude-safe" }))).toMatchObject({
     provider: "claude",
-    model: "haiku",
+    model: "sonnet",
     subagentType: "Explore",
   });
   expect(route(at({ role: "build", band: "claude-safe" }))).toMatchObject({

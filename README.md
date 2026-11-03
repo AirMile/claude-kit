@@ -919,7 +919,7 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
 
   ```
   kind      Lean             Balanced          Quality
-  question  Haiku  · low     Haiku  · low      Sonnet · medium
+  question  Sonnet · low     Sonnet · low      Sonnet · medium
   routine   Sonnet · medium  Sonnet · medium   Opus   · high
   planning  Opus   · high    Opus   · high     Opus   · high
   heavy     Opus   · high    Opus   · xhigh    Opus   · xhigh
@@ -1019,7 +1019,7 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
 
   ```
   role      both have room          Claude tight     no GPT (tight, off, no Codex)
-  search    Claude Haiku (Explore)  GPT Luna         Claude Haiku
+  search    Claude Sonnet (Explore) GPT Luna         Claude Sonnet
   research  GPT Sol, read-only      GPT Sol          Claude Sonnet
   build     GPT Terra, writes       GPT Terra        built here
   build+    GPT Sol, writes         GPT Sol          built here

@@ -1,6 +1,6 @@
 import type { Effort } from "./model-policy";
 
-// Where a delegated piece of work runs: Claude (Haiku, Sonnet, Opus as a subagent) or GPT
+// Where a delegated piece of work runs: Claude (Sonnet, Opus as a subagent) or GPT
 // through Codex (Luna, Terra, Sol), by its role and by which plan has room. Pure: delegate.ts
 // feeds it the meters and Codex's catalog. GPT models are named by family and the newest
 // version wins, so a new release is used without a code change; a family never stands in for
@@ -53,7 +53,7 @@ export type Route =
     }
   | {
       provider: "claude";
-      model: "haiku" | "sonnet" | "opus";
+      model: "sonnet" | "opus";
       effort: Effort;
       subagentType: "Explore" | "general-purpose";
       writes: boolean;
@@ -151,7 +151,7 @@ const GPT: Record<Role, GptPick> = {
 // already knows. A blind plan from the same family adds little next to this chat's own.
 const CLAUDE: Record<Role, ClaudePick | undefined> = {
   search: {
-    model: "haiku",
+    model: "sonnet",
     effort: "low",
     subagentType: "Explore",
     writes: false,

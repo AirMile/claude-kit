@@ -21,7 +21,7 @@ import {
 
 test("each profile maps a kind of work to a model and an effort", async () => {
   expect(pick("balanced", "question")).toEqual({
-    model: "claude-haiku-5-5",
+    model: "claude-sonnet-5-5",
     effort: "low",
   });
   expect(pick("balanced", "heavy")).toEqual({
