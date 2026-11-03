@@ -59,7 +59,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
 Skills never share code or a `shared/` folder. They share **files in the target project**, and
 each file carries its own format in a `<!-- format: … -->` header:
 
-- `AGENTS.md` (root + nested per module): instructions and non-derivable lessons
+- `AGENTS.md` (root + nested per module): instructions and lessons that code and config don't convey
 - no `CLAUDE.md`: its presence would stop Claude Code from reading `AGENTS.md`
 - `docs/product.md`, `docs/roadmap.md`, `docs/specs/<slug>.md`, `docs/decisions.md`
 - `docs/seo.md`: intake, keywords, page plan, measurements (`scan`, `intake`, `seo` write it;

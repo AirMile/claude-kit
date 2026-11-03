@@ -33,7 +33,8 @@ launch; stop.
 Stop first when: uncommitted changes (offer `/commit`) · branch behind the default branch (sync
 it first: in a desktop worktree session use the app's sync; otherwise merge the default branch)
 · no `origin` remote (offer `gh repo create --private --source . --push`, only on an explicit
-yes). Sync conflicts: lockfiles and generated files → take one side, then reinstall/regenerate;
+yes). Sync conflicts: roadmap, decisions and AGENTS.md → as `commit` § 6 says; lockfiles and
+generated files → take one side, then reinstall/regenerate;
 source files → typecheck each right after resolving; full suite green before the merge commit.
 
 ## 1. Checks

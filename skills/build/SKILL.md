@@ -177,7 +177,7 @@ within this feature, re-ask that item. Record outcomes under `## Verify`.
    commit skill lands it per `AGENTS.md § Git` (`Land: merge` or `pr`); versions and tags are
    `/launch`.
 6. Merge conflicts in `docs/roadmap.md`, `docs/decisions.md` or `AGENTS.md` when syncing with
-   the default branch → keep both sides' lines (parallel sessions each add their own).
+   the default branch → resolve as `commit` § 6 says (parallel sessions each add their own).
 
 ## Report
 

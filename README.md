@@ -804,17 +804,21 @@ is wrong.
 
 ### lessons (Claude-only)
 
-Not in the `/` menu; Claude invokes it at the end of `/build`, `/convert` and fixes, or whenever
-it learns something worth keeping. It writes a lesson only when it is **not derivable** from the
-code, **changes what the next session does**, and was **actually observed** (a bug, a failed
-attempt, your correction). Zero lessons is the normal outcome.
+Not in the `/` menu; Claude invokes it at the end of `/build`, `/convert` and fixes, in `/commit`
+(before staging, unless it already ran for those changes), and when you say "remember this". It
+writes a note only when current code and config do **not adequately convey** it, it **changes what
+the next session does**, and it was **actually observed** (a bug, a failed attempt, your
+correction, or the spec's Handoff/Fixes). A rule whose reason is also in git history still
+qualifies. Zero notes is the normal outcome; a chat that never reaches a checkpoint or a memory
+request is not captured.
 
 - Module-specific → `<dir>/AGENTS.md` (created if needed; ≤40 lines)
 - Project-wide → root `AGENTS.md` under Pitfalls/Conventions (root stays ≤100 lines)
-- A decision with a rejected alternative → `docs/decisions.md` instead
+- A decision with a rejected alternative, or one replacing an older one → `docs/decisions.md`
+- Task state → the spec's Handoff; an unagreed idea → roadmap `## Later`
 
 It merges with existing lines instead of appending duplicates, and prunes lines that became false
-or derivable.
+or fully conveyed by the code.
 
 This replaces v1's learnings system (JSON store, load/write scripts, extractor agent): Claude
 Code itself loads the right `AGENTS.md` at the right moment.
@@ -1165,7 +1169,8 @@ own worktree system; it makes itself safe for this:
   `DATABASE_URL` per worktree, or schema push off outside the main checkout, and migrations
   only from the main checkout.
 - **Merge conflicts** in `docs/roadmap.md`, `docs/decisions.md` or `AGENTS.md` when a branch syncs
-  with the default branch are resolved by keeping both sides' lines (each session adds its own).
+  with the default branch keep compatible additions of both sides (each session adds its own),
+  drop duplicates and superseded lines, and never leave two contradicting rules.
 - **Add roadmap items from inside the worktree session** that will build them. A new worktree
   can start from `origin/<default>` rather than your local branch, so an unpushed roadmap edit on
   main may be missing there (and pushing main may deploy).

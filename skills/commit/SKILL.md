@@ -22,6 +22,12 @@ continue or abort).
 Read the full diff only when the stat is under ~1500 changed lines; above that, work from the
 stat plus targeted reads.
 
+## 1b. Knowledge review
+
+Run `lessons` on the changes about to be committed, unless it already ran in this chat for them
+(`feature=<slug>`: `build` did). A note it writes joins the group it came from, never forms its own,
+and is named under `notes` in the report.
+
 ## 2. Staging safety (always, before staging anything)
 
 Run `node ${CLAUDE_SKILL_DIR}/scripts/staging-check.js` (from anywhere in the repo). Exit 0 →
@@ -109,9 +115,12 @@ the user asked for it in this request, or answers yes now.
   AskUserQuestion (Merge into <default> + push / Push + PR), then write `- Land: <merge | pr>`
   under `## Git` so the next run doesn't ask.
   - `merge`, feature branch: `git fetch`; merge `origin/<default>` into the branch (conflicts:
-    roadmap/decisions/AGENTS.md keep both sides, lockfiles/generated take `<default>`'s side
-    then reinstall/regenerate, others resolve or stop; it brought commits → install when a
-    lockfile changed, run the suite again); `git push origin HEAD:<default>`. In the main checkout also
+    roadmap/decisions/AGENTS.md keep compatible additions of both sides, drop duplicates and
+    what a `Superseded by:` or newer rule replaces, never leave two contradicting rules (ask
+    only if the choice is open; a roadmap item both sides changed keeps the later state), and
+    skim the merged diff of those files even without conflict; lockfiles/generated take
+    `<default>`'s side then reinstall/regenerate, others resolve or stop; it brought commits →
+    install when a lockfile changed, run the suite again); `git push origin HEAD:<default>`. In the main checkout also
     `git switch <default>`, `git merge --ff-only <branch>`, `git branch -d <branch>`.
   - `merge`, default branch (trunk): push it.
   - `pr`: push the branch, then `gh pr create` with a title from the commit(s) and the spec's
@@ -135,5 +144,6 @@ COMMIT
 <hash> <subject>        (one line per commit)
 branch   <branch> · <ahead n of origin | no upstream>
 pushed   <yes | no> · <merged into <default> | PR <url> | —>
+notes    <knowledge files written, or —>
 left     <unstaged files, or —>
 ```

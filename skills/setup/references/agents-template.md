@@ -27,7 +27,8 @@
   and point the app's own URL variables (e.g. `NEXT_PUBLIC_SERVER_URL`) at it too.
 - Database: worktrees share the local one → <own `DATABASE_URL` per worktree | schema push off
   outside the main checkout>; migrations only from the main checkout.
-- Merge conflicts in docs/roadmap.md, docs/decisions.md or AGENTS.md: keep both sides' lines.
+- Merge conflicts in docs/roadmap.md, docs/decisions.md or AGENTS.md: keep compatible additions of both sides,
+  drop duplicates and superseded lines, never leave two contradicting rules.
 
 ## Docs
 
