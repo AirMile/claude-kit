@@ -14,7 +14,6 @@
 
 - [x] **window-sync** · start ChatGPT's 5h window together with Claude's · spec: docs/specs/window-sync.md
 - [x] **task-systems** · route each request over Define/Execute/Verify/Refactor levels, GPT as default worker · spec: docs/specs/task-systems.md
-- [ ] **task-runner** · Claude submits one brief, the mod runs and observes the GPT steps itself · spec: docs/specs/task-runner.md
 - [x] **task-verify** · enforce V2/V3 in the flow gate for small tasks too; unverified work stays open · spec: docs/specs/task-verify.md
 - [ ] **task-depth** · D3 council (Sol + Astra blind + critique) in one tool call, and R1/R2 refactor with re-verify
 
@@ -32,7 +31,6 @@
 
 - **window-sync-now** · take `now` after the status read, so the 30-minute gap can't pass by about a minute at the edge
 - **council-test-name** · `hooks/read-watch.test.ts` council test promises the D2 fallback but only asserts D3: rename it or add the case
-- **flow-split** · `hooks/flow.ts` is 322 lines against the ~300 budget: move more glue to `flow-levels.ts`
 - **claude5h-log-test** · no test asserts `claude5h` in the decision log
 - **gpt-off-reason** · the budget reason says "GPT has no room" also when GPT is switched off in the band
 - **lessons-gates** · rewrite `skills/lessons`: gate 1 "not adequately conveyed by code/config" (a rule may stay although its reason is in git), gate 3 also accepts spec Handoff/Fixes/Verify, destination table (AGENTS, decisions with `Superseded by:`, Handoff, Later, feedback inbox), candidate first then read; first attempt is commit fe288f2
@@ -43,3 +41,9 @@
 - **verdict-bold** · `hooks/flow-evidence.ts` `parseReview`: accept `Verdict: **pass**`; bold on the word only reads as no verdict, which costs an extra review
 - **spawned-cleanup** · `hooks/flow-agents.ts` `spawned`: entries for agents that never answer stay in memory, and `flowSpawned` has no try/catch around work done after the agent has started
 - **review-error-answer** · `hooks/delegate.ts`: any Codex `error` event discards a review whose answer was complete (recorded as `error`, unless it says `verdict: fail`); first check whether transient errors occur
+- **run-task-auto** · in auto mode the classifier, not a prompt, decides on `run_task`'s host checks: AGENTS.md's "after the permission prompt" and the comment at `hooks/task-runner.ts:194` promise more than that; a dialog was never observed
+- **run-task-permission-test** · the permission test registers its own "ask" handler, so it can't fail if an allow is added later: assert that no tool.check is registered for run_task instead
+- **run-task-no-changes** · `run_task` reports `pass` while GPT changed nothing: say "pass, no changes" or stop
+- **run-task-timeout** · a timed-out check may keep running (`$.process.run`'s contract doesn't say it kills the child); timeout vs "could not start" is guessed from elapsed time and the message
+- **run-task-log** · read-watch counts a `stopped` run where Codex never started as a GPT run (and resets the read budget); the tail is stdout+stderr concatenated, so stderr-biased
+- **build-run-task** · `skills/build/SKILL.md` 4b.2 still names delegate `build` for criteria, while the E1/E2 notes say `run_task`

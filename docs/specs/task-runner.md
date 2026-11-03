@@ -3,7 +3,7 @@ Criteria are checked [x] when built AND verified. -->
 
 # task-runner
 
-Status: manual
+Status: done
 Design: —
 
 ## Goal
@@ -88,10 +88,10 @@ now 204 pass / 0 fail, tsc clean outside `*.test.ts`, mod validates in a scratch
   shape: `.claude-plugin/types/claude-code-mcp` is generated per machine (gitignored) and
   lacks the tool until a save with it connected; a differently written type would clash.
 - Test fixtures split out (`task-runner-fixture.ts`, `read-watch-fixture.ts`) for line size.
-- Verified (see below); one fix round applied here. Left: the manual permission-prompt check
-  of criterion 6 (`claude --plugin-dir .`), then Finish. At Finish: drop Later `flow-split`
-  (obsolete) and add the improvement notes below under Later. Open: `/build` 4b.2 still
-  names delegate `build` for criteria, while the E1/E2 notes now say run_task.
+- Closed 2026-11-03: off the roadmap at the user's request. Criterion 6 stays unchecked: its
+  dialog was never observed and the user skipped it, since they don't work in Ask mode. The
+  rest moved to Later: `flow-split` dropped (flow.ts is 295 lines), improvement notes and
+  `build-run-task` added, plus `run-task-auto` for what auto mode means for criterion 6.
 
 ## Verify
 
@@ -114,7 +114,12 @@ checked on the subscription (e.g. after installing a bumped version).
 Re-verify after fix round 1 (kit:verifier): automated criteria PASS, 209 pass / 0 fail;
 isCheckArgv checked on real argvs (`echo "x; vitest"` no, `npx vitest run` yes).
 
-Improvement notes (for Later):
+Manual · permission prompt, 2026-11-03: skipped by the user, so no dialog was observed. Two
+empty-brief calls ran in auto (`get_session`) and showed no prompt, which proves nothing: there
+an ask goes to the classifier (`index.d.ts:13444`). A third call ran in `default`; the user
+skipped judging it. In code: no `tool.check` for run_task, no allow rule in the settings read.
+
+Improvement notes (now under Later):
 
 - The permission test registers its own "ask" handler, so it can't fail if an allow is
   added later: assert that no tool.check is registered for run_task instead.
