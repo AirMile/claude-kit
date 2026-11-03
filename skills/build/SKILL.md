@@ -81,7 +81,7 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
    line) → measure it or ask for that reading now; don't guess. `docs/seo.md` § Pages has this
    slug → its main term in title and h1, a first paragraph that answers it directly, its
    questions as H2s each with a direct answer, its schema types and links become criteria.
-2. Draft the spec in the chat using
+2. Draft the spec as normal chat text (no enclosing code block or plan mode), using
    `${CLAUDE_SKILL_DIR}/references/spec-template.md`: criteria per happy/edge/error,
    Approach with files, ASCII wireframe for UI, Tests mapping. More than 6 criteria → propose a
    split first. Also check: does this make another roadmap item obsolete? Say so in the plan.
@@ -91,8 +91,8 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
    `Design:` set → Approach lists the sections; on a Payload project also convert's CMS table
    (`${CLAUDE_SKILL_DIR}/../convert/references/payload.md` § 3) and a criterion "every visible text, image and list
    item is editable in the CMS".
-3. Show the draft and get the OK before writing any file (AskUserQuestion: Accept / Revise;
-   plan mode only when it helps). Revise → show again. Accept →
+3. Show the draft and get the OK before writing any file (AskUserQuestion: Accept / Revise).
+   Revise → show again. Accept →
    - write the plan text as `docs/specs/<slug>.md` (`Status: defined`); no slug yet → derive one
      and, when `docs/roadmap.md` exists, add a roadmap line (first phase with open items);
    - a roadmap line → add `· spec: docs/specs/<slug>.md` to it;

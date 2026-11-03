@@ -1,7 +1,8 @@
 # Spec template
 
-Written by `build` at plan accept as `docs/specs/<slug>.md`. The approved plan text **is** this
-file: copy it, don't re-author it. Keep it under ~80 lines.
+Written by `build` at plan accept as `docs/specs/<slug>.md`. Show the plan as normal chat text,
+without this template's outer code fence. The approved plan text **is** this file: copy it,
+don't re-author it. Keep it under ~80 lines.
 
 ```markdown
 <!-- format: kit spec. Status: defined → building → verifying → manual → done.
