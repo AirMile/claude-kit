@@ -14,13 +14,19 @@ section is wired (step 2), put it in the plan, and save it with `lessons` after 
 Grep the slug of a comparable block and each of its `layout`/`variant` values. A section usually
 touches: the block schema, the generated types (`generate:types`), the site's page/block type,
 the CMS → site mapping, the block → component switch, the content defaults, the seed's mapping,
-and a field-usage rule (which fields a layout shows). Every switch must handle the new value: a
+a field-usage rule (which fields a layout shows), and the server guard that
+rejects row changes from non-admins. Every switch must handle the new value: a
 missing case usually drops the block silently instead of failing.
 
 ## 3. Where the section goes (CMS table in the plan)
 
 One row per section: `section → block (existing · new variant · new) → core | project → fields
-→ schema change yes/no`.
+→ rows per list → schema change yes/no`.
+
+- **Rows per list** (nested lists each get their own): `free` = editors add, remove and move
+  rows; `locked` = only an admin does. Default `free`; `locked` needs a reason in the design
+  (a fixed process, a layout that breaks), not the item count the frame shows. Content that
+  grows (products, reviews, news, team, FAQ) is `free`. Unclear → AskUserQuestion.
 
 - Prefer an existing block with a new `layout`/`variant` option. A new option is an enum
   change, so it is a schema change too.
@@ -33,6 +39,9 @@ One row per section: `section → block (existing · new variant · new) → cor
 - Everything an editor would change is a field; structure and decoration stay code.
 - Build fields with the project's own helpers (role scoping, locked lists, optional-when-empty,
   accent/emphasis text); copy an existing block's shape rather than plain Payload fields.
+- A list's `rows` choice must hold in the admin UI, access rules and server guard alike. The
+  helper locks by default → reuse or parametrise it for a `free` list (a new helper only when
+  nothing fits), and scope the guard's exemption to that list, not to a field name everywhere.
 - Labels, descriptions and tab names in the language of the existing blocks.
 - `required` when the design breaks without the value. `maxRows` only where the layout breaks,
   not the item count the frame happens to show.
@@ -80,10 +89,12 @@ Migrations, seed and writing documents change a database other people may use.
   twice as long, one item and the most items; one screenshot; overflow or a crash is a finding.
 - Grep the component files for distinctive copy from the frame; every hit is a finding (the
   content defaults may hold it, components may not).
+- Rows: a test without a database, as a real non-admin `req.user` (a request without a user
+  passes the guard): a `free` list accepts an added and a removed row, a `locked` one throws.
 - No schema change intended → the migration create command with `--skip-empty` writes no file.
 - After the database step (if done): one render of the real page through the CMS. A draft page
   (preview needs a login) → render it in the temporary dev route via the local API
   (`payload.find({ …, draft: true })` → the block mapping), never through `/admin`.
 - Manual item for the user: read the page in `/admin` with the client role (tabs, labels, which
-  fields show per layout). Never log in or edit in `/admin` yourself: autosave writes to the
+  fields show per layout, add a row to each `free` list). Never log in or edit in `/admin` yourself: autosave writes to the
   shared database and a second login can end the user's session.
