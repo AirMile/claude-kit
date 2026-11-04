@@ -811,7 +811,8 @@ attempt, your correction). Zero lessons is the normal outcome.
 
 - Module-specific → `<dir>/AGENTS.md` (created if needed; ≤40 lines)
 - Project-wide → root `AGENTS.md` under Pitfalls/Conventions (root stays ≤100 lines)
-- A decision with a rejected alternative → `docs/decisions.md` instead
+- A decision with a rejected alternative, or one replacing an older one → `docs/decisions.md`
+  (created if missing; the old entry gets `Superseded by:`)
 
 It merges with existing lines instead of appending duplicates, and prunes lines that became false
 or derivable.

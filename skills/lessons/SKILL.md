@@ -1,6 +1,6 @@
 ---
 name: lessons
-description: Record a non-obvious project lesson in the nearest AGENTS.md. Use after a surprising bug, a repeated correction, or a build/fix run that taught something.
+description: Record a non-obvious project lesson in the nearest AGENTS.md, or a decision in docs/decisions.md. Use after a surprising bug, a repeated correction, or a build/fix run that taught something.
 user-invocable: false
 ---
 
@@ -27,7 +27,10 @@ Nothing qualifies → write nothing and say nothing. Zero lessons is the normal 
   It loads lazily, only when a session reads files there.
 - It applies project-wide (build, test, deploy, tooling) → root `AGENTS.md`, section `## Pitfalls`
   or `## Conventions`.
-- It is a decision with a rejected alternative → not a lesson; `docs/decisions.md` instead.
+- It is an agreed decision with a rejected alternative → not a lesson; `docs/decisions.md`
+  instead. A decision replacing an older one also sets the old entry's `Superseded by:`.
+  `docs/decisions.md` missing → create it with the header from
+  `${CLAUDE_PLUGIN_ROOT}/skills/setup/SKILL.md` § docs/ format headers.
 
 ## How to write it
 
@@ -37,6 +40,8 @@ Nothing qualifies → write nothing and say nothing. Zero lessons is the normal 
   updated (or replaced when it was wrong), never duplicated.
 - **Prune while there**: delete lines that are now false or derivable. Root `AGENTS.md` stays
   ≤ 100 lines; nested files ≤ 40.
+- An AGENTS rule may point to the decision that holds the long reason; never to the hash of the
+  commit being made.
 - New nested file → start it with one heading line: `# <dir> notes`.
 
 ## Report
