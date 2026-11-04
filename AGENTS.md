@@ -50,6 +50,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   skill → map it there. `hooks/codex-hooks.test.cjs` also checks both manifests' versions
 - Skill Feedback inbox: `~/.agents/kit/feedback.md`, one Markdown line per point (format in its
   header), written by the model in any project and read by `/improve`. No script
+- `skills/agy/SKILL.md`: Gemini through the `agy` CLI, parallel to `codex` (no mod tool: no meters)
 - `skills/<name>/scripts/`: deterministic helpers (commit: `staging-check.js`, setup:
   `migrate-v1.js`, scan: `seo-facts.js`, codex: `codex-status.js`), called via `${CLAUDE_SKILL_DIR}` and allowed in the
   skill's `allowed-tools`

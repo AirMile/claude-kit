@@ -1,6 +1,6 @@
 ---
 name: codex
-description: Run a GPT model through the Codex CLI for an opinion, review, research or implementation. Use when the user asks for GPT (Sol, Astra, Luna, Terra), or when kit's delegation sends work to Codex.
+description: Run a GPT model through the Codex CLI for an opinion, review, research or implementation. Use when the user asks for GPT (Sol, Astra, Luna, Terra), or when kit's delegation sends work to Codex. Gemini/agy/Antigravity is the `agy` skill; "GPT en Gemini" runs both.
 allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/scripts/codex-status.js), Bash(node ${CLAUDE_SKILL_DIR}/scripts/codex-window.js *)
 ---
 
@@ -15,7 +15,9 @@ it. Codex shares no context with this chat.
 Families, not versions: **Luna** (fast, cheap), **Terra** (balanced), **Sol** (the workhorse),
 **Astra** (frontier, costly: only when the user names it). The newest version of a family in
 Codex's own catalog is used, so a new release needs no change here. Never let one family stand
-in for another.
+in for another. A request for Gemini, agy or Antigravity is not GPT: use the `agy` skill (both
+named → run both, blind, and compare; give `family` (`sol` unless told otherwise) so GPT
+runs for real and a Claude route does not stand in for it).
 
 ## With `mcp__kit__delegate` (the usual way)
 

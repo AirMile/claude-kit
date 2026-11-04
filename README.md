@@ -695,6 +695,14 @@ Codex app), not only on the PATH; tells apart "not installed" from "not logged i
 in `/gpt`; and looks again every 30 seconds until Codex is ready, so installing it mid-session
 needs no restart.
 
+### /agy
+
+Hands a task to a Gemini model through the Antigravity CLI (`agy`), the same way `/codex` does
+for GPT. Claude recognises "Gemini", "agy" and "Antigravity" like the GPT names ("vraag Gemini
+wat hij hiervan vindt"); "GPT en Gemini" runs both blind on the same brief and compares them.
+Runs read-only (`--mode plan`) unless you asked for an implementation. It uses no `mcp__kit__`
+tool: no meters or balance, so Claude names the cost in a line when a run is long.
+
 ### /launch
 
 The step from "done on my branch" to "live", for solo and team work.
