@@ -4,19 +4,26 @@ import {
   type Author,
   type Family,
   FAMILIES,
+  GEMINI_FAMILIES,
+  type GeminiFamily,
+  geminiRoute,
+  type Provider,
   type Role,
   ROLES,
   type Route,
 } from "./delegate-policy";
+import { agyArgs, agyStatus, tooLong } from "./agy-run";
 import { flowNoReviewer, flowReviewStart, flowReviewEnd } from "./flow";
 import { gptOn } from "./codex-run";
 import { gptCommandRun } from "./gpt-command";
 import {
   acquireWriter,
+  agyThreads,
   FOOTER,
   releaseWriter,
   routeDelegation,
   runDelegated,
+  runGemini,
 } from "./delegate-run";
 
 export { gptCommand } from "./gpt-command";
@@ -36,14 +43,17 @@ const WRITES: readonly Role[] = ["build", "build+"];
 export const delegateTool: ToolSpec = {
   name: "delegate",
   description:
-    "kit: hand a self-contained piece of work to Claude (a subagent) or GPT (Codex), on " +
+    "kit: hand a self-contained piece of work to Claude (a subagent), GPT (Codex) or, on request, " +
+    "Gemini (agy, the Antigravity CLI), on " +
     "whichever plan has room and the newest model for its role. Roles: search (find code), " +
     "research (read and weigh, read-only), build (a change you can describe up front), build+ " +
     "(a hard change), review (the uncommitted changes; author: who wrote them), plan (a blind " +
     "second plan: never include your own). The brief stands alone: goal, constraints, files, " +
-    "checks to run. family: a GPT model the user asked for by name (sol, terra, luna, astra). " +
+    "checks to run. family: a GPT model the user asked for by name (sol, terra, luna, astra), or " +
+    "a Gemini one (flash, pro; naming one sets provider gemini). provider: gemini when the user " +
+    "asks for Gemini, agy or Antigravity; it never runs unasked and shows no meters. " +
     "A brief states the decision you need, facts already known, files in scope and when to stop. " +
-    "thread: continue an earlier GPT run with a follow-up brief. A GPT run returns its final " +
+    "thread: continue an earlier GPT or Gemini run with a follow-up brief. A run returns its final " +
     "message and changed files; review its diff and run the checks yourself. A Claude route " +
     "says how to run it with the Agent tool.",
   inputSchema: {
@@ -51,8 +61,9 @@ export const delegateTool: ToolSpec = {
     properties: {
       role: { type: "string", enum: [...ROLES] },
       brief: { type: "string" },
-      author: { type: "string", enum: ["claude", "gpt"] },
-      family: { type: "string", enum: [...FAMILIES] },
+      author: { type: "string", enum: ["claude", "gpt", "gemini"] },
+      provider: { type: "string", enum: ["gpt", "gemini"] },
+      family: { type: "string", enum: [...FAMILIES, ...GEMINI_FAMILIES] },
       thread: { type: "string" },
     },
     required: ["role", "brief"],
@@ -64,6 +75,8 @@ type Input = {
   brief: string;
   author?: Author;
   family?: Family;
+  provider: Provider;
+  geminiFamily?: GeminiFamily;
   thread?: string;
 };
 
@@ -74,14 +87,29 @@ function readInput(e: unknown): Input | string {
     return `Not run: role must be one of ${ROLES.join(", ")}.`;
   if (typeof i.brief !== "string" || !i.brief.trim())
     return "Not run: the brief is empty.";
+  const geminiFamily = GEMINI_FAMILIES.includes(i.family as GeminiFamily)
+    ? (i.family as GeminiFamily)
+    : undefined;
+  const provider: Provider =
+    i.provider === "gemini" || geminiFamily ? "gemini" : "gpt";
+  if (i.provider === "gpt" && geminiFamily)
+    return `Not run: provider gpt contradicts family ${geminiFamily}, which is a Gemini one.`;
+  if (provider === "gemini" && i.family && !geminiFamily)
+    return `Not run: ${String(i.family)} is a GPT family; Gemini takes ${GEMINI_FAMILIES.join(" or ")}.`;
+  if (provider === "gpt" && i.family && !FAMILIES.includes(i.family as Family))
+    return `Not run: family must be one of ${[...FAMILIES, ...GEMINI_FAMILIES].join(", ")}.`;
   const family = FAMILIES.includes(i.family as Family)
     ? (i.family as Family)
     : undefined;
   const author =
-    i.author === "gpt" || i.author === "claude" ? i.author : undefined;
+    i.author === "gpt" || i.author === "claude" || i.author === "gemini"
+      ? i.author
+      : undefined;
+  if (provider === "gemini" && author === "gemini")
+    return "Not run: Gemini wrote this code, so a Gemini review would not be another family. Use GPT or Claude.";
   const thread =
     typeof i.thread === "string" && i.thread ? i.thread : undefined;
-  return { role, brief: i.brief, author, family, thread };
+  return { role, brief: i.brief, author, family, provider, geminiFamily, thread };
 }
 
 function claudeAnswer(
@@ -102,7 +130,14 @@ async function delegate(
   input: Input,
   toolUseId: string,
 ): Promise<string> {
-  const picked = await routeDelegation($, input);
+  if (input.provider === "gemini") return delegateGemini($, input, toolUseId);
+  if (input.thread && agyThreads.has(input.thread))
+    return "Not run: that thread is a Gemini run; continue it with provider gemini.";
+  const picked = await routeDelegation($, {
+    ...input,
+    // A Gemini-written change reviewed on GPT is another family: not the Claude-only rule.
+    author: input.author === "gemini" ? undefined : input.author,
+  });
   if (picked.provider === "none") {
     if (input.role === "review") await flowNoReviewer($, picked.reason);
     return `Not delegated: ${picked.reason}.`;
@@ -155,6 +190,117 @@ async function delegate(
   }
 }
 
+// Headless agy cannot run shell commands, so a review gets the diff in the brief instead of
+// being told to run git, and every brief says what it cannot do.
+const GEMINI_NOTE =
+  "You cannot run shell commands here (headless: they are denied): read files only, and say " +
+  "which checks you could not run.";
+const DIFF_MAX = 120_000;
+
+async function geminiBrief(
+  $: EngineInterface,
+  brief: string,
+  role: Role,
+): Promise<string> {
+  const footer =
+    role === "review"
+      ? FOOTER.review.replace(
+          "(git status, git diff, new files too)",
+          "(the diff and the list of new files are attached below; read the new files directly)",
+        )
+      : FOOTER[role];
+  let extra = "";
+  if (role === "review") {
+    const run = async (argv: string[]): Promise<string> => {
+      const r = await $.process.run(argv).catch(() => undefined);
+      if (!r || r.exitCode !== 0 || r.isStdoutTruncated)
+        throw new Error(`could not read the changes (${argv.slice(0, 4).join(" ")})`);
+      return r.stdout;
+    };
+    const root = await $.session.root();
+    const diff = await run(["git", "-C", root, "diff", "HEAD", "--no-ext-diff"]);
+    const fresh = await run([
+      "git", "-C", root, "ls-files", "--others", "--exclude-standard",
+    ]);
+    extra =
+      `\n\nUncommitted diff (git diff HEAD)${diff.length > DIFF_MAX ? `, cut at ${DIFF_MAX} characters: read the files for the rest` : ""}:\n` +
+      `${diff.slice(0, DIFF_MAX) || "(none)"}\n\nNew untracked files:\n${fresh.trim() || "(none)"}`;
+  }
+  return `${brief.trim()}${extra}\n\n${footer} ${GEMINI_NOTE}`;
+}
+
+async function delegateGemini(
+  $: EngineInterface,
+  input: Input,
+  toolUseId: string,
+): Promise<string> {
+  const long = tooLong(input.brief);
+  if (long) return `Not run: ${long}`;
+  const st = await agyStatus($);
+  if (!st.path)
+    return "Not delegated: agy (the Antigravity CLI) is not installed or not on this device's usual paths. Tell the user, then do it here.";
+  const resumed = input.thread && agyThreads.has(input.thread);
+  if (input.thread && !resumed)
+    return "Not run: that thread is not a Gemini run of this session (a GPT thread cannot continue on Gemini).";
+  const r = geminiRoute(input.role, st.models, input.geminiFamily);
+  if (r.provider === "none") {
+    if (input.role === "review") await flowNoReviewer($, r.reason);
+    return `Not delegated: ${r.reason}.`;
+  }
+  if (r.writes && !acquireWriter())
+    return "Not started: another run that writes is still going. Wait for it, or make this a read-only role.";
+  try {
+    // The review's fingerprint comes first: a change while the diff is read voids the review.
+    const start =
+      input.role === "review" ? await flowReviewStart($) : undefined;
+    let brief: string;
+    try {
+      brief = await geminiBrief($, input.brief, input.role);
+    } catch (err) {
+      const why = err instanceof Error ? err.message : String(err);
+      if (input.role === "review") await flowNoReviewer($, why);
+      return `Not delegated: ${why}. Do it here.`;
+    }
+    const long = tooLong(brief);
+    if (long) return `Not run: ${long}`;
+    const { run, files } = await runGemini(
+      $,
+      r,
+      st.path,
+      brief,
+      toolUseId,
+      input.role,
+      input.thread,
+    );
+    if (input.role === "review")
+      await flowReviewEnd($, start, "gemini", run.answer, run.error);
+    const head = `Gemini ${r.name} (${input.role}, ${r.writes ? "accept-edits" : "plan, read-only"}, effort ${r.effort})`;
+    if (run.error && !run.answer.trim())
+      return `${head} failed: ${run.error}\nSay why to the user, then do it here or on another family. Nothing was switched silently.`;
+    const answer = run.answer.trim();
+    return [
+      `${head}${run.error ? ` ended with: ${run.error}` : " finished"}` +
+        (run.conversation ? ` · thread ${run.conversation}` : ""),
+      files.length ? `Changed: ${files.join(", ")}` : "Changed: nothing",
+      "--- final message ---",
+      answer.length > MAX_ANSWER
+        ? `${answer.slice(0, MAX_ANSWER)}\n[incomplete: cut at ${MAX_ANSWER} characters${run.conversation ? `, ask for the rest with thread "${run.conversation}"` : ""}]`
+        : answer || "(empty)",
+      "---",
+      r.writes
+        ? "Review its diff and run the checks yourself before calling it done."
+        : "Weigh it against your own judgment before you rely on it.",
+      run.conversation
+        ? `A follow-up for this run: delegate with provider gemini and thread "${run.conversation}".`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+  } finally {
+    if (r.writes) releaseWriter();
+  }
+}
+
 export function delegation(on: On) {
   // A deferred tool reads as absent to skills that check whether it exists.
   on("tool.describe", { tool: TOOL }, async ($, e, next) => ({
@@ -165,9 +311,16 @@ export function delegation(on: On) {
   // Reading runs without a prompt, and so does writing while GPT is on (the user's standing
   // request); any other change asks first, as any tool does.
   on("tool.check", { tool: TOOL }, async ($, e, next) => {
-    const role = (e.input as { role?: Role } | undefined)?.role;
+    const inp = e.input as
+      | { role?: Role; provider?: string; family?: string }
+      | undefined;
+    const role = inp?.role;
     const writes = role !== undefined && WRITES.includes(role);
-    const standing = await gptOn($);
+    // The band's GPT switch is a standing request for GPT only: Gemini writing asks first.
+    const gemini =
+      inp?.provider === "gemini" ||
+      GEMINI_FAMILIES.includes(inp?.family as GeminiFamily);
+    const standing = !gemini && (await gptOn($));
     if (!writes || standing) return { decision: "allow" as const };
     return next(e);
   });

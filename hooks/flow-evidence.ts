@@ -2,7 +2,7 @@ import type { Task } from "./flow-policy";
 
 // Evidence, pure: checks and reviews belong to the code they started on, by git's fingerprint
 // or, without git, the order of observed edits. A missing reviewer excuses a hold, not evidence.
-export type Family = "gpt" | "claude";
+export type Family = "gpt" | "claude" | "gemini";
 export type ReviewRecord = {
   outcome: "pass" | "fail" | "no verdict" | "error";
   family: Family;
@@ -67,8 +67,17 @@ const verifierCurrent = (t: Task, print: string | undefined) =>
   byPrint(t, print)
     ? t.verifiedPrint === print
     : t.lastVerifierAt > t.lastEditAt;
+// A review counts when some other family than the reviewer wrote the code; no recorded writer
+// means Claude (this chat).
+const writers = (t: Task): Family[] => {
+  const w: Family[] = [];
+  if (t.gptWrote) w.push("gpt");
+  if (t.geminiWrote) w.push("gemini");
+  if (t.claudeWrote || w.length === 0) w.push("claude");
+  return w;
+};
 const familyCounts = (t: Task, family: Family) =>
-  family === "gpt" ? !t.gptWrote || !!t.claudeWrote : !!t.gptWrote;
+  writers(t).some((w) => w !== family);
 
 export function reviewProblem(
   t: Task,
@@ -96,9 +105,9 @@ export function reviewProblem(
     return "the reviewer reported P0/P1 findings: fix them, then review again";
   if (r.outcome === "no verdict") return "the review had no `verdict:` line";
   if (!familyCounts(t, r.family))
-    return t.gptWrote
-      ? "GPT wrote the code: call mcp__kit__delegate role review with author gpt to use Claude"
-      : "Claude wrote the code: use the other family, GPT, for the review";
+    return t.gptWrote || t.geminiWrote
+      ? `${t.gptWrote ? "GPT" : "Gemini"} wrote the code: call mcp__kit__delegate role review with author ${t.gptWrote ? "gpt" : "gemini"} to use another family`
+      : "Claude wrote the code: use the other family, GPT or Gemini (provider gemini), for the review";
   if (gateLevel(t) >= 3 && !r.depth)
     return "a V3 review needs a `failure-paths:` line";
   return undefined;
@@ -187,9 +196,9 @@ export function holdText(
   if (problem)
     sentences.push(
       `kit flow: ${problem}. Get a review via mcp__kit__delegate role review` +
-        `${t.gptWrote ? " (author gpt when GPT wrote the code)" : ""}. ` +
+        `${t.gptWrote ? " (author gpt when GPT wrote the code)" : t.geminiWrote ? " (author gemini when Gemini wrote the code)" : ""}. ` +
         "The review answer must start with `verdict: pass|fail`." +
-        (!t.review || t.gptWrote
+        (!t.review || t.gptWrote || t.geminiWrote
           ? " On the Claude route, put the footer from delegate’s answer word for word in the subagent prompt or it is not recognised as a review."
           : ""),
     );

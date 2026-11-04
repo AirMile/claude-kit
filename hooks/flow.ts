@@ -170,7 +170,7 @@ export async function flowEdit(
   $: EngineInterface,
   path: string,
   fromAgent = false,
-  gpt = false,
+  gpt: boolean | "gemini" = false,
 ): Promise<string | undefined> {
   await load($);
   const now = await $.clock.now();
@@ -208,9 +208,13 @@ export async function flowEdit(
   return raised ? `${step.note}\n${raised}` : step.note;
 }
 
-// GPT changed files through mcp__kit__delegate: they count as this chat's changes.
-export async function flowDelegated($: EngineInterface, files: string[]) {
-  for (const f of files) await flowEdit($, f, true, true);
+// GPT or Gemini changed files through mcp__kit__delegate: they count as this chat's changes.
+export async function flowDelegated(
+  $: EngineInterface,
+  files: string[],
+  by: true | "gemini" = true,
+) {
+  for (const f of files) await flowEdit($, f, true, by);
 }
 
 // The turn wants to end: why it should go on, if it should.

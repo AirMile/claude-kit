@@ -73,6 +73,7 @@ export type Task = {
   levels?: Levels; // task-policy's decision for it, raised as it grows
   gateV?: Level; // the required Verify level, raised by growth, not failing checks
   gptWrote?: boolean; // GPT wrote source in this task
+  geminiWrote?: boolean; // Gemini (agy) wrote source in this task
   claudeWrote?: boolean; // Claude wrote source in this task
   review?: ReviewRecord; // the latest review, tied to the code it started on
   noReviewer?: { round: string; reason: string }; // no review hold for this round
@@ -215,7 +216,7 @@ export function onEdit(
   now: number,
   id: number,
   basePrint: string | undefined,
-  gpt = false,
+  gpt: boolean | "gemini" = false, // who wrote it: true = GPT, "gemini", else Claude
 ): Escalation | undefined {
   const p = path.replace(/\\/g, "/");
   if (SPEC.test(p))
@@ -224,7 +225,8 @@ export function onEdit(
   const t = task ? { ...task } : newTask(id, "light", basePrint);
   if (!t.files.includes(p)) t.files = [...t.files, p];
   t.lastEditAt = now;
-  if (gpt) t.gptWrote = true;
+  if (gpt === "gemini") t.geminiWrote = true;
+  else if (gpt) t.gptWrote = true;
   else t.claudeWrote = true;
   const n = t.files.length - (t.requestFiles ?? 0);
   const want: Track =

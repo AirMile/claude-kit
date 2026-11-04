@@ -147,6 +147,20 @@ test("the reviewer must be the other family, with either allowed for mixed write
   ).toContain("author gpt");
 });
 
+test("Gemini counts as its own family: it reviews Claude's or GPT's code, never its own", async () => {
+  const ok = (w: Partial<Task>, family: Family) =>
+    reviewProblem(onReview(work(w), review({ family })), "p1") === undefined;
+  expect(ok({ claudeWrote: true }, "gemini")).toBe(true);
+  expect(ok({ gptWrote: true }, "gemini")).toBe(true);
+  expect(ok({ geminiWrote: true }, "gemini")).toBe(false);
+  expect(ok({ geminiWrote: true }, "gpt")).toBe(true);
+  expect(ok({ geminiWrote: true }, "claude")).toBe(true);
+  expect(ok({ geminiWrote: true, claudeWrote: true }, "gemini")).toBe(true);
+  expect(
+    reviewProblem(onReview(work({ geminiWrote: true }), review({ family: "gemini" })), "p1"),
+  ).toContain("author gemini");
+});
+
 test("a current verifier PASS counts as Claude at V2, while V3 needs a review", async () => {
   for (const gptWrote of [false, true]) {
     const t = onVerifier(work({ gptWrote, gateV: 2 }), true, 6, "p1");

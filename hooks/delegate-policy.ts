@@ -29,7 +29,7 @@ export function band(prev: Band, lean: number): Band {
 
 export type Family = "sol" | "terra" | "luna" | "astra";
 export const FAMILIES: readonly Family[] = ["sol", "terra", "luna", "astra"];
-export type Author = "claude" | "gpt";
+export type Author = "claude" | "gpt" | "gemini";
 export type Sandbox = "read-only" | "workspace-write";
 
 export type CatalogModel = { id: string; name?: string; description?: string };
@@ -239,3 +239,70 @@ export function route(i: RouteInput): Route {
   }
   return onGpt(i.role, want);
 }
+
+// Gemini through the Antigravity CLI (agy): only on request (provider "gemini"), never by the
+// band: agy shows no meters, so there is nothing to balance. Ids read `gemini-<version>-<family>-
+// <effort>`; the newest version of the asked family wins, Flash when none is named, and the
+// other models agy lists (Claude, GPT-OSS) are never picked.
+export type Provider = "gpt" | "gemini";
+export const PROVIDERS: readonly Provider[] = ["gpt", "gemini"];
+export type GeminiFamily = "flash" | "pro";
+export const GEMINI_FAMILIES: readonly GeminiFamily[] = ["flash", "pro"];
+export type GeminiEffort = "high" | "medium" | "low";
+
+export type GeminiRoute = {
+  provider: "gemini";
+  model: string;
+  name: string;
+  effort: GeminiEffort;
+  writes: boolean;
+};
+
+const GEMINI_ID = /^gemini-(\d+(?:\.\d+)*)-([a-z]+)-(high|medium|low)$/;
+const GEMINI_EFFORT: Record<Role, GeminiEffort> = {
+  search: "low",
+  research: "high",
+  plan: "high",
+  review: "high",
+  build: "medium",
+  "build+": "high",
+};
+
+export function geminiRoute(
+  role: Role,
+  ids: string[],
+  family: GeminiFamily = "flash",
+): GeminiRoute | { provider: "none"; reason: string } {
+  const effort = GEMINI_EFFORT[role];
+  let best: { id: string; version: number[] } | undefined;
+  for (const id of ids) {
+    const hit = GEMINI_ID.exec(id);
+    if (!hit?.[1] || hit[2] !== family || hit[3] !== effort) continue;
+    const version = hit[1].split(".").map(Number);
+    if (!best || newer(version, best.version)) best = { id, version };
+  }
+  if (!best)
+    return {
+      provider: "none",
+      reason: `no ${family} model at ${effort} effort in agy's list: do it here`,
+    };
+  const name = `Gemini ${best.version.join(".")} ${family.charAt(0).toUpperCase()}${family.slice(1)}`;
+  return {
+    provider: "gemini",
+    model: best.id,
+    name,
+    effort,
+    writes: role === "build" || role === "build+",
+  };
+}
+
+// `agy models` prints a banner line, then `<id>\t<name>` per model.
+export function parseAgyModels(stdout: string): string[] {
+  return stdout
+    .split(/\r?\n/)
+    .map((l) => l.split("\t")[0]?.trim() ?? "")
+    .filter((id) => GEMINI_ID.test(id));
+}
+
+// agy reads the prompt only from the flag's own value, so a brief has a ceiling (argv limits).
+export const AGY_MAX_BRIEF = 200_000;

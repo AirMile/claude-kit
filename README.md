@@ -701,7 +701,7 @@ Hands a task to a Gemini model through the Antigravity CLI (`agy`), the same way
 for GPT. Claude recognises "Gemini", "agy" and "Antigravity" like the GPT names ("vraag Gemini
 wat hij hiervan vindt"); "GPT en Gemini" runs both blind on the same brief and compares them.
 Runs read-only (`--mode plan`) unless you asked for an implementation. It uses no `mcp__kit__`
-tool: no meters or balance, so Claude names the cost in a line when a run is long.
+tool for the hand route; with the kit mod `mcp__kit__delegate` runs it (`provider: "gemini"`): only the response and the changed files come back, a Gemini review counts as another family's review in flow, and a writing role asks first. No meters or balance: it runs only when you ask for it.
 
 ### /launch
 

@@ -12,12 +12,22 @@ const CATALOG = [
   "gpt-5.6-terra",
 ];
 
+const AGY_MODELS = [
+  "Fetching available models...",
+  "gemini-3.8-flash-high\tGemini 3.8 Flash (High)",
+  "gemini-3.8-flash-medium\tGemini 3.8 Flash (Medium)",
+  "gemini-3.8-flash-low\tGemini 3.8 Flash (Low)",
+  "claude-sonnet-4-6\tClaude Sonnet 4.6 (Thinking)",
+  "gpt-oss-120b-medium\tGPT-OSS 120B (Medium)",
+].join("\n");
+
 export function world(
   on: On,
   opts: {
     store?: Record<string, unknown>;
     status?: Record<string, unknown>; // what codex-status.js prints
     events?: string[]; // what Codex writes on stdout
+    agy?: { json?: string; code?: number }; // what agy prints on stdout, and its exit code
   } = {},
 ) {
   const spawned: { argv: readonly string[]; input?: string }[] = [];
@@ -60,6 +70,26 @@ export function world(
         },
       };
     }
+    if (e.argv[0] === "sh")
+      return {
+        value: {
+          exitCode: 0,
+          isStdoutTruncated: false,
+          isStderrTruncated: false,
+          stdout: "/bin/agy\n",
+          stderr: "",
+        },
+      };
+    if (e.argv[0] === "/bin/agy")
+      return {
+        value: {
+          exitCode: 0,
+          isStdoutTruncated: false,
+          isStderrTruncated: false,
+          stdout: AGY_MODELS,
+          stderr: "",
+        },
+      };
     if (e.argv[1] === "status") gitCalls++;
     return {
       value: {
@@ -78,6 +108,10 @@ export function world(
   });
   on("process.spawn", async function* (_$, e) {
     spawned.push({ argv: e.argv, input: e.input });
+    if (e.argv[0] === "/bin/agy") {
+      yield { stream: "stdout" as const, text: opts.agy?.json ?? "" };
+      return { value: { code: opts.agy?.code ?? 0, signal: null } };
+    }
     for (const line of opts.events ?? [])
       yield { stream: "stdout" as const, text: `${line}\n` };
     return { value: { code: 0, signal: null } };

@@ -16,6 +16,20 @@ the way `GPT`, `Sol`, `Astra`, `Luna` and `Terra` mean `/codex`. "GPT en Gemini"
 answer), then compare. Never let one provider stand in for the other, and never report a name
 you cannot run as "no access" before checking `which agy`.
 
+## With `mcp__kit__delegate` (the usual way)
+
+Call it with `provider: "gemini"` (or `family: "flash"` / `"pro"`), a `role` and a brief, like
+for GPT: it runs `agy` here, keeps its log out of this chat and returns the response, the
+changed files and a `thread` for a follow-up (also `provider: "gemini"`). A review by Gemini
+counts as another family's review for code Claude or GPT wrote, with `author` set to who wrote
+it; Gemini never reviews its own code (`author: "gemini"`). It runs only when asked for: no
+meters, no balance. A writing role asks the user first, as the band's GPT switch does not cover
+it. A brief over 200000 characters is refused.
+
+## Without the tool (Codex host, or an old kit)
+
+The same run by hand, as below.
+
 ## Models
 
 `agy models` lists ids (`gemini-<version>-<family>-<effort>`, e.g. `gemini-3.8-flash-high`).
@@ -39,6 +53,9 @@ models (Claude, GPT-OSS): use them only if the user asks for that exact model.
    - `--mode plan` is read-only: opinions, reviews, research, plans. Writing (`--mode
      accept-edits`) only when the user asked for an implementation. Never
      `--dangerously-skip-permissions`.
+   - Headless `agy` cannot ask for permission: a shell command or a file outside `--add-dir` is
+     auto-denied and the run ends with no answer. Put what it must read in the brief itself, tell
+     it to read files only (no shell commands), and keep the paths under `--add-dir`.
    - Read `$TMP/agy.out`; read `$TMP/agy.err` only on a failure. A run takes minutes: wait, don't poll.
 3. Check after the run: `git status --short` before and after must match for a read-only run.
 

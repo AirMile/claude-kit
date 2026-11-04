@@ -3,6 +3,7 @@ import type { EngineInterface } from "claude-code";
 import {
   type Author,
   type Family,
+  type GeminiRoute,
   newest,
   parseModel,
   type Role,
@@ -20,6 +21,7 @@ import {
   runCodex,
   type GptStatus,
 } from "./codex-run";
+import { agyArgs, type AgyRun, runAgy } from "./agy-run";
 import { balance } from "./balance";
 import { flowDelegated } from "./flow";
 import { REVIEW_MARK } from "./flow-evidence";
@@ -30,6 +32,7 @@ import {
 } from "./delegate-balance";
 
 export const threads = new Map<string, Family>();
+export const agyThreads = new Set<string>(); // conversation ids of Gemini runs this session
 let writing = false; // a GPT run that writes is going: one at a time in this checkout
 
 export function acquireWriter(): boolean {
@@ -182,4 +185,49 @@ export async function runDelegated(
     files,
     head: { name: r.name, sandbox: r.sandbox, effort: r.effort },
   };
+}
+
+// One Gemini run through agy: the same before/after diff of the worktree as a GPT run, and a
+// writing run counts as Gemini's change for flow.
+export async function runGemini(
+  $: EngineInterface,
+  r: GeminiRoute,
+  path: string,
+  brief: string,
+  toolUseId: string,
+  role: Role,
+  conversation?: string,
+  deadlineMs?: number,
+): Promise<{ run: AgyRun; files: string[] }> {
+  const root = await $.session.root();
+  const before = await changed($, root);
+  let last = 0;
+  const show = async (line: string) => {
+    const t = await $.clock.now();
+    if (t - last < 2000) return;
+    last = t;
+    try {
+      $.ui.notice(toolUseId, `Gemini ${r.name} · ${role} · ${line}`);
+    } catch {
+      // the call's dialog is gone: nothing to show it under
+    }
+  };
+  let run: AgyRun;
+  try {
+    run = await runAgy(
+      $,
+      agyArgs(path, r, root, brief, conversation),
+      root,
+      show,
+      deadlineMs,
+    );
+  } catch (err) {
+    run = { answer: "", error: `agy did not run: ${String(err)}` };
+  }
+  if (run.conversation) agyThreads.add(run.conversation);
+  const files = [...(await changed($, root))]
+    .filter(([p, hash]) => before.get(p) !== hash)
+    .map(([p]) => p);
+  if (r.writes) await flowDelegated($, files, "gemini");
+  return { run, files };
 }
