@@ -23,10 +23,12 @@ missing case usually drops the block silently instead of failing.
 One row per section: `section → block (existing · new variant · new) → core | project → fields
 → rows per list → schema change yes/no`.
 
-- **Rows per list** (nested lists each get their own): `free` = editors add, remove and move
-  rows; `locked` = only an admin does. Default `free`; `locked` needs a reason in the design
-  (a fixed process, a layout that breaks), not the item count the frame shows. Content that
-  grows (products, reviews, news, team, FAQ) is `free`. Unclear → AskUserQuestion.
+- **Rows per list**: one entry per list field, nested lists and both sides of an own-or-shared
+  choice included: `field path · helper · free|locked · reason`. `free` = editors add, remove
+  and move rows; `locked` = only an admin does. Default `free`; `locked` needs a reason in the
+  design (a fixed process, a layout that breaks), not the item count the frame shows. Content
+  that grows or shrinks (products, reviews, news, team, FAQ) is `free`: a kind of content is a
+  hint, not the rule. Unclear → AskUserQuestion.
 
 - Prefer an existing block with a new `layout`/`variant` option. A new option is an enum
   change, so it is a schema change too.
@@ -39,9 +41,13 @@ One row per section: `section → block (existing · new variant · new) → cor
 - Everything an editor would change is a field; structure and decoration stay code.
 - Build fields with the project's own helpers (role scoping, locked lists, optional-when-empty,
   accent/emphasis text); copy an existing block's shape rather than plain Payload fields.
-- A list's `rows` choice must hold in the admin UI, access rules and server guard alike. The
-  helper locks by default → reuse or parametrise it for a `free` list (a new helper only when
-  nothing fits), and scope the guard's exemption to that list, not to a field name everywhere.
+- A list's `rows` choice must hold in the admin UI, access rules and server guard alike. Grep
+  the lock (`lockedListAdmin`, `LOCKED_ROWS`, the project's name for it) and read every helper
+  that builds a list the block uses: a plain list and an own-or-shared items source are two
+  helpers. A helper that locks by default → parametrise the ones this block uses for a `free`
+  list (a new helper only when nothing fits), and scope the guard's exemption to that list and
+  block type, not to a field name everywhere. A recipe that names one helper does not cover the
+  others.
 - Labels, descriptions and tab names in the language of the existing blocks.
 - `required` when the design breaks without the value. `maxRows` only where the layout breaks,
   not the item count the frame happens to show.
@@ -66,7 +72,8 @@ Migrations, seed and writing documents change a database other people may use.
   never piped input; output to a file you `Read`. Exit 0 proves nothing: query the slug via the
   local API right after, missing → read why the seed skipped it. A page that already exists →
   never the seed (it overwrites editor changes); add only the new block with a local-API
-  script. The ask offers Draft / Publish; a never-published page stays 404 on its live route as
+  script. Content the client no longer wants (a row to drop) on a page that exists is the same
+  case: the seed never removes it, so a script does; freeing a list needs none. The ask offers Draft / Publish; a never-published page stays 404 on its live route as
   a draft: say so in the ask, and in the report when a nav link now points to it (production
   links to a 404 until then).
 - A local-API script lives as a temp file inside the project (from the scratchpad imports and
@@ -90,11 +97,13 @@ Migrations, seed and writing documents change a database other people may use.
 - Grep the component files for distinctive copy from the frame; every hit is a finding (the
   content defaults may hold it, components may not).
 - Rows: a test without a database, as a real non-admin `req.user` (a request without a user
-  passes the guard): a `free` list accepts an added and a removed row, a `locked` one throws.
+  passes the guard), one case per action: a `free` list accepts an added row, a removed row
+  (also the last one) and a moved row; a `locked` one throws on each. The guard test proves the
+  server, not the admin UI: the manual item covers the UI.
 - No schema change intended → the migration create command with `--skip-empty` writes no file.
 - After the database step (if done): one render of the real page through the CMS. A draft page
   (preview needs a login) → render it in the temporary dev route via the local API
   (`payload.find({ …, draft: true })` → the block mapping), never through `/admin`.
 - Manual item for the user: read the page in `/admin` with the client role (tabs, labels, which
-  fields show per layout, add a row to each `free` list). Never log in or edit in `/admin` yourself: autosave writes to the
-  shared database and a second login can end the user's session.
+  fields show per layout, add and delete a row in each `free` list). Never log in or edit in `/admin` yourself: autosave
+  writes to the shared database and a second login can end the user's session.
