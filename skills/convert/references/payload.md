@@ -41,13 +41,14 @@ One row per section: `section → block (existing · new variant · new) → cor
 - Everything an editor would change is a field; structure and decoration stay code.
 - Build fields with the project's own helpers (role scoping, locked lists, optional-when-empty,
   accent/emphasis text); copy an existing block's shape rather than plain Payload fields.
-- A list's `rows` choice must hold in the admin UI, access rules and server guard alike. Grep
-  the lock (`lockedListAdmin`, `LOCKED_ROWS`, the project's name for it) and read every helper
-  that builds a list the block uses: a plain list and an own-or-shared items source are two
-  helpers. A helper that locks by default → parametrise the ones this block uses for a `free`
-  list (a new helper only when nothing fits), and scope the guard's exemption to that list and
-  block type, not to a field name everywhere. A recipe that names one helper does not cover the
-  others.
+- A list's `rows` choice must hold in the admin UI, access rules and server guard alike, from one
+  source. `free` is the default and needs no marking. `locked` is one opt-in marker on the
+  field (the project's name for it, e.g. `lockedList(reason)`) that both the admin UI and the
+  server guard read; never a second list of exemptions by field name. Grep the lock (and every
+  helper that builds a list the block uses: a plain list and an own-or-shared items source are
+  two helpers) to find the marker. A project that still locks by default or keeps a separate
+  exemption list → follow its `AGENTS.md`, and report the mismatch after the run. Bounds that
+  protect the layout (`minRows`, `maxRows`) go on the field and apply to `free` lists too.
 - Labels, descriptions and tab names in the language of the existing blocks.
 - `required` when the design breaks without the value. `maxRows` only where the layout breaks,
   not the item count the frame happens to show.
