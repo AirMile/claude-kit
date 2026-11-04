@@ -1,5 +1,5 @@
 import type { On } from "claude-code";
-import { EXPLORE_LABELS } from "./explore-first";
+import { labelAnswer } from "./label-fixture";
 import { CHANGE_LABELS } from "./flow-policy";
 import { LABELS } from "./model-policy";
 
@@ -21,6 +21,7 @@ export function world(
     labels: readonly string[];
     model?: string;
   }[] = [];
+  const completed: { prompt: string; model: string }[] = [];
   const resetsAt = "2026-11-03T12:00:00Z";
   let gptPct = 10;
   let elapsed = 0;
@@ -50,19 +51,14 @@ export function world(
       labels: e.labels,
       model: e.options?.model,
     });
-    return {
-      value: e.labels.includes(EXPLORE_LABELS.explore)
-        ? opts.explore
-          ? EXPLORE_LABELS.explore
-          : EXPLORE_LABELS.direct
-        : e.labels.includes(CHANGE_LABELS.none)
-          ? opts.change
-            ? CHANGE_LABELS.medium
-            : CHANGE_LABELS.none
-          : opts.change
-            ? LABELS.routine
-            : LABELS.question,
-    };
+    return { value: opts.change ? LABELS.routine : LABELS.question };
+  });
+  on("model.complete", async (_$, e) => {
+    completed.push({ prompt: String(e.prompt), model: e.model });
+    return labelAnswer(e.prompt, {
+      change: opts.change ? CHANGE_LABELS.medium : CHANGE_LABELS.none,
+      explore: opts.explore,
+    });
   });
   on("process.run", async (_$, e) => ({
     value: {
@@ -148,6 +144,7 @@ export function world(
     store,
     prompts,
     classified,
+    completed,
     resetsAt,
     gpt: (pct: number) => {
       gptPct = pct;

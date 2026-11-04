@@ -5,6 +5,7 @@ import { newTask, type Task, CHANGE_LABELS } from "./flow-policy";
 import { VERIFY_LABELS } from "./task-policy";
 import { LABELS } from "./model-policy";
 import { world, write, bash, stop } from "./flow-fixture";
+import { labelAnswer } from "./label-fixture";
 
 const stored = (over: Partial<Task> = {}) => ({
   mode: "off",
@@ -22,12 +23,10 @@ const ask = ($: Parameters<TestBody>[0], text: string) =>
 
 test("a red V1 check raises only the note, including after another prompt; growth raises the gate even at the note cap", async ($, on) => {
   const w = world(on, stored({ gateV: 1, levels: { d: 1, e: 0, v: 1, r: 0 } }));
-  on("model.classify", async (_$, e) => ({
-    value: e.labels.includes(CHANGE_LABELS.none)
-      ? CHANGE_LABELS.light
-      : e.labels.includes(VERIFY_LABELS.cosmetic)
-        ? VERIFY_LABELS.behaviour
-        : LABELS.routine,
+  on("model.classify", async () => ({ value: LABELS.routine }));
+  on("model.complete", async (_$, e) => labelAnswer(e.prompt, {
+    change: CHANGE_LABELS.light,
+    verify: VERIFY_LABELS.behaviour,
   }));
   on("prompt.submit", async (_$, e) => ({ text: e.text }));
   await write($, "src/a.ts");
@@ -109,11 +108,8 @@ test("a verifier binds to its spawn print and an untracked answer is ignored", a
 
 test("skip ends as waived on the next request", async ($, on) => {
   const w = world(on, stored());
-  on("model.classify", async (_$, e) => ({
-    value: e.labels.includes(CHANGE_LABELS.none)
-      ? CHANGE_LABELS.light
-      : LABELS.routine,
-  }));
+  on("model.classify", async () => ({ value: LABELS.routine }));
+  on("model.complete", async (_$, e) => labelAnswer(e.prompt, { change: CHANGE_LABELS.light }));
   on("prompt.submit", async (_$, e) => ({ text: e.text }));
   await write($, "src/a.ts");
   await ask($, "skip verify");
@@ -183,12 +179,10 @@ test("edit growth raises gateV even when note levels are capped", async ($, on) 
 
 test("a shared-code prompt stores V2 as the gate and a thin reply keeps it", async ($, on) => {
   const w = world(on, { mode: "off" });
-  on("model.classify", async (_$, e) => ({
-    value: e.labels.includes(CHANGE_LABELS.none)
-      ? CHANGE_LABELS.light
-      : e.labels.includes(VERIFY_LABELS.cosmetic)
-        ? VERIFY_LABELS.shared
-        : LABELS.routine,
+  on("model.classify", async () => ({ value: LABELS.routine }));
+  on("model.complete", async (_$, e) => labelAnswer(e.prompt, {
+    change: CHANGE_LABELS.light,
+    verify: VERIFY_LABELS.shared,
   }));
   on("prompt.submit", async (_$, e) => ({ text: e.text }));
   await ask($, "Change the shared retry contract in src/a.ts");

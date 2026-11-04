@@ -5,6 +5,7 @@ import { LABELS } from "./model-policy";
 import { VERIFY_LABELS } from "./task-policy";
 
 import { world, write, bash, stop } from "./flow-fixture";
+import { labelAnswer } from "./label-fixture";
 
 test("flow holds a turn that ends with unchecked changes, once per round", async ($, on) => {
   const w = world(on);
@@ -91,12 +92,10 @@ test("a commit after the passing check is no change: the turn ends", async ($, o
 test("a thin reply keeps the task's levels; growth and the first failing check raise E and V", async ($, on) => {
   const w = world(on, { mode: "off" });
   const sent: (readonly string[] | undefined)[] = [];
-  on("model.classify", async (_$, e) => ({
-    value: e.labels.includes(CHANGE_LABELS.none)
-      ? CHANGE_LABELS.light
-      : e.labels.includes(VERIFY_LABELS.cosmetic)
-        ? VERIFY_LABELS.behaviour
-        : LABELS.routine,
+  on("model.classify", async () => ({ value: LABELS.routine }));
+  on("model.complete", async (_$, e) => labelAnswer(e.prompt, {
+    change: CHANGE_LABELS.light,
+    verify: VERIFY_LABELS.behaviour,
   }));
   on("prompt.submit", async (_$, e) => {
     sent.push(e.context);
@@ -132,13 +131,10 @@ test("an answer that grows the task raises E and V; one that raises nothing gets
   const sent: (readonly string[] | undefined)[] = [];
   let change = CHANGE_LABELS.light;
   let verify = VERIFY_LABELS.behaviour;
-  on("model.classify", async (_$, e) => ({
-    value: e.labels.includes(CHANGE_LABELS.none)
-      ? change
-      : e.labels.includes(VERIFY_LABELS.cosmetic)
-        ? verify
-        : LABELS.routine,
-  }));
+  on("model.classify", async () => ({ value: LABELS.routine }));
+  on("model.complete", async (_$, e) =>
+    labelAnswer(e.prompt, { change, verify }),
+  );
   on("prompt.submit", async (_$, e) => {
     sent.push(e.context);
     return { text: e.text };

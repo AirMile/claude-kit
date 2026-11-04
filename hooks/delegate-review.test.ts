@@ -3,6 +3,7 @@ import { expect, test } from "claude-code/testing";
 import { newTask, type Task, CHANGE_LABELS } from "./flow-policy";
 import { LABELS } from "./model-policy";
 import { world, delegate } from "./delegate-fixture";
+import { labelAnswer } from "./label-fixture";
 
 const task = (): Task => ({
   ...newTask(1, "light"),
@@ -82,11 +83,8 @@ test("Not delegated excuses this round's review hold; the next change folds with
   on("ui.invalidate", async () => ({ value: undefined }));
   on("clock.after", async () => ({ value: undefined }));
   on("classic.Stop", async () => ({ value: {} }));
-  on("model.classify", async (_$, e) => ({
-    value: e.labels.includes(CHANGE_LABELS.none)
-      ? CHANGE_LABELS.light
-      : LABELS.routine,
-  }));
+  on("model.classify", async () => ({ value: LABELS.routine }));
+  on("model.complete", async (_$, e) => labelAnswer(e.prompt, { change: CHANGE_LABELS.light }));
   on("prompt.submit", async (_$, e) => ({ text: e.text }));
   const w = world(on, {
     store: { mode: "off", gpt: false, flowTasks: { s1: task() } },

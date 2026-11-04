@@ -21,7 +21,7 @@ const measure = (percentUsed: number, resetsAt: string) =>
     changed: ["rateLimits"],
   }) as never;
 
-test("explore raises Define to D2; all three classifiers see the same input; the decision is logged", async ($, on) => {
+test("explore raises Define to D2; one call labels it; the decision is logged", async ($, on) => {
   const w = world(on, { explore: true, change: true });
   await $.command.run({ command: "gpt", args: "" });
   await prompt($, "Change the retry handling in this repository");
@@ -30,15 +30,11 @@ test("explore raises Define to D2; all three classifiers see the same input; the
   expect(context).toContain("kit task: D2 E1 V1.");
   expect(context).toContain("role research");
   expect(context).toContain("role build");
-  const classifiers = w.classified.filter(
-    (c) =>
-      c.labels.includes(EXPLORE_LABELS.explore) ||
-      c.labels.includes(CHANGE_LABELS.none) ||
-      c.labels.includes(VERIFY_LABELS.cosmetic),
+  expect(w.completed.length).toBe(1);
+  expect(w.completed[0]?.prompt).toContain(
+    "Change the retry handling in this repository",
   );
-  expect(classifiers.length).toBe(3);
-  expect(new Set(classifiers.map((c) => c.text)).size).toBe(1);
-  expect(classifiers.every((c) => c.model === "haiku")).toBe(true);
+  expect(w.completed[0]?.model).toBe("haiku");
   const decisions = (
     w.store.flowLog as { event: string; levels?: string; gpt5h?: number }[]
   ).filter((e) => e.event === "decision");
@@ -51,8 +47,7 @@ test("questions explore too; thin replies, build prompts and GPT off skip the ex
   const w = world(on, { explore: true });
   await $.command.run({ command: "gpt", args: "" });
   const explored = () =>
-    w.classified.filter((c) => c.labels.includes(EXPLORE_LABELS.explore))
-      .length;
+    w.completed.filter((c) => c.prompt.includes(EXPLORE_LABELS.explore)).length;
   await prompt($);
   expect(String(w.prompts.at(-1)?.context)).toContain("kit task: D2 E0 V0.");
   expect(explored()).toBe(1);

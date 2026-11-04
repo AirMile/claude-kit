@@ -2,6 +2,7 @@ import type { On } from "claude-code";
 import type { TestBody } from "claude-code/testing";
 import { CHANGE_LABELS } from "./flow-policy";
 import { VERIFY_LABELS } from "./task-policy";
+import { labelAnswer } from "./label-fixture";
 
 // kit's own mod is loaded around the test; these hooks only answer what is beneath it.
 export function world(
@@ -44,13 +45,13 @@ export function world(
     return { text: "" };
   });
   const queue = [...(opts.labels ?? [])];
-  on("model.classify", async (_$, e) => ({
-    value: e.labels.includes(CHANGE_LABELS.none)
-      ? opts.change
-      : e.labels.includes(VERIFY_LABELS.cosmetic)
-        ? (opts.verify ?? VERIFY_LABELS.behaviour)
-        : (queue.shift() ?? opts.label),
-  }));
+  on("model.classify", async () => ({ value: queue.shift() ?? opts.label }));
+  on("model.complete", async (_$, e) =>
+    labelAnswer(e.prompt, {
+      change: opts.change,
+      verify: opts.verify ?? VERIFY_LABELS.behaviour,
+    }),
+  );
   // $.ui.ask is a tool.call of AskUserQuestion beneath; answered by question text.
   on("tool.call", { tool: "AskUserQuestion" }, async (_$, e) => {
     const { questions } = e as unknown as { questions: { question: string }[] };
