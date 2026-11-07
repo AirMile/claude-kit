@@ -38,6 +38,7 @@ export { gptCommand } from "./gpt-command";
 
 const TOOL = "mcp__kit__delegate";
 const MAX_ANSWER = 6000;
+const MAX_ANSWER_GEMINI = 16_000;
 const WRITES: readonly Role[] = ["build", "build+"];
 
 export const delegateTool: ToolSpec = {
@@ -53,6 +54,7 @@ export const delegateTool: ToolSpec = {
     "a Gemini one (flash, pro; naming one sets provider gemini). provider: gemini when the user " +
     "asks for Gemini, agy or Antigravity; it never runs unasked and shows no meters. " +
     "A brief states the decision you need, facts already known, files in scope and when to stop. " +
+    "dirs: Gemini only, absolute folders besides the project that agy may read (goes through the permission check). " +
     "thread: continue an earlier GPT or Gemini run with a follow-up brief. A run returns its final " +
     "message and changed files; review its diff and run the checks yourself. A Claude route " +
     "says how to run it with the Agent tool.",
@@ -65,6 +67,7 @@ export const delegateTool: ToolSpec = {
       provider: { type: "string", enum: ["gpt", "gemini"] },
       family: { type: "string", enum: [...FAMILIES, ...GEMINI_FAMILIES] },
       thread: { type: "string" },
+      dirs: { type: "array", items: { type: "string" } },
     },
     required: ["role", "brief"],
   },
@@ -78,7 +81,17 @@ type Input = {
   provider: Provider;
   geminiFamily?: GeminiFamily;
   thread?: string;
+  dirs?: string[];
 };
+
+// A folder agy may also read goes to Google: absolute, not a root or home folder, no '..'.
+function wideEnough(d: unknown): d is string {
+  if (typeof d !== "string" || !/^(\/|[A-Za-z]:[\\/]|\\\\)/.test(d)) return false;
+  const parts = d.split(/[\\/]+/).filter((x) => x && x !== ".");
+  // /Users/me is a home folder (2); C:\Users\me is 3 parts; \\server\share is a share root (2).
+  const least = /^[A-Za-z]:/.test(d) ? 4 : 3;
+  return !parts.includes("..") && parts.length >= least;
+}
 
 function readInput(e: unknown): Input | string {
   const i = e as Record<string, unknown>;
@@ -109,7 +122,18 @@ function readInput(e: unknown): Input | string {
     return "Not run: Gemini wrote this code, so a Gemini review would not be another family. Use GPT or Claude.";
   const thread =
     typeof i.thread === "string" && i.thread ? i.thread : undefined;
-  return { role, brief: i.brief, author, family, provider, geminiFamily, thread };
+  let dirs: string[] | undefined;
+  if (Array.isArray(i.dirs) && i.dirs.length) {
+    if (provider !== "gemini")
+      return "Not run: dirs is for Gemini (agy); a GPT run has its own sandbox.";
+    if (i.dirs.length > 5 || !i.dirs.every(wideEnough))
+      return (
+        "Not run: dirs takes at most 5 absolute folders, each at least three levels deep " +
+        "(not a drive, / or a home folder) and without '..'."
+      );
+    dirs = i.dirs;
+  }
+  return { role, brief: i.brief, author, family, provider, geminiFamily, thread, dirs };
 }
 
 function claudeAnswer(
@@ -194,13 +218,19 @@ async function delegate(
 // being told to run git, and every brief says what it cannot do.
 const GEMINI_NOTE =
   "You cannot run shell commands here (headless: they are denied): read files only, and say " +
-  "which checks you could not run.";
+  "which checks you could not run. Never call a tool you may not use: one denied call ends the " +
+  "whole run with no answer. Put your conclusion first and keep the final answer under about " +
+  "5000 characters; a longer one is cut.";
+const noteFor = (root: string, dirs: readonly string[]) =>
+  `${GEMINI_NOTE} You may read files only under ${[root, ...dirs].join(", ")}; for a file ` +
+  "elsewhere, say that you could not read it.";
 const DIFF_MAX = 120_000;
 
 async function geminiBrief(
   $: EngineInterface,
   brief: string,
   role: Role,
+  dirs: readonly string[] = [],
 ): Promise<string> {
   const footer =
     role === "review"
@@ -226,7 +256,7 @@ async function geminiBrief(
       `\n\nUncommitted diff (git diff HEAD)${diff.length > DIFF_MAX ? `, cut at ${DIFF_MAX} characters: read the files for the rest` : ""}:\n` +
       `${diff.slice(0, DIFF_MAX) || "(none)"}\n\nNew untracked files:\n${fresh.trim() || "(none)"}`;
   }
-  return `${brief.trim()}${extra}\n\n${footer} ${GEMINI_NOTE}`;
+  return `${brief.trim()}${extra}\n\n${footer} ${noteFor(await $.session.root(), dirs)}`;
 }
 
 async function delegateGemini(
@@ -255,7 +285,7 @@ async function delegateGemini(
       input.role === "review" ? await flowReviewStart($) : undefined;
     let brief: string;
     try {
-      brief = await geminiBrief($, input.brief, input.role);
+      brief = await geminiBrief($, input.brief, input.role, input.dirs);
     } catch (err) {
       const why = err instanceof Error ? err.message : String(err);
       if (input.role === "review") await flowNoReviewer($, why);
@@ -271,6 +301,8 @@ async function delegateGemini(
       toolUseId,
       input.role,
       input.thread,
+      undefined,
+      input.dirs,
     );
     if (input.role === "review")
       await flowReviewEnd($, start, "gemini", run.answer, run.error);
@@ -280,11 +312,16 @@ async function delegateGemini(
     const answer = run.answer.trim();
     return [
       `${head}${run.error ? ` ended with: ${run.error}` : " finished"}` +
+        (run.retried
+          ? ` · retried once after a denied ${run.retried.join(", ")}`
+          : run.denied?.length
+            ? ` · denied: ${run.denied.join(", ")}`
+            : "") +
         (run.conversation ? ` · thread ${run.conversation}` : ""),
       files.length ? `Changed: ${files.join(", ")}` : "Changed: nothing",
       "--- final message ---",
-      answer.length > MAX_ANSWER
-        ? `${answer.slice(0, MAX_ANSWER)}\n[incomplete: cut at ${MAX_ANSWER} characters${run.conversation ? `, ask for the rest with thread "${run.conversation}"` : ""}]`
+      answer.length > MAX_ANSWER_GEMINI
+        ? `${answer.slice(0, MAX_ANSWER_GEMINI)}\n[incomplete: cut at ${MAX_ANSWER_GEMINI} characters${run.conversation ? `, ask for the rest with thread "${run.conversation}"` : ""}]`
         : answer || "(empty)",
       "---",
       r.writes
@@ -321,6 +358,11 @@ export function delegation(on: On) {
       inp?.provider === "gemini" ||
       GEMINI_FAMILIES.includes(inp?.family as GeminiFamily);
     const standing = !gemini && (await gptOn($));
+    // Extra folders go to Google: always a permission check, whatever the role (in auto mode the
+    // classifier answers it, as for any tool).
+    const dirs = (e.input as { dirs?: unknown } | undefined)?.dirs;
+    if (gemini && Array.isArray(dirs) && dirs.length)
+      return { decision: "ask" as const };
     if (!writes || standing) return { decision: "allow" as const };
     return next(e);
   });

@@ -16,6 +16,8 @@ export type AgyRun = {
   answer: string;
   conversation?: string;
   error?: string;
+  denied?: string[]; // tools headless agy auto-denied (`read_file`, `command`, ...)
+  retried?: string[]; // what the first attempt had denied, when a second one gave the answer
 };
 
 let cached: { path: string | null; models: string[]; at: number } | undefined;
@@ -50,6 +52,7 @@ export function agyArgs(
   root: string,
   brief: string,
   conversation?: string,
+  dirs: readonly string[] = [],
 ): string[] {
   return [
     path,
@@ -57,6 +60,7 @@ export function agyArgs(
     r.writes ? "accept-edits" : "plan",
     "--add-dir",
     root,
+    ...dirs.flatMap((d) => ["--add-dir", d]),
     "--model",
     r.model,
     "--output-format",
@@ -65,6 +69,27 @@ export function agyArgs(
     `--print=${brief}`,
   ];
 }
+
+// One denied tool call ends a headless run with no answer at all, within seconds, even when
+// the rest of the work was done. agy's JSON names what it denied; say what to do about it.
+export function deniedReason(denied: readonly string[]): string {
+  const what = denied.includes("command")
+    ? "a shell command"
+    : denied.includes("read_file")
+      ? "a file outside the workspace"
+      : `the tool ${denied.join(", ")}`;
+  return (
+    `agy was denied ${what}: headless mode cannot ask for permission, so the run ended with no ` +
+    "answer. Keep the brief to files inside the workspace, paste other text into the brief, or " +
+    "pass the folder in dirs (it goes through the permission check)."
+  );
+}
+
+// Sent into the same conversation after a denial, so the work already done is not repeated.
+export const retryBrief = (roots: readonly string[]) =>
+  "Your last tool call was denied: this run is headless, so there are no shell commands and " +
+  `no files outside ${roots.join(", ")}. Do not call that tool again. Answer now from what you ` +
+  "can read there, and list what you could not check.";
 
 export function tooLong(brief: string): string | undefined {
   return brief.length > AGY_MAX_BRIEF
@@ -81,11 +106,18 @@ export function readAgy(stdout: string): AgyRun {
       status?: string;
       response?: string;
       error?: string;
+      denied_actions?: { action?: string }[];
     };
     const ok = o.status === "SUCCESS";
+    const denied = [
+      ...new Set(
+        (o.denied_actions ?? []).map((d) => d.action ?? "").filter(Boolean),
+      ),
+    ];
     return {
       answer: o.response ?? "",
       conversation: o.conversation_id,
+      ...(denied.length ? { denied } : {}),
       ...(ok ? {} : { error: o.error ?? `agy status ${o.status ?? "unknown"}` }),
     };
   } catch {
@@ -125,7 +157,8 @@ export async function runAgy(
     run.error = err.trim().split("\n").slice(-6).join("\n") || `exit code ${end.code}`;
   if (end?.signal && !run.error) run.error = `ended by ${end.signal}`;
   if (!run.answer.trim() && !run.error)
-    run.error =
-      "agy returned no answer (a command or a file outside the workspace is denied in headless mode)";
+    run.error = run.denied?.length
+      ? deniedReason(run.denied)
+      : "agy returned no answer (no denied action was reported)";
   return run;
 }

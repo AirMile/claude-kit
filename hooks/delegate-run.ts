@@ -21,7 +21,7 @@ import {
   runCodex,
   type GptStatus,
 } from "./codex-run";
-import { agyArgs, type AgyRun, runAgy } from "./agy-run";
+import { agyArgs, type AgyRun, retryBrief, runAgy } from "./agy-run";
 import { balance } from "./balance";
 import { flowDelegated } from "./flow";
 import { REVIEW_MARK } from "./flow-evidence";
@@ -198,6 +198,7 @@ export async function runGemini(
   role: Role,
   conversation?: string,
   deadlineMs?: number,
+  dirs: readonly string[] = [],
 ): Promise<{ run: AgyRun; files: string[] }> {
   const root = await $.session.root();
   const before = await changed($, root);
@@ -212,17 +213,28 @@ export async function runGemini(
       // the call's dialog is gone: nothing to show it under
     }
   };
-  let run: AgyRun;
-  try {
-    run = await runAgy(
-      $,
-      agyArgs(path, r, root, brief, conversation),
-      root,
-      show,
-      deadlineMs,
-    );
-  } catch (err) {
-    run = { answer: "", error: `agy did not run: ${String(err)}` };
+  const go = async (text: string, thread?: string): Promise<AgyRun> => {
+    try {
+      return await runAgy(
+        $,
+        agyArgs(path, r, root, text, thread, dirs),
+        root,
+        show,
+        deadlineMs,
+      );
+    } catch (err) {
+      return { answer: "", error: `agy did not run: ${String(err)}` };
+    }
+  };
+  let run = await go(brief, conversation);
+  // A denied tool call ends a headless run with no answer within seconds. Say it once into the
+  // same conversation: the reading done so far stays, and the second attempt is cheap.
+  if (!run.answer.trim() && run.denied?.length && run.conversation) {
+    const first = run.denied;
+    const again = await go(retryBrief([root, ...dirs]), run.conversation);
+    run = again.answer.trim()
+      ? { ...again, retried: first }
+      : { ...run, error: again.error ?? run.error };
   }
   if (run.conversation) agyThreads.add(run.conversation);
   const files = [...(await changed($, root))]

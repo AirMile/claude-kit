@@ -26,6 +26,13 @@ it; Gemini never reviews its own code (`author: "gemini"`). It runs only when as
 meters, no balance. A writing role asks the user first, as the band's GPT switch does not cover
 it. A brief over 200000 characters is refused.
 
+Headless `agy` ends the whole run with no answer at the first denied tool call (a shell command, or
+a file outside the workspace). The tool reads which one from agy's JSON, retries once in the same
+conversation, and otherwise says what was denied. For a file outside the project (a note in a
+vault, say) pass its folder in `dirs` (absolute, at least three levels deep; it goes through the permission
+check, as it goes to Google); otherwise paste the text into the brief. Every brief tells Gemini its readable roots and
+to put the conclusion first under about 5000 characters; the tool cuts an answer at 16000.
+
 ## Without the tool (Codex host, or an old kit)
 
 The same run by hand, as below.
@@ -55,7 +62,9 @@ models (Claude, GPT-OSS): use them only if the user asks for that exact model.
      `--dangerously-skip-permissions`.
    - Headless `agy` cannot ask for permission: a shell command or a file outside `--add-dir` is
      auto-denied and the run ends with no answer. Put what it must read in the brief itself, tell
-     it to read files only (no shell commands), and keep the paths under `--add-dir`.
+     it to read files only (no shell commands), and keep the paths under `--add-dir` (repeat the
+     flag for more folders). `--output-format json` lists the denial under `denied_actions`;
+     resume with `--conversation ID` and tell it not to call that tool again.
    - Read `$TMP/agy.out`; read `$TMP/agy.err` only on a failure. A run takes minutes: wait, don't poll.
 3. Check after the run: `git status --short` before and after must match for a read-only run.
 

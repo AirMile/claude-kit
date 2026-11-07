@@ -199,3 +199,107 @@ test("brief plus diff over the limit is refused after the diff is attached", asy
   expect(out).toContain("at most 200000");
   expect(w.spawned).toHaveLength(0);
 });
+
+const denied = (action: string, id = "c-d") =>
+  JSON.stringify({
+    conversation_id: id,
+    status: "SUCCESS",
+    response: "",
+    denied_actions: [{ action, display_name: action }],
+  });
+
+test("a denied tool call is retried once in the same conversation and the answer is returned", async ($, on) => {
+  const w = world(on, { agyJsons: [denied("command"), ok("Answer after retry.", "c-d")] });
+  const out = await delegate($, { role: "research", brief: "Weigh this.", provider: "gemini" });
+  expect(w.spawned).toHaveLength(2);
+  const second = w.spawned[1]?.argv ?? [];
+  expect(second).toContain("--conversation");
+  expect(second).toContain("c-d");
+  expect(second.at(-1)).toContain("Do not call that tool again");
+  expect(out).toContain("Answer after retry.");
+  expect(out).toContain("retried once after a denied command");
+});
+
+test("a second denial names the denied tool and what to do, without a third run", async ($, on) => {
+  const w = world(on, { agyJsons: [denied("read_file"), denied("read_file")] });
+  const out = await delegate($, { role: "research", brief: "Weigh this.", provider: "gemini" });
+  expect(w.spawned).toHaveLength(2);
+  expect(out).toContain("failed");
+  expect(out).toContain("a file outside the workspace");
+  expect(out).toContain("dirs");
+});
+
+test("a denial without a conversation id is not retried", async ($, on) => {
+  const w = world(on, {
+    agy: { json: JSON.stringify({ status: "SUCCESS", response: "", denied_actions: [{ action: "command" }] }) },
+  });
+  const out = await delegate($, { role: "research", brief: "Weigh this.", provider: "gemini" });
+  expect(w.spawned).toHaveLength(1);
+  expect(out).toContain("a shell command");
+});
+
+test("dirs become extra --add-dir folders for Gemini only, and must be absolute", async ($, on) => {
+  const w = world(on, { agy: { json: ok("done") } });
+  await delegate($, {
+    role: "research",
+    brief: "Read the note.",
+    provider: "gemini",
+    dirs: ["/notes/vault/x"],
+  });
+  const argv = w.spawned[0]?.argv ?? [];
+  const at = argv.indexOf("/notes/vault/x");
+  expect(argv[at - 1]).toBe("--add-dir");
+  expect(argv.filter((a) => a === "--add-dir")).toHaveLength(2);
+  expect(argv.at(-1)).toContain("under /p/app, /notes/vault/x");
+  expect(
+    await delegate($, { role: "research", brief: "x", provider: "gemini", dirs: ["relative/dir"] }),
+  ).toContain("absolute");
+  expect(
+    await delegate($, { role: "research", brief: "x", provider: "gpt", dirs: ["/notes/vault/x"] }),
+  ).toContain("dirs is for Gemini");
+});
+
+test("every Gemini brief states the readable roots and the answer length", async ($, on) => {
+  const w = world(on, { agy: { json: ok("done") } });
+  await delegate($, { role: "research", brief: "Weigh this.", provider: "gemini" });
+  const prompt = w.spawned[0]?.argv.at(-1) ?? "";
+  expect(prompt).toContain("only under /p/app");
+  expect(prompt).toContain("under about 5000 characters");
+});
+
+test("a Gemini answer is cut only past 16000 characters", async ($, on) => {
+  world(on, { agyJsons: [ok("a".repeat(7000)), ok("b".repeat(17000))] });
+  const mid = await delegate($, { role: "research", brief: "A", provider: "gemini" });
+  expect(mid).not.toContain("incomplete");
+  const long = await delegate($, { role: "research", brief: "B", provider: "gemini" });
+  expect(long).toContain("incomplete: cut at 16000");
+});
+
+test("dirs always ask the user, even for a read-only role, and broad folders are refused", async ($, on) => {
+  const w = world(on, { agy: { json: ok("done") } });
+  const checked = await $.tool.check({
+    tool: "mcp__kit__delegate",
+    input: { role: "research", brief: "Read.", provider: "gemini", dirs: ["/notes/vault/x"] },
+  } as never);
+  expect(checked.decision).toBe("ask");
+  const plain = await $.tool.check({
+    tool: "mcp__kit__delegate",
+    input: { role: "research", brief: "Read.", provider: "gemini" },
+  } as never);
+  expect(plain.decision).toBe("allow");
+  for (const bad of ["/", "/Users/me", "/a/b/../c", "C:\\", "C:\\Users\\me", "\\\\srv\\share", "x/y/z", "/Users/me/.", "/./././", "C:\\.\\.\\."])
+    expect(
+      await delegate($, { role: "research", brief: "x", provider: "gemini", dirs: [bad] }),
+    ).toContain("Not run");
+  for (const good of ["/Users/me/Documents/Vault", "C:\\Users\\me\\Docs\\Vault", "\\\\srv\\share\\notes"])
+    expect(
+      await delegate($, { role: "research", brief: "x", provider: "gemini", dirs: [good] }),
+    ).not.toContain("Not run");
+  expect(w.spawned.length).toBe(3);
+});
+
+test("the retry names the approved folders it may read", async ($, on) => {
+  const w = world(on, { agyJsons: [denied("command"), ok("ok", "c-d")] });
+  await delegate($, { role: "research", brief: "x", provider: "gemini", dirs: ["/notes/vault/x"] });
+  expect(w.spawned[1]?.argv.at(-1)).toContain("no files outside /p/app, /notes/vault/x");
+});

@@ -28,6 +28,7 @@ export function world(
     status?: Record<string, unknown>; // what codex-status.js prints
     events?: string[]; // what Codex writes on stdout
     agy?: { json?: string; code?: number }; // what agy prints on stdout, and its exit code
+    agyJsons?: string[]; // one stdout per agy run, in order (a retry gets the second)
   } = {},
 ) {
   const spawned: { argv: readonly string[]; input?: string }[] = [];
@@ -109,7 +110,8 @@ export function world(
   on("process.spawn", async function* (_$, e) {
     spawned.push({ argv: e.argv, input: e.input });
     if (e.argv[0] === "/bin/agy") {
-      yield { stream: "stdout" as const, text: opts.agy?.json ?? "" };
+      const next = opts.agyJsons ? opts.agyJsons.shift() : undefined;
+      yield { stream: "stdout" as const, text: next ?? opts.agy?.json ?? "" };
       return { value: { code: opts.agy?.code ?? 0, signal: null } };
     }
     for (const line of opts.events ?? [])
