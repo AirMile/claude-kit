@@ -21,12 +21,12 @@ export const isEffort = (v: unknown): v is Effort =>
   EFFORTS.includes(v as Effort);
 export const DEFAULT_MODE: Profile = "balanced";
 
-const HAIKU = "claude-haiku-5-5";
 const SONNET = "claude-sonnet-5-5";
 const OPUS = "claude-opus-5-5";
 
-// Every model the engine can switch to, cheapest first. No Fable: the user's Pro plan lacks it.
-export const MODELS: readonly string[] = [HAIKU, SONNET, OPUS];
+// Every model the engine can switch to, cheapest first. No Haiku (too weak for the main chat; only
+// the classifier uses it) and no Fable: the user's Pro plan lacks it.
+export const MODELS: readonly string[] = [SONNET, OPUS];
 
 const TABLE: Record<Profile, Record<Kind, Pick>> = {
   lean: {
