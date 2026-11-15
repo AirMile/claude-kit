@@ -75,7 +75,8 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
 ### 4a. Define
 
 1. Read `docs/product.md` (non-goals!), `docs/decisions.md`, the roadmap line, and
-   the code the feature touches. Ask only what you can't answer from those: one question at a
+   the code the feature touches, then run `kit:task-readiness` (its Verify lines feed Tests;
+   its baseline feeds 4b.1). Ask only what you can't answer from those: one question at a
    time, or one AskUserQuestion with concrete options for a real design fork (recommended first).
    Usually 0-3 questions. An unknown the running app can answer (a timing, a count, a log
    line) → measure it or ask for that reading now; don't guess. `docs/seo.md` § Pages has this
@@ -111,7 +112,8 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
 ### 4b. Build (inline)
 
 1. `Status: building`. Spec has `Design:` → follow the `convert` skill's procedure for that UI.
-   Run the full suite once before the first edit; its failures are the baseline.
+   Run the full suite once before the first edit; its failures are the baseline. Run
+   `Security:`/`Quality:` from `AGENTS.md § Commands` too when set: their output is that baseline.
 2. `mcp__kit__delegate` exists → a criterion group that stands alone (its files and tests named
    in the spec) goes to it, role `build` (`build+` when hard), one at a time: brief = spec path,
    those criteria, files, test first. Read its diff; steps 4-5 stay yours. "build it here" (no
@@ -134,8 +136,8 @@ Read `${CLAUDE_SKILL_DIR}/references/debug.md` and follow it. It ends with a com
 ## 5. Verify
 
 `Status: verifying`. Spawn the plugin's `verifier` agent (fresh context, it did not build this)
-with: the spec path, the dev server URL (rule below), the list of changed files, and the
-pre-existing failures. It returns: per-criterion pass/fail/unclear with evidence, manual items,
+with: the spec path, the dev server URL (rule below), the list of changed files, the
+pre-existing failures and the `Security:`/`Quality:` baseline. It returns: per-criterion pass/fail/unclear with evidence, manual items,
 and at most 3 improvement notes. With `mcp__kit__delegate`, also run role `review` (author: `gpt` when
 the code came from delegate, else `claude`): its P0/P1 findings count as fails, the rest join the
 improvement notes.
@@ -149,9 +151,8 @@ improvement notes.
 - All automated criteria pass → check them `[x]` in the spec, record the result and the
   verifier's improvement notes under `## Verify`.
 
-Dev server: follow `AGENTS.md § Git` (only a server this session started; default port taken
-→ free port, app URL variables pointed at it). Pass its URL to the verifier. Stop only
-processes you started; never `pkill` by name.
+Dev server: per `AGENTS.md § Git` (only one this session started, a free port when the default
+is taken); pass its URL to the verifier; stop only what you started, never `pkill` by name.
 
 ## 6. Manual
 
@@ -176,8 +177,6 @@ within this feature, re-ask that item. Record outcomes under `## Verify`.
 5. `commit feature=<slug>` → one commit with code + spec + roadmap. On a feature branch the
    commit skill lands it per `AGENTS.md § Git` (`Land: merge` or `pr`); versions and tags are
    `/launch`.
-6. Merge conflicts in `docs/roadmap.md`, `docs/decisions.md` or `AGENTS.md` when syncing with
-   the default branch → resolve as `commit` § 6 says (parallel sessions each add their own).
 
 ## Report
 

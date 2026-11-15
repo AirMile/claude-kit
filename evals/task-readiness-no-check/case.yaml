@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: task-readiness-no-check
+tags: [task-readiness]
+context:
+  scaffold_script: fixture.sh

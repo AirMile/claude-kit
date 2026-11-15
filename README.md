@@ -12,7 +12,7 @@ Code already has a native feature (subagents, `AGENTS.md` loading, `/simplify`,
 `/security-review`) kit uses it instead of rebuilding it.
 
 ```
-14 skills · 1 agent · 2 hooks + 1 mod (2 panes) · 3 scripts · ~1550 lines of skills · ~420 tokens always-on
+18 skills · 1 agent · 2 hooks + 1 mod (2 panes) · 7 scripts · ~1970 lines of skills · ~420 tokens always-on
 ```
 
 ---
@@ -38,6 +38,8 @@ Code already has a native feature (subagents, `AGENTS.md` loading, `/simplify`,
   - [/intake](#intake)
   - [/seo](#seo)
   - [/explain](#explain)
+  - [/task-readiness](#task-readiness)
+  - [/distill-skill](#distill-skill)
   - [lessons](#lessons-claude-only)
 - [The verifier agent](#the-verifier-agent)
 - [Hooks](#hooks)
@@ -77,7 +79,7 @@ The install is a copy in `~/.claude/plugins/cache/airmile/kit/<version>/`: edits
 take effect only after a version bump + update (see [Update](#update--uninstall)); `/commit`
 pushes them to GitHub.
 
-Check with `claude plugin details kit`: it should list 14 skills, 1 agent and 2 hooks. Skills
+Check with `claude plugin details kit`: it should list 18 skills, 1 agent and 2 hooks. Skills
 are available in **new** sessions; in a running session use `/reload-plugins`.
 
 Skills are namespaced as `/kit:<skill>` (e.g. `/kit:build`). The bare name (`/build`) also works as
@@ -810,6 +812,22 @@ order (with `path:line` and _why_ it's written that way), names 1-2 ways it coul
 asks 2-3 multiple-choice questions to check understanding, re-explaining a part when an answer
 is wrong.
 
+### /task-readiness
+
+Check that a task is ready for an agent before it starts. `/build` runs it in its Define step
+for Features; run it by hand before any vague or risky task. It sizes the work, states the goal
+and its assumptions, probes the tools and ports, and names **one exact command per acceptance
+criterion** from `AGENTS.md § Commands` (a check counts once it has been seen failing). Existing
+failures, and `Security:`/`Quality:` output, are noted as the baseline so only new findings count
+later.
+
+### /distill-skill
+
+Turn a task you just finished and verified into a lean skill a cheaper model can follow. It
+first fixes the scope (one repeatable task), keeps only what the next run would get wrong
+without, drafts the skill under 60 lines, and proposes four test prompts (normal, exception,
+missing information, out of reach). Only runs when you ask.
+
 ### lessons (Claude-only)
 
 Not in the `/` menu; Claude invokes it at the end of `/build`, `/convert` and fixes, or whenever
@@ -1370,7 +1388,7 @@ behind it can go. Eval runs use the CLI's own login: if they fail with `Not logg
 skills/<name>/SKILL.md            one workflow per skill
 skills/build/references/           debug.md, spec-template.md (loaded on demand)
 skills/commit/scripts/            staging-check.js
-skills/setup/scripts/             migrate-v1.js
+skills/setup/scripts/             migrate-v1.js, detect-tools.js (+ .test.cjs)
 skills/scan/scripts/              seo-facts.js, seo-facts.test.cjs
 agents/verifier.md
 hooks/hooks.json, push-guard.cjs, push-guard.test.cjs, format-on-save.cjs
@@ -1405,4 +1423,5 @@ Then run the skill on a sandbox project in `claude --plugin-dir ~/Projects/claud
 bump `version` in `.claude-plugin/plugin.json`, then `claude plugin marketplace update airmile && claude plugin update kit@airmile` and start a new session.
 
 The scripts can also be run by hand: `node skills/commit/scripts/staging-check.js` in any repo,
-`node skills/setup/scripts/migrate-v1.js <project>` on a v1 project (read-only).
+`node skills/setup/scripts/migrate-v1.js <project>` on a v1 project (read-only), and
+`node skills/setup/scripts/detect-tools.js <project>` to see which Test/Lint/Build/Security/Quality commands /setup would write.

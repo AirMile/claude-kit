@@ -15,6 +15,8 @@
 - [x] **window-sync** · start ChatGPT's 5h window together with Claude's · spec: docs/specs/window-sync.md
 - [x] **task-systems** · route each request over Define/Execute/Verify/Refactor levels, GPT as default worker · spec: docs/specs/task-systems.md
 - [x] **task-verify** · enforce V2/V3 in the flow gate for small tasks too; unverified work stays open · spec: docs/specs/task-verify.md
+- [x] **verify-evidence** · gate evidence per kind of check (a green lint no longer covers failing tests), more runners recognised · spec: docs/specs/verify-evidence.md
+- [x] **verify-tools** · detect-tools script for /setup, task-readiness and distill-skill skills, Security/Quality commands in build, launch and audit · spec: docs/specs/verify-tools.md
 - [ ] **task-depth** · D3 council (Sol + Astra blind + critique) in one tool call, and R1/R2 refactor with re-verify
 
 ## v0.16 · smart context
@@ -29,6 +31,19 @@
 
 ## Later
 
+- **check-compound-kinds** · `hooks/flow-check.ts` `checkOf`: `npm run lint && npm test` takes the kind of the first segment only; a test failure then opens `static`, and a green compound does not close an open `test`
+- **evidence-stale-kind** · `hooks/flow-evidence.ts` `onCheck`: the last open kind's pass stamps the evidence, so a kind that passed on older code stays closed after a later edit; track the print per kind
+- **detect-watch-scripts** · `skills/setup/scripts/detect-tools.js`: a `test` script with `--watch` (`vitest --watch`, `jest --watch`) is written as is and hangs; only Angular is corrected
+- **detect-dotnet-multi** · several csproj without a sln, several sln or a `.slnx` still give a bare `dotnet test` (MSB1011)
+- **detect-polish** · Gradle `./gradlew` on Windows cmd; `bandit`/`vulture` scan `.venv`; clippy offered without manifest evidence; Gradle text match includes comments
+- **launch-security-no-lock** · `skills/launch`: `Security:` runs only when the lockfile changed, so a secrets scan misses a change without one; also say what the verifier does without a baseline
+- **verify-evidence-eval** · the `task-readiness-no-check` grader `\bfailing\b` is loose
+- **check-and-open-kinds** · `hooks/flow-check.ts`: a failing `a && b` opens every kind of the command, so `npm test && npm run lint` in a project without a lint script keeps `static` open until "skip verify"; look at the output for which segment failed
+- **check-or-semicolon** · `hooks/flow-check.ts`: `a || b` and `a; b` count only the first kind, but the exit code is the last one's; a failing lint with passing tests books a lint pass (existed before verify-evidence)
+- **check-clock-tie-nogit** · no git: an edit and a check starting in the same millisecond close the kind (`>=`) but `lastCheckAt > lastEditAt` is strict, so one more check is needed
+- **check-prefix-dot-bin** · `hooks/flow-check.ts` PREFIX strips `node_modules/.bin/` but not `./node_modules/.bin/`
+- **closed-prints-legacy** · tasks stored before `closedPrints` keep the Bash-edit gap: reopen closed kinds that have no stored print when a pass starts on a new print; and assert `closedPrints.test` is cleared in the Bash-edit test (a mutation survives)
+- **check-kind-polish** · `make check` is `static` though autotools runs tests; `checkNeeds` repeats the kind name (`KIND_NAME` and the ternary)
 - **window-sync-now** · take `now` after the status read, so the 30-minute gap can't pass by about a minute at the edge
 - **council-test-name** · `hooks/read-watch.test.ts` council test promises the D2 fallback but only asserts D3: rename it or add the case
 - **claude5h-log-test** · no test asserts `claude5h` in the decision log

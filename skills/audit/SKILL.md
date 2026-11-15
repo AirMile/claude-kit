@@ -47,6 +47,8 @@ Once for the whole site:
 - **Speed** (only if `npx lighthouse` works): performance score + LCP/CLS for the home page and
   the heaviest page.
 - **404**: a non-existent route → the app's own 404 page with a link home.
+- **Code** (only when `AGENTS.md § Commands` has `Quality:` or `Security:`): run them once, no
+  pipe; findings → `Nice` (a security finding → `Should fix`), grouped, parked in § 3 rather than fixed.
 - **Raw HTML**: `curl` the home + one content page → the h1 text is in the served HTML.
 - **Crawl basics**: `robots.txt` reachable. Per page from the script: `robots` noindex (one
   page while the rest is indexable → finding; the whole site → one line "indexing off", which
@@ -84,6 +86,7 @@ nice       <n>
 parked     <n> lines in docs/roadmap.md
 mobile     <ok | n pages with issues>
 speed      <score or —>
+code       <n findings | —>
 ```
 
 Offer to save the report as `docs/audits/YYYY-MM-DD.md` (useful to show a client what was

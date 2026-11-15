@@ -19,7 +19,9 @@ criterion fail).
 - **Do not edit source files.** You may write throwaway scripts (e.g. a Playwright script) under
   a temp directory inside the project, and must delete them before returning.
 - Read the spec, then the changed files, then the tests that claim to cover each criterion.
-- Run the full test suite and typecheck/lint (commands from `AGENTS.md`).
+- Run the full test suite and typecheck/lint (commands from `AGENTS.md`). `Security:` or
+  `Quality:` set there → run them too: only findings new against the baseline you were given
+  are improvement notes, never criterion fails.
 - For each criterion decide **pass / fail / unclear** with evidence (unclear only when no
   human could test it as worded either: name what's vague; never instead of automating): a test name that genuinely exercises
   it (read the assertion: a test that cannot fail, asserts only existence (`toBeDefined()`), or
@@ -48,5 +50,5 @@ criteria:
 manual:
 - <title> | steps: 1. … 2. … | expected: <result>   (or "none")
 notes:
-- <path:symbol> — <change> — <why>   (or "none")
+- <path:symbol | package> — <change> — <why>   (or "none")
 ```

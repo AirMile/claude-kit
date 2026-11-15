@@ -53,8 +53,10 @@ Then scan the range (`git diff --stat` + targeted reads):
 - **Host or runtime config** changed (`vercel.json`, `next.config.*`, middleware, headers,
   redirects) → call it out.
 - **Dependencies**: lockfile changed → list new packages and major-version bumps, and run
-  `npm audit --omit=dev --audit-level=high` (or `osv-scanner scan source -r .` when installed).
-  Only vulnerabilities in packages this range added or bumped raise the risk.
+  `Security:` from `AGENTS.md` (else `npm audit --omit=dev --audit-level=high`, or
+  `osv-scanner scan source -r .` when installed). Only vulnerabilities in packages this range
+  added or bumped raise the risk; a finding in a package it did not touch is reported as
+  existing, not a blocker. `Quality:` set → run it, findings are one line in the report.
 - **Sensitive areas** (auth, payments, user input stored server-side) → recommend
   `/security-review` before going live.
 

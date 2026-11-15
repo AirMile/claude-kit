@@ -2,7 +2,7 @@
 name: setup
 description: Set up or migrate a project for kit (AGENTS.md, docs/, scaffold). Use with /setup.
 argument-hint: "[nothing | idea for a new project]"
-allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/scripts/migrate-v1.js *)
+allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/scripts/migrate-v1.js *), Bash(node ${CLAUDE_SKILL_DIR}/scripts/detect-tools.js *)
 ---
 
 # Setup
@@ -56,7 +56,11 @@ Written → continue here with **A** (don't stop at its report).
 
 ## B. Onboard
 
-1. Read the manifest(s), scripts, lint/format/test config, and `git log -15 --oneline`.
+1. Read the manifest(s), scripts, lint/format/test config, and `git log -15 --oneline`. Run
+   `node ${CLAUDE_SKILL_DIR}/scripts/detect-tools.js .` (read-only): its `Test`, `Lint / typecheck`,
+   `Build`, `Security` and `Quality` lines are what the project evidently has; they fill
+   `## Commands` and nothing is added that the output doesn't show. Existing lines stay; only
+   missing keys are filled (a `Lint` or `Typecheck` line counts as `Lint / typecheck`). Several `##` blocks (a monorepo) → one line per key per folder.
 2. Write `AGENTS.md` (≤ 100 lines) from `${CLAUDE_SKILL_DIR}/references/agents-template.md`,
    filling only what you verified. Unknown → omit the line, never a placeholder.
 3. **No `CLAUDE.md`**: Claude Code reads `AGENTS.md` (root and nested) natively only when no

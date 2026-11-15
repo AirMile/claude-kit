@@ -52,7 +52,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   header), written by the model in any project and read by `/improve`. No script
 - `skills/agy/SKILL.md`: Gemini through the `agy` CLI, parallel to `codex` (no mod tool: no meters)
 - `skills/<name>/scripts/`: deterministic helpers (commit: `staging-check.js`, setup:
-  `migrate-v1.js`, scan: `seo-facts.js`, codex: `codex-status.js`), called via `${CLAUDE_SKILL_DIR}` and allowed in the
+  `migrate-v1.js` and `detect-tools.js` (+ test: Test/Lint/Build/Security/Quality from manifests), scan: `seo-facts.js`, codex: `codex-status.js`), called via `${CLAUDE_SKILL_DIR}` and allowed in the
   skill's `allowed-tools`
 - `rules/frontend.md`: path-scoped user rule; plugins can't ship rules, so it is symlinked to
   `~/.claude/rules/frontend.md` (see README)

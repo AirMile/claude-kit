@@ -8,6 +8,8 @@
 - Test: `<cmd>` (single file: `<cmd> <path>`)
 - Lint / typecheck: `<cmd>`
 - Build: `<cmd>`
+- Security: `<cmd>` (dependency audit, secrets; omit when none)
+- Quality: `<cmd>` (dead code, duplication; omit when none)
 
 ## Conventions
 
