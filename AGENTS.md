@@ -112,7 +112,8 @@ product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.m
 - Validate after edits: `claude plugin validate .`, `node hooks/push-guard.test.cjs` and
   `node hooks/codex-hooks.test.cjs`. At the root that validate only checks `marketplace.json`,
   never the mod: for hooks, copy `.claude-plugin/{plugin.json,types}`, `hooks`, `skills`,
-  `agents` to a scratch dir and validate there. The install is a cached copy per version: to
+  `agents` to a scratch dir and validate there. `node hooks/fixtures-shellcheck.test.cjs`
+  (shellcheck on `evals/*/fixture.sh`; skips when `shellcheck` isn't installed). The install is a cached copy per version: to
   use edits, bump `version` in both `plugin.json` files, then
   `claude plugin marketplace update airmile && claude plugin update kit@airmile` (or test with
   `claude --plugin-dir .`).
