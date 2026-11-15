@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Runs shellcheck on every evals/<case>/fixture.sh. Skips (exit 0) when shellcheck is not
+ * Runs shellcheck (warnings and errors; info such as SC2016 is intended in the markdown printf lines) on every evals/<case>/fixture.sh. Skips (exit 0) when shellcheck is not
  * installed. Run: node hooks/fixtures-shellcheck.test.cjs
  */
 
@@ -21,7 +21,7 @@ if (probe.error) {
   process.exit(0);
 }
 
-const run = spawnSync("shellcheck", files, { encoding: "utf8" });
+const run = spawnSync("shellcheck", ["--severity=warning", ...files], { encoding: "utf8" });
 if (run.status !== 0) {
   console.error(run.stdout + run.stderr);
   console.error(`shellcheck failed on ${files.length} fixtures`);
