@@ -1,3 +1,4 @@
+import type { CheckKind } from "./flow-check";
 import type { Task } from "./flow-policy";
 
 // Evidence, pure: checks and reviews belong to the code they started on, by git's fingerprint
@@ -62,7 +63,8 @@ export const roundOf = (t: Task, print: string | undefined): string =>
   byPrint(t, print) ? print : String(t.lastEditAt);
 
 const checked = (t: Task, print: string | undefined) =>
-  byPrint(t, print) ? t.checkedPrint === print : t.lastCheckAt > t.lastEditAt;
+  !(t.openKinds ?? []).length &&
+  (byPrint(t, print) ? t.checkedPrint === print : t.lastCheckAt > t.lastEditAt);
 const verifierCurrent = (t: Task, print: string | undefined) =>
   byPrint(t, print)
     ? t.verifiedPrint === print
@@ -113,9 +115,25 @@ export function reviewProblem(
   return undefined;
 }
 
+const KIND_NAME: Record<CheckKind, string> = {
+  test: "tests",
+  static: "typecheck/lint",
+  build: "the build",
+};
+const checkNeeds = (t: Task): string[] =>
+  (t.openKinds ?? []).map(
+    (kind) =>
+      `a passing ${kind === "test" ? "test run" : kind === "static" ? "typecheck/lint" : "build"} on this code (${KIND_NAME[kind]} failed earlier)`,
+  );
+
 export function missing(t: Task, print: string | undefined): string[] {
   const wants: string[] = [];
-  if (!checked(t, print)) wants.push("a passing check on this code");
+  if (!checked(t, print))
+    wants.push(
+      ...((t.openKinds ?? []).length
+        ? checkNeeds(t)
+        : ["a passing check on this code"]),
+    );
   if (needsVerifier(t) && !verifierCurrent(t, print))
     wants.push("the kit:verifier on the spec");
   const problem = gateLevel(t) >= 2 ? reviewProblem(t, print) : undefined;
@@ -179,7 +197,9 @@ export function holdText(
   const sentences: string[] = [];
   if (!checked(t, print))
     sentences.push(
-      `kit flow: ${short(t.files)} changed after the last passing check. Run the check ` +
+      ((t.openKinds ?? []).length
+        ? `kit flow: ${short(t.files)} still needs ${checkNeeds(t).join("; ")}. Run each failed check `
+        : `kit flow: ${short(t.files)} changed after the last passing check. Run the check `) +
         "that covers the change (test, typecheck or lint, without a pipe that hides its exit " +
         "code) and fix what fails. This project has no such check → say so and stop.",
     );
@@ -214,28 +234,7 @@ export function reminderText(t: Task, print: string | undefined): string {
   );
 }
 
-// A check ran. A pass is evidence for the worktree it started on; a failure wipes earlier
-// evidence (a later lint pass must not stand in for failing tests).
-export function onCheck(
-  task: Task,
-  passed: boolean,
-  startedAt: number,
-  startPrint: string | undefined,
-): Task {
-  return passed
-    ? {
-        ...task,
-        checks: task.checks + 1,
-        lastCheckAt: startedAt,
-        checkedPrint: startPrint,
-      }
-    : {
-        ...task,
-        failed: task.failed + 1,
-        lastCheckAt: 0,
-        checkedPrint: undefined,
-      };
-}
+export { onCheck, reopen } from "./flow-kinds";
 
 // The verifier's answer: PASS when its suite passed and no criterion failed or stayed unclear.
 export const verifierPassed = (answer: string): boolean =>

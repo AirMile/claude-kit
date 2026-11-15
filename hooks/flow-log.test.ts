@@ -16,6 +16,7 @@ test("the log keeps 14 days, records each task's end, and takes the user's marks
       true,
       1,
       undefined,
+      "test",
     ),
   };
   let log = keep([], {

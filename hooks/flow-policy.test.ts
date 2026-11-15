@@ -85,10 +85,10 @@ test("with git, a check counts for the worktree it started on; a failure wipes i
   };
   expect(stopVerdict(t, "Done.", "p0").outcome).toBe("none"); // nothing changed per git
   expect(stopVerdict(t, "Done.", "p1").outcome).toBe("block");
-  const checked = onCheck(t, true, 6, "p1");
+  const checked = onCheck(t, true, 6, "p1", "test");
   expect(stopVerdict(checked, "Done.", "p1").outcome).toBe("done");
   expect(stopVerdict(checked, "Done.", "p2").outcome).toBe("block"); // changed after it
-  const failed = onCheck(checked, false, 7, "p1");
+  const failed = onCheck(checked, false, 7, "p1", "test");
   expect(stopVerdict(failed, "Done.", "p1").outcome).toBe("block");
 });
 
@@ -128,7 +128,7 @@ test("heavy work needs a review; a spec also needs the verifier's PASS", async (
     files: ["src/a.ts"],
     lastEditAt: 5,
   };
-  const checked = onCheck(fix, true, 6, "p1");
+  const checked = onCheck(fix, true, 6, "p1", "test");
   expect(stopVerdict(checked, "Done.", "p1").block).toContain("review");
   const reviewed = onReview(checked, {
     outcome: "pass",
@@ -143,6 +143,7 @@ test("heavy work needs a review; a spec also needs the verifier's PASS", async (
     true,
     6,
     "p1",
+    "test",
   );
   expect(stopVerdict(feature, "Done.", "p1").block).toContain("kit:verifier");
   const pass =
@@ -172,13 +173,14 @@ test("a V2 hold names check and review at once; no reviewer excuses only this ro
   const checkHold = stopVerdict(refused, "Done.", "p1");
   expect(checkHold.block).toContain("last passing check");
   expect(checkHold.block).not.toContain("review");
-  const checked = onCheck(refused, true, 6, "p1");
+  const checked = onCheck(refused, true, 6, "p1", "test");
   const pass = stopVerdict(checked, "Done.", "p1");
   expect(pass.outcome).toBe("pass-unverified");
   expect(pass.task?.unverified).toBe(true);
   expect(pass.ended).toBe(undefined);
   expect(
-    stopVerdict(onCheck(pass.task!, true, 8, "p2"), "Done.", "p2").block,
+    stopVerdict(onCheck(pass.task!, true, 8, "p2", "test"), "Done.", "p2")
+      .block,
   ).toContain("no review yet");
 });
 
@@ -253,7 +255,13 @@ test("non-change prompts keep open work with a reminder once per git or timestam
 });
 
 test("skip wording waives the ended task; verified or unchanged work still closes on a new request", async () => {
-  const task = { ...newTask(1, "light", "p0"), lastEditAt: 5 };
+  const task = onCheck(
+    { ...newTask(1, "light", "p0"), lastEditAt: 5 },
+    false,
+    6,
+    "p1",
+    "test",
+  );
   for (const text of [
     "sla verificatie over",
     "sla de verify over",
@@ -272,6 +280,7 @@ test("skip wording waives the ended task; verified or unchanged work still close
     expect(step.ended?.stopAsked).toBe(true);
     expect(step.task?.stopAsked).toBe(true);
     expect(step.event).toBe("start");
+    expect(step.task?.openKinds).toEqual([]);
   }
   expect(
     ask({ task, print: "p1", change: "none", text: "skip verify" }).ended
@@ -280,7 +289,7 @@ test("skip wording waives the ended task; verified or unchanged work still close
   expect(ask({ task, thin: true, text: "skip review" }).task?.stopAsked).toBe(
     true,
   );
-  const checked = onCheck(task, true, 6, "p1");
+  const checked = onCheck(task, true, 6, "p1", "test");
   for (const [t, print] of [
     [checked, "p1"],
     [task, "p0"],
@@ -293,4 +302,18 @@ test("skip wording waives the ended task; verified or unchanged work still close
   expect(ask({ task: checked, print: "p1", change: "none" }).task).toBe(
     undefined,
   );
+});
+
+test("an edit reopens kinds that a pass had closed", async () => {
+  let t = onEdit(undefined, "a.ts", 1, 1, "p0")!.task;
+  t = onCheck(t, false, 2, "p1", "test");
+  t = onCheck(t, true, 3, "p1", "test");
+  expect(t.openKinds).toEqual([]);
+  expect(t.closedKinds).toEqual(["test"]);
+  t = onEdit(t, "a.ts", 4, 1, "p0")!.task;
+  expect(t.openKinds).toEqual(["test"]);
+  expect(t.closedKinds).toEqual([]);
+  expect(t.failedAt?.test).toBe(4);
+  expect(onCheck(t, true, 3, "p1", "test").openKinds).toEqual(["test"]);
+  expect(onCheck(t, true, 5, "p2", "test").openKinds).toEqual([]);
 });
