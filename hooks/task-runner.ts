@@ -8,7 +8,7 @@ import {
   runDelegated,
 } from "./delegate-run";
 import { flowCheckEnd, flowCheckStart, flowLevels } from "./flow";
-import { isCheckArgv } from "./flow-check";
+import { checkKindOfArgv } from "./flow-check";
 import {
   CHECK_MS,
   TOTAL_MS,
@@ -124,7 +124,8 @@ async function runTask($: EngineInterface, input: RunInput, toolUseId: string) {
       for (const check of input.checks) {
         if ((await $.clock.now()) - began >= TOTAL_MS) break;
         // Flow counts only what a Bash check would count: `["true"]` verifies nothing.
-        const start = isCheckArgv(check) ? await flowCheckStart($) : undefined;
+        const kind = checkKindOfArgv(check);
+        const start = kind ? await flowCheckStart($, [kind]) : undefined;
         const at = await $.clock.now();
         const timeoutMs = Math.min(CHECK_MS, TOTAL_MS - (at - began));
         if (timeoutMs <= 0) break;

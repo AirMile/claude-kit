@@ -1,10 +1,11 @@
 import { expect, test } from "claude-code/testing";
 
-import { CHANGE_LABELS } from "./flow-policy";
+import { CHANGE_LABELS, newTask } from "./flow-policy";
 import { LABELS } from "./model-policy";
 import { VERIFY_LABELS } from "./task-policy";
 
 import { world, write, bash, stop } from "./flow-fixture";
+import { world as runnerWorld } from "./task-runner-fixture";
 import { labelAnswer } from "./label-fixture";
 
 test("flow holds a turn that ends with unchecked changes, once per round", async ($, on) => {
@@ -93,10 +94,12 @@ test("a thin reply keeps the task's levels; growth and the first failing check r
   const w = world(on, { mode: "off" });
   const sent: (readonly string[] | undefined)[] = [];
   on("model.classify", async () => ({ value: LABELS.routine }));
-  on("model.complete", async (_$, e) => labelAnswer(e.prompt, {
-    change: CHANGE_LABELS.light,
-    verify: VERIFY_LABELS.behaviour,
-  }));
+  on("model.complete", async (_$, e) =>
+    labelAnswer(e.prompt, {
+      change: CHANGE_LABELS.light,
+      verify: VERIFY_LABELS.behaviour,
+    }),
+  );
   on("prompt.submit", async (_$, e) => {
     sent.push(e.context);
     return { text: e.text };
@@ -156,4 +159,62 @@ test("an answer that grows the task raises E and V; one that raises nothing gets
   verify = VERIFY_LABELS.risky;
   await ask("/kit:build auth-migration");
   expect(String(sent.at(-1))).toContain("kit task: D2 E0 V3.");
+});
+
+test("Bash keeps failed tests open after lint and closes them after tests", async ($, on) => {
+  const w = world(on);
+  await write($, "/p/app/src/a.ts");
+  w.later(1000);
+  await bash($, "npm test fail");
+  await bash($, "npm run lint");
+  expect(w.store.flowTasks).toMatchObject({ s1: { openKinds: ["test"] } });
+  expect((await stop($)).block).toContain("tests failed earlier");
+  w.later(1000);
+  await bash($, "npm test");
+  expect(w.store.flowTasks).toMatchObject({ s1: { openKinds: [] } });
+});
+
+test("stored open kinds reload and /clear removes them from the next task", async ($, on) => {
+  const stored = JSON.parse(
+    JSON.stringify({
+      s1: {
+        ...newTask(1, "light"),
+        lastEditAt: 1,
+        openKinds: ["test", "build"],
+      },
+    }),
+  );
+  const w = world(on, { flowTasks: stored });
+  on("session.end", async () => ({ sessionId: "s1" }));
+  await bash($, "npm run lint");
+  expect(w.store.flowTasks).toMatchObject({
+    s1: { openKinds: ["test", "build"] },
+  });
+  const out = await $.command.run({ command: "flow", args: "" } as never);
+  expect(String((out as { text?: string }).text)).toContain(
+    "tests failed earlier",
+  );
+  await $.session.end({ reason: "clear" } as never);
+  expect(w.store.flowTasks).toEqual({});
+  await write($, "/p/app/src/b.ts");
+  expect(w.store.flowTasks).toMatchObject({ s1: { openKinds: [] } });
+});
+
+test("run_task records the same check kinds as Bash", async ($, on) => {
+  const w = runnerWorld(on, { flow: true, codes: [1, 0, 1, 0, 1, 0] });
+  await $.tool.call({
+    tool: "mcp__kit__run_task",
+    brief: "Fix the form.",
+    checks: [
+      ["ng", "test"],
+      ["ng", "lint"],
+    ],
+  } as never);
+  expect(w.store.flowTasks).toMatchObject({
+    s1: {
+      openKinds: ["test"],
+      failed: 3,
+      checks: 3,
+    },
+  });
 });

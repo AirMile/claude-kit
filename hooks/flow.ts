@@ -1,7 +1,7 @@
 import type { EngineInterface, On } from "claude-code";
 
 import { gateLevel } from "./flow-evidence";
-import { checkOf, checkPassed } from "./flow-check";
+import { checkOf, checkPassed, type CheckKind } from "./flow-check";
 import { flowCommandRun } from "./flow-command";
 import { promptLevels, raiseLevels } from "./flow-levels";
 import { classifyPrompt } from "./flow-prompt";
@@ -26,12 +26,16 @@ export { flowCommand } from "./flow-command";
 // prompts (auto-model.ts), edits, turn ends and compactions (register.tsx, compaction.ts), shell
 // checks (below) and mcp__kit__run_task's (task-runner.ts), the verifier's answer
 // (fresh-start.ts's turn.complete) and GPT's changes (delegate-run.ts). The worktree's git
-// fingerprint is the evidence; the task is kept per session in $.store, so a reload or restart
-// keeps it. It sends the track's notes and task-policy's decision (its levels on the task and
-// in the band), holds a turn that ends on unchecked changes; unverified work stays open. Reviews come from
+// fingerprint is the evidence, per kind of check (flow-check.ts); the task is kept per session in
+// $.store, so a reload or restart keeps it. It sends the track's notes and task-policy's decision,
+// holds a turn that ends on unchecked changes; unverified work stays open. Reviews come from
 // delegate and flow-agents.ts. It logs it all for 14 days.
 
-export type CheckStart = { startedAt: number; startPrint: string | undefined };
+export type CheckStart = {
+  startedAt: number;
+  startPrint: string | undefined;
+  kinds: CheckKind[];
+};
 
 const BUILD =
   /^\s*\/(kit:)?build\b|<command-name>\/?(kit:)?build<\/command-name>/;
@@ -57,10 +61,15 @@ export async function flowLevels(
 // A check counts for the worktree it started on, whoever ran it (a subagent's too).
 export async function flowCheckStart(
   $: EngineInterface,
+  kinds: CheckKind[],
 ): Promise<CheckStart | undefined> {
   await load($);
   if (!state.task) return undefined;
-  return { startedAt: await $.clock.now(), startPrint: await worktreePrint($) };
+  return {
+    startedAt: await $.clock.now(),
+    startPrint: await worktreePrint($),
+    kinds,
+  };
 }
 
 export async function flowCheckEnd(
@@ -75,6 +84,7 @@ export async function flowCheckEnd(
     passed,
     start.startedAt,
     start.startPrint,
+    start.kinds,
   );
   // The task's first failing check raises its levels once; later ones are the same work.
   const note =
@@ -287,7 +297,7 @@ export async function resetFlow($: EngineInterface) {
 export function flow(on: On) {
   on("tool.call", { tool: "Bash" }, async ($, e, next) => {
     const check = checkOf(e.command);
-    const start = check ? await flowCheckStart($) : undefined;
+    const start = check ? await flowCheckStart($, check.kinds) : undefined;
     const ran = await next(e);
     if (!start || !check || ran.deny !== undefined) return ran;
     const passed = checkPassed(check, ran.isError === true, ran.text ?? "");

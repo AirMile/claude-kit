@@ -15,6 +15,7 @@ import {
   onVerifier,
   parseReview,
   reminderText,
+  reopen,
   reviewProblem,
   roundOf,
   verified,
@@ -118,9 +119,9 @@ test("heavy floors the gate at V2; V0/V1 need only the passing check", async () 
   for (const gateV of [0, 1] as const) {
     const t = work({ gateV, levels: { d: 1, e: 0, v: 3, r: 0 } });
     expect(missing(t, "p1")).toEqual(["a passing check on this code"]);
-    expect(verified(onCheck(t, true, 6, "p1"), "p1")).toBe(true);
+    expect(verified(onCheck(t, true, 6, "p1", "test"), "p1")).toBe(true);
   }
-  const t = onCheck(work(), true, 6, "p1");
+  const t = onCheck(work(), true, 6, "p1", "test");
   expect(missing(t, "p1")).toEqual(["a review: no review yet"]);
   expect(verified(t, "p1")).toBe(false);
   expect(verified(onReview(t, review()), "p1")).toBe(true);
@@ -157,7 +158,10 @@ test("Gemini counts as its own family: it reviews Claude's or GPT's code, never 
   expect(ok({ geminiWrote: true }, "claude")).toBe(true);
   expect(ok({ geminiWrote: true, claudeWrote: true }, "gemini")).toBe(true);
   expect(
-    reviewProblem(onReview(work({ geminiWrote: true }), review({ family: "gemini" })), "p1"),
+    reviewProblem(
+      onReview(work({ geminiWrote: true }), review({ family: "gemini" })),
+      "p1",
+    ),
   ).toContain("author gemini");
 });
 
@@ -295,7 +299,7 @@ test("a hold names every missing item and preserves the check and verifier sente
   );
   expect(holdText(t, "p1", false)).not.toContain("review");
   const passed = onVerifier(
-    onCheck({ ...t, gptWrote: true }, true, 6, "p1"),
+    onCheck({ ...t, gptWrote: true }, true, 6, "p1", "test"),
     true,
     7,
     "p1",
@@ -314,9 +318,9 @@ test("rounds, reminders and open state follow git or edit time; no-reviewer reas
   expect(verified(t, "p0")).toBe(true);
   expect(isOpen(t, "p1")).toBe(true);
   expect(isOpen({ ...t, stopAsked: true }, "p1")).toBe(false);
-  expect(isOpen(onReview(onCheck(t, true, 6, "p1"), review()), "p1")).toBe(
-    false,
-  );
+  expect(
+    isOpen(onReview(onCheck(t, true, 6, "p1", "test"), review()), "p1"),
+  ).toBe(false);
   const refused = onNoReviewer(t, "GPT is off", "p1");
   expect(refused.noReviewer).toEqual({ round: "p1", reason: "GPT is off" });
   expect(t.noReviewer).toBe(undefined);
@@ -349,9 +353,9 @@ test("open line describes current evidence, waiver and closed work", async () =>
   expect(openLine({ ...t, stopAsked: true }, "p1")).toBe(
     "open: light task, a, b, c and 1 more: waived, closes at the next request",
   );
-  expect(openLine(onReview(onCheck(t, true, 6, "p1"), review()), "p1")).toBe(
-    "open: none",
-  );
+  expect(
+    openLine(onReview(onCheck(t, true, 6, "p1", "test"), review()), "p1"),
+  ).toBe("open: none");
 });
 
 test("inconclusive reviews preserve a current pass or fail on the same code", async () => {
@@ -377,4 +381,158 @@ test("inconclusive reviews preserve a current pass or fail on the same code", as
       ).toBe(outcome);
     }
   }
+});
+
+test("failed tests stay open after lint; holds, open lines and reminders name them", async () => {
+  const failed = onCheck(work({ gateV: 0 }), false, 6, "p1", "test");
+  const linted = onCheck(failed, true, 7, "p1", "static");
+  expect(linted.openKinds).toEqual(["test"]);
+  expect(linted.checks).toBe(1);
+  expect(linted.failed).toBe(1);
+  expect(linted.lastCheckAt).toBe(0);
+  expect(linted.checkedPrint).toBe(undefined);
+  expect(verified(linted, "p1")).toBe(false);
+  expect(missing(linted, "p1")).toEqual([
+    "a passing test run on this code (tests failed earlier)",
+  ]);
+  expect(holdText(linted, "p1")).toContain("tests failed earlier");
+  expect(holdText(linted, "p1")).toContain("pipe that hides its exit code");
+  expect(openLine(linted, "p1")).toContain("tests failed earlier");
+  expect(reminderText(linted, "p1")).toContain("tests failed earlier");
+  expect(verified({ ...linted, checkedPrint: "p1" }, "p1")).toBe(false);
+});
+
+test("only a pass of each failed kind restores evidence, including after edits", async () => {
+  for (const basePrint of ["p0", undefined]) {
+    let t = work({ gateV: 0, basePrint });
+    t = onCheck(t, false, 6, "p1", "test");
+    t = onCheck(t, false, 7, "p1", "test");
+    expect(t.openKinds).toEqual(["test"]);
+    t = onCheck({ ...t, lastEditAt: 8 }, true, 9, "p2", "test");
+    expect(t.openKinds).toEqual([]);
+    expect(verified(t, "p2")).toBe(true);
+    t = onCheck(t, false, 10, "p2", "test");
+    expect(verified(t, "p2")).toBe(false);
+    t = onCheck(t, false, 11, "p2", "build");
+    t = onCheck(t, true, 12, "p2", "test");
+    expect(t.openKinds).toEqual(["build"]);
+    expect(verified(t, "p2")).toBe(false);
+    expect(holdText(t, "p2")).toContain("the build failed earlier");
+    t = onCheck(t, true, 13, "p2", "build");
+    expect(verified(t, "p2")).toBe(true);
+  }
+});
+
+test("old tasks need just one pass; all open kinds are named", async () => {
+  const old = work({ gateV: 0, openKinds: undefined });
+  expect(verified(onCheck(old, true, 6, "p1", "static"), "p1")).toBe(true);
+  let t = onCheck(old, false, 6, "p1", "build");
+  t = onCheck(t, true, 7, "p1", "test");
+  expect(verified(t, "p1")).toBe(false);
+  t = onCheck(t, false, 8, "p1", "static");
+  expect(openLine(t, "p1")).toContain("the build failed earlier");
+  expect(openLine(t, "p1")).toContain("typecheck/lint failed earlier");
+});
+
+test("an older passing run cannot close a newer failure of the same kind", async () => {
+  for (const basePrint of ["p0", undefined]) {
+    for (const kind of ["test", "static", "build"] as const) {
+      const failed = onCheck(
+        work({ gateV: 0, basePrint, lastEditAt: 15 }),
+        false,
+        20,
+        "p2",
+        kind,
+      );
+      const stale = onCheck(failed, true, 10, "p1", kind);
+      expect(stale.openKinds).toEqual([kind]);
+      expect(stale.failedAt?.[kind]).toBe(20);
+      expect(stale.checks).toBe(1);
+      expect(stale.failed).toBe(1);
+      expect(stale.lastCheckAt).toBe(0);
+      expect(stale.checkedPrint).toBe(undefined);
+      expect(verified(stale, "p2")).toBe(false);
+      for (const startedAt of [20, 21]) {
+        const current = onCheck(stale, true, startedAt, "p2", kind);
+        expect(current.openKinds).toEqual([]);
+        expect(current.failedAt?.[kind]).toBe(undefined);
+        expect(current.checks).toBe(2);
+        expect(verified(current, "p2")).toBe(true);
+        expect(stale.failedAt?.[kind]).toBe(20);
+      }
+    }
+  }
+});
+
+test("failure timestamps are per kind and old tasks need no migration", async () => {
+  const old = work({ gateV: 0, openKinds: ["test"] });
+  expect(verified(onCheck(old, true, 6, "p1", "test"), "p1")).toBe(true);
+  const tests = onCheck(work({ gateV: 0 }), false, 20, "p2", "test");
+  const both = onCheck(tests, false, 30, "p2", "static");
+  const partly = onCheck(both, true, 20, "p2", "test");
+  expect(partly.openKinds).toEqual(["static"]);
+  expect(partly.failedAt?.test).toBe(undefined);
+  expect(partly.failedAt?.static).toBe(30);
+  expect(partly.lastCheckAt).toBe(0);
+  expect(partly.checkedPrint).toBe(undefined);
+  expect(verified(onCheck(partly, true, 30, "p2", "static"), "p2")).toBe(true);
+});
+
+test("overlapping failures never lower failedAt; edits reopen closed kinds; compound runs", async () => {
+  let t = onCheck(work({ gateV: 0 }), false, 30, "p1", "test");
+  t = onCheck(t, false, 10, "p1", "test");
+  expect(t.failedAt?.test).toBe(30);
+  t = onCheck(t, true, 20, "p1", "test");
+  expect(t.openKinds).toEqual(["test"]);
+  expect(verified(t, "p1")).toBe(false);
+
+  // tests fail, a test pass closes them on p1, then an edit: a lint pass alone must not verify
+  t = onCheck(work({ gateV: 0 }), false, 10, "p1", "test");
+  t = onCheck(t, true, 11, "p1", "test");
+  expect(t.closedKinds).toEqual(["test"]);
+  expect(verified(t, "p1")).toBe(true);
+  t = reopen({ ...t, lastEditAt: 12 }, 12);
+  expect(t.openKinds).toEqual(["test"]);
+  t = onCheck(t, true, 13, "p2", "static");
+  expect(verified(t, "p2")).toBe(false);
+  // a test run that started before the edit cannot close it either
+  t = onCheck(t, true, 11, "p1", "test");
+  expect(t.openKinds).toEqual(["test"]);
+  t = onCheck(t, true, 14, "p2", "test");
+  expect(t.openKinds).toEqual([]);
+  expect(verified(t, "p2")).toBe(true);
+
+  // a run that was already started before the edit and passes after it: still open
+  let u = onCheck(work({ gateV: 0 }), false, 10, "p1", "test");
+  u = reopen({ ...u, lastEditAt: 15 }, 15);
+  u = onCheck(u, true, 12, "p1", "test");
+  expect(u.openKinds).toEqual(["test"]);
+  expect(verified(u, "p2")).toBe(false);
+
+  // compound: failure opens both kinds, a lint pass alone does not close tests, a full pass does
+  let c = onCheck(work({ gateV: 0 }), false, 10, "p1", ["static", "test"]);
+  expect(c.openKinds).toEqual(["static", "test"]);
+  c = onCheck(c, true, 11, "p1", "static");
+  expect(verified(c, "p1")).toBe(false);
+  c = onCheck(c, true, 12, "p1", ["static", "test"]);
+  expect(verified(c, "p1")).toBe(true);
+});
+
+test("a pass on other code reopens kinds that were closed on older code (a Bash edit)", async () => {
+  let t = onCheck(work({ gateV: 0 }), false, 10, "p1", "test");
+  t = onCheck(t, true, 11, "p1", "test");
+  expect(verified(t, "p1")).toBe(true);
+  // a formatter changed the code without an edit event: a lint pass on p2 is not enough
+  t = onCheck(t, true, 12, "p2", "static");
+  expect(t.openKinds).toEqual(["test"]);
+  expect(verified(t, "p2")).toBe(false);
+  t = onCheck(t, true, 13, "p2", "test");
+  expect(t.openKinds).toEqual([]);
+  expect(verified(t, "p2")).toBe(true);
+  // the same print keeps a closed kind closed
+  let u = onCheck(work({ gateV: 0 }), false, 10, "p1", "test");
+  u = onCheck(u, true, 11, "p1", "test");
+  u = onCheck(u, true, 12, "p1", "static");
+  expect(u.openKinds).toEqual([]);
+  expect(verified(u, "p1")).toBe(true);
 });

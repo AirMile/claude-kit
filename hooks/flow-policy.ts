@@ -1,3 +1,4 @@
+import type { CheckKind } from "./flow-check";
 import type { Kind } from "./model-policy";
 import type { Level, Levels } from "./task-policy";
 import {
@@ -6,6 +7,7 @@ import {
   isOpen,
   missing,
   reminderText,
+  reopen,
   roundOf,
   verified,
   type ReviewRecord,
@@ -65,6 +67,10 @@ export type Task = {
   lastVerifierAt: number;
   checks: number;
   failed: number;
+  openKinds?: CheckKind[]; // failed kinds still awaiting a pass; absent in older tasks
+  closedKinds?: CheckKind[]; // failed kinds closed by a later pass; an edit reopens them
+  closedPrints?: Partial<Record<CheckKind, string>>; // the worktree each closed kind passed on
+  failedAt?: Partial<Record<CheckKind, number>>; // when each kind last failed or was reopened
   verifier?: "pass" | "fail";
   blocks: number;
   blockedRound?: string; // the round of changes the last hold was for
@@ -97,6 +103,7 @@ export const newTask = (
   lastVerifierAt: 0,
   checks: 0,
   failed: 0,
+  openKinds: [],
   blocks: 0,
   stopAsked: false,
   unverified: false,
@@ -222,7 +229,9 @@ export function onEdit(
   if (SPEC.test(p))
     return task ? { task: { ...task, spec: true }, started: false } : undefined;
   if (!isSource(p)) return task ? { task, started: false } : undefined;
-  const t = task ? { ...task } : newTask(id, "light", basePrint);
+  const t = task
+    ? { ...reopen(task, now) }
+    : newTask(id, "light", basePrint);
   if (!t.files.includes(p)) t.files = [...t.files, p];
   t.lastEditAt = now;
   if (gpt === "gemini") t.geminiWrote = true;
