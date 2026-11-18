@@ -24,7 +24,9 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   track light/medium/heavy, its note pointing to task-readiness at the start or on growth, the verify gate on `classic.Stop`
   from the worktree's git fingerprint, the checks, reviews and verifier's answer; unverified work stays open, `/flow` in `hooks/flow-command.ts`),
   the checker guard (`hooks/guard.ts` on the pure `hooks/guard-policy.ts`: `/guard on` denies edits to the
-  `Protected:` globs of `AGENTS.md § Commands`, the lock in `$.store`),
+  `Protected:` globs of `AGENTS.md § Commands`, the lock in `$.store`), the commit gate (`hooks/commit-gate.ts` on
+  `hooks/commit-gate-policy.ts`: `git commit` is denied while the open medium or heavy task is unverified, by the
+  Stop gate's own evidence, `/commitgate off` per project),
   `mcp__kit__delegate` (`hooks/delegate.ts` on the pure `hooks/delegate-policy.ts`: work handed
   to Claude or GPT by role and by which plan has room, the newest GPT model per family; the
   Codex side, its catalog, the ChatGPT meters, the GPT switch and a run, in `hooks/codex-run.ts`;
