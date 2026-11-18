@@ -7,10 +7,10 @@ import {
   phaseNames,
 } from "./roadmap-parts";
 
-// One feature on the roadmap pane: a done line, or a card with its /build step and its
+// One feature on the roadmap pane: a done line, or a card with its /task-readiness step and its
 // actions (▶ to pick up here, ↗ in a worktree, ⋯ for the rest). Pure, like roadmap-parts.tsx.
 
-// A spec's Status → the step it is on (define, build, verify) and what /build then does.
+// A spec's Status → the step it is on (define, build, verify) and what /task-readiness then does.
 const STEP: Record<string, [number, string]> = {
   defined: [1, "Build"],
   building: [1, "Resume"],
@@ -57,7 +57,7 @@ export function card(p: Parts, c: Card) {
       </Box>
     );
   // One calm border for every open card. Not started: ▶ picks it up, ⋯ holds the rest. In
-  // progress: its /build step, with the button to continue on that same line.
+  // progress: its /task-readiness step, with the button to continue on that same line.
   return (
     <Box
       key={c.slug}

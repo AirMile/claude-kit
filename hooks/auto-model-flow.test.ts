@@ -40,11 +40,11 @@ test("flow works with the profile off and stays off the band", async ($, on) => 
   expect(await ui.find({ type: "Text", text: /flow light/ })).toBeFalsy();
 });
 
-test("a /build kit started on the user's click gets the profile's model and effort", async ($, on) => {
+test("a /task-readiness kit started on the user's click gets the profile's model and effort", async ($, on) => {
   world(on, { model: "claude-opus-5-5", label: HEAVY, turns: 5, drawn: true });
   const ui = await band($, on);
   await $.prompt.submit({
-    text: "/kit:build login-form",
+    text: "/kit:task-readiness login-form",
     origin: { kind: "plugin", name: "kit" } as never,
   });
   expect(await runText(ui)).toContain("▆ Opus 5.5");

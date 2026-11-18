@@ -16,7 +16,7 @@ is a better skill, not a bigger one: kit stays small only if every refinement pa
 - **Repo**: the current directory when it is a kit checkout (`.claude-plugin/plugin.json` with
   `"name": "kit"`, e.g. a worktree of it); else `~/Projects/claude-kit`; else ask. The installed
   plugin loads from the main checkout, so edits there go live in every project's next session.
-- **Skill**: the first argument (`build`, `commit`, …, or `verifier` for the agent, `push-guard`
+- **Skill**: the first argument (`task-readiness`, `commit`, …, or `verifier` for the agent, `push-guard`
   / `format-on-save` for a hook). Missing → the skill with the most open inbox points; none →
   ask which one.
 - **Observations**: the quoted argument, any Skill Feedback points raised earlier in this
@@ -29,7 +29,7 @@ is a better skill, not a bigger one: kit stays small only if every refinement pa
 - The repo's `AGENTS.md` (budgets and rules).
 - The skill's `SKILL.md`, its `references/` and `scripts/` (or the agent/hook file).
 - Another skill only if an observation touches a shared file format (product/roadmap/spec/
-  decisions headers) or a hand-off (`build` → `commit`, `build` → `convert`).
+  decisions headers) or a hand-off (`task-readiness` → `commit`, `task-readiness` → `convert`).
 
 Note the current line count, then run the skill's **baseline evals**: the command in
 `AGENTS.md § Evals` with `--tag <skill>`. Note each case's score. No cases for this skill → note
@@ -67,7 +67,7 @@ For each observation: the cause (`path:line`), the class, and the change as a
 before → after snippet. End with the line delta per file:
 
 ```
-build/SKILL.md   120 → 118 (-2)
+task-readiness/SKILL.md   120 → 118 (-2)
 ```
 
 Rules for the proposal:

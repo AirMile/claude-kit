@@ -7,8 +7,7 @@ argument-hint: "[figma url | exported frame png] [target page/component]"
 # Convert
 
 Figma frame → code in the project's stack and tokens, verified against the frame in the browser.
-Standalone it ends with a commit; inside `/build` (spec has `Design:`) it is the build procedure
-for the UI part and build handles verify and commit.
+Use it for the UI part of a task; follow the task’s verification and commit instructions.
 
 ## 1. Input
 
@@ -43,7 +42,7 @@ patch: fill the existing props/CMS defaults, skip steps 2, 3 and 5; verify that 
 - **Motion**: only what Figma defines (variants, prototype interactions, motion context). One row
   per effect: element · trigger (hover, press, focus, scroll-into-view) · effect · timing, with the
   computed value to expect. Always honour `prefers-reduced-motion`. Motion the frame doesn't define
-  is a separate `/build` item. Cursor and static hover/focus feedback are baseline usability:
+  is a separate `/task-readiness` item. Cursor and static hover/focus feedback are baseline usability:
   reuse site patterns even when Figma omits states; do not invent new motion.
 
 ## 3. Tokens
@@ -62,8 +61,7 @@ copy comes from the frame or `docs/product.md`.
 
 ## 5. Plan
 
-Inside `/build` the spec's Approach already holds the sections and the CMS table: no approval round;
-write the mapping, motion, responsive and asset tables below in the chat, then build.
+When a spec already holds the sections and CMS table, write the mapping, motion, responsive and asset tables below in the chat, then build.
 Standalone: write a short plan in the chat:
 
 - **Sections**: the page split top to bottom, with the component per section (reuse existing
@@ -133,8 +131,7 @@ final screenshot and the frame's with `SendUserFile`. AskUserQuestion: Looks rig
 (Recommended) / Adjust (describe).
 Adjust → targeted edit + re-screenshot, repeat.
 
-Standalone → `lessons` if a non-obvious convention surfaced, then `commit`. Inside `/build` →
-return to build's step 4b.
+Record a non-obvious convention with `lessons`; commit when requested.
 
 ## Report
 

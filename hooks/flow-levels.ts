@@ -46,7 +46,6 @@ export async function promptLevels(
     verify: VerifyNeed | undefined;
     explore: boolean;
     ready: boolean;
-    build: boolean;
     thin: boolean;
     prev: Levels | undefined; // the open task's, when this prompt continues it
     gate: Level | undefined; // required Verify, independent of failing-check notes
@@ -70,7 +69,6 @@ export async function promptLevels(
     change: i.change,
     verify: i.verify,
     explore: i.explore,
-    build: i.build,
     council: isCouncil(i.text),
     room,
     prev,
@@ -89,7 +87,7 @@ export async function promptLevels(
     event: "decision",
     text: i.text.trim().slice(0, 60),
     kind: i.kind,
-    change: i.build ? "heavy" : i.change,
+    change: i.change,
     levels: levelsText(d.levels),
     reason: d.reasons.join("; ") || undefined,
     ...meters(),

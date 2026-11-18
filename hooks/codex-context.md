@@ -16,7 +16,7 @@ kit on Codex: kit's skills are written for Claude Code. Read their terms this wa
 - An Explore subagent or `model: sonnet` → a subagent on the default model.
 - `mcp__kit__*` and `mcp__ccd_*` tools don't exist here: take the skill's "tool missing" path.
   `/clear` → `/new`; the `claude` CLI → `codex`; SendUserFile → give the file path.
-- A kit command you tell the user (`/build <slug>`, `/kit:commit`) → `$kit:build <slug>`.
+- A kit command you tell the user (`/task-readiness <slug>`, `/kit:commit`) → `$kit:task-readiness <slug>`.
 - `/simplify`, `/security-review` → suggest `/review`; skip `/doctor` suggestions.
 - "Desktop worktree session" = a Codex app worktree. Never create worktrees yourself.
 - Editing UI (components, CSS, layout) → first read `<kit root>/rules/frontend.md`.

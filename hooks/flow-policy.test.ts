@@ -8,11 +8,8 @@ import {
   onEdit,
   onPrompt,
   onNoReviewer,
-  onReview,
-  onVerifier,
   stopVerdict,
   type Task,
-  verifierPassed,
 } from "./flow-policy";
 
 const ask = (over: Partial<Parameters<typeof onPrompt>[0]>) =>
@@ -20,7 +17,6 @@ const ask = (over: Partial<Parameters<typeof onPrompt>[0]>) =>
     task: undefined,
     kind: "routine",
     change: "light",
-    build: false,
     thin: false,
     answering: false,
     text: "add a submit button",
@@ -29,12 +25,11 @@ const ask = (over: Partial<Parameters<typeof onPrompt>[0]>) =>
     ...over,
   });
 
-test("a prompt's change picks the track; /build is heavy; a question or none starts nothing", async () => {
+test("a prompt's change picks the track; a question or none starts nothing", async () => {
   expect(ask({}).task?.track).toBe("light");
   expect(ask({}).task?.basePrint).toBe("p0");
   expect(ask({}).note).toContain("run a check that covers it");
   expect(ask({ change: "heavy" }).note).toContain("Commit or push nothing");
-  expect(ask({ build: true, change: undefined }).task?.track).toBe("heavy");
   expect(ask({ kind: "question", change: undefined }).task).toBe(undefined);
   expect(ask({ kind: "planning", change: "none" }).note).toBe(undefined);
   expect(ask({ change: "medium" }).note).toContain(
@@ -120,44 +115,6 @@ test("the gate holds once per round and twice per request, never on a question",
   expect(stopVerdict({ ...t, stopAsked: true }, "Ok.", undefined).outcome).toBe(
     "pass-asked",
   );
-});
-
-test("heavy work needs a review; a spec also needs the verifier's PASS", async () => {
-  const fix: Task = {
-    ...newTask(1, "heavy", "p0"),
-    files: ["src/a.ts"],
-    lastEditAt: 5,
-  };
-  const checked = onCheck(fix, true, 6, "p1", "test");
-  expect(stopVerdict(checked, "Done.", "p1").block).toContain("review");
-  const reviewed = onReview(checked, {
-    outcome: "pass",
-    family: "gpt",
-    depth: false,
-    print: "p1",
-    at: 6,
-  });
-  expect(stopVerdict(reviewed, "Done.", "p1").outcome).toBe("done");
-  const feature = onCheck(
-    { ...fix, spec: true, gptWrote: true },
-    true,
-    6,
-    "p1",
-    "test",
-  );
-  expect(stopVerdict(feature, "Done.", "p1").block).toContain("kit:verifier");
-  const pass =
-    "VERIFY login\nsuite: pass (npm test, 9 passed)\ncriteria:\n- [pass] it logs in — test";
-  const fail =
-    "VERIFY login\nsuite: pass\ncriteria:\n- [fail] errors show — missing";
-  expect(verifierPassed(pass)).toBe(true);
-  expect(verifierPassed(fail)).toBe(false);
-  expect(
-    stopVerdict(onVerifier(feature, true, 7, "p1"), "Done.", "p1").outcome,
-  ).toBe("done");
-  expect(
-    stopVerdict(onVerifier(feature, false, 7, "p1"), "Done.", "p1").block,
-  ).toContain("reported failures");
 });
 
 test("a V2 hold names check and review at once; no reviewer excuses only this round's review hold", async () => {

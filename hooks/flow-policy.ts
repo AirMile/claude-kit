@@ -25,7 +25,7 @@ export {
   onNoReviewer,
 } from "./flow-evidence";
 
-// Flow, pure: change tasks get a track that only grows. Current checks, the spec's verifier
+// Flow, pure: change tasks get a track that only grows. Current checks, the heavy task's verifier
 // and the gate level's other-family review supply the evidence (flow-evidence.ts). Unverified
 // work stays open across prompts; new changes fold into it. Holds are bounded per round and
 // request, and the user can waive them. flow.ts keeps the state and task-policy.ts the levels.
@@ -58,7 +58,7 @@ export type Task = {
   first: Track; // the track it started on: the log's test of the first pick
   track: Track;
   files: string[]; // code files this chat changed in the task (Edit, Write, GPT)
-  spec: boolean; // a spec under docs/specs/ was written: heavy then needs the verifier
+  spec: boolean; // a spec under docs/specs/ was written, recorded in flow statistics
   basePrint?: string; // the worktree when the task began; undefined: no git
   checkedPrint?: string; // the worktree a passing check started on
   verifiedPrint?: string; // the worktree the verifier said PASS on
@@ -118,9 +118,7 @@ const NOTE: Record<Track, string> = {
     "where it can be tested; then run the checks that cover the change (the full suite when " +
     "shared code changed).",
   heavy:
-    "kit flow (heavy): follow the kit:build skill (its Feature or Fix path) up to and " +
-    "including Verify: a spec you approve, the build, then the kit:verifier agent. Commit or " +
-    "push nothing (the spec commit included) unless the user asks.",
+    "kit flow (heavy): load the kit:task-readiness skill first (goal, tools, one exact check per criterion); work freely; the kit:verifier agent checks it at the end. Commit or push nothing unless the user asks.",
 };
 
 export const trackNote = (track: Track, from?: Track): string =>
@@ -145,7 +143,6 @@ export function onPrompt(i: {
   task: Task | undefined;
   kind: Kind;
   change: Change | undefined; // undefined: not classified
-  build: boolean; // /build: always heavy, the skill leads
   thin: boolean;
   answering: boolean; // the last turn ended on a question to the user
   text: string;
@@ -153,7 +150,7 @@ export function onPrompt(i: {
   print: string | undefined;
 }): PromptStep {
   const skip = SKIP.test(i.text);
-  const want: Change | undefined = i.build ? "heavy" : i.change;
+  const want = i.change;
   if (i.task && (i.thin || i.answering || i.kind === "question")) {
     const task = { ...i.task, stopAsked: i.task.stopAsked || skip };
     const from = task.track;
@@ -216,7 +213,7 @@ export const isSource = (path: string): boolean =>
 export type Escalation = { task: Task; started: boolean; note?: string };
 
 // A file this chat wrote or edited. Code changed outside any task starts a light one (based on
-// the worktree before the prompt): flow always applies. A spec marks the task as a Feature.
+// the worktree before the prompt): flow always applies. Spec edits are recorded for statistics.
 export function onEdit(
   task: Task | undefined,
   path: string,
@@ -229,9 +226,7 @@ export function onEdit(
   if (SPEC.test(p))
     return task ? { task: { ...task, spec: true }, started: false } : undefined;
   if (!isSource(p)) return task ? { task, started: false } : undefined;
-  const t = task
-    ? { ...reopen(task, now) }
-    : newTask(id, "light", basePrint);
+  const t = task ? { ...reopen(task, now) } : newTask(id, "light", basePrint);
   if (!t.files.includes(p)) t.files = [...t.files, p];
   t.lastEditAt = now;
   if (gpt === "gemini") t.geminiWrote = true;

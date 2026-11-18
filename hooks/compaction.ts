@@ -20,7 +20,7 @@ const PRESERVE = [
 const SLUG = /^[a-z0-9][a-z0-9-]*$/;
 
 // An actual user command or our recovery note selects a spec, never tool output.
-// undefined: no build command; null: the latest build has no explicit valid slug.
+// undefined: no task-readiness command; null: the latest command has no explicit valid slug.
 function requestedSpec(
   messages: readonly SessionMessage[],
 ): string | null | undefined {
@@ -32,10 +32,13 @@ function requestedSpec(
       message.text,
     );
     if (recovery) return recovery[1];
-    const plain = /^\s*\/(?:kit:)?build(?:\s+([\s\S]*))?$/.exec(message.text);
-    const expanded = /<command-name>\/?(?:kit:)?build<\/command-name>/.test(
+    const plain = /^\s*\/(?:kit:)?task-readiness(?:\s+([\s\S]*))?$/.exec(
       message.text,
     );
+    const expanded =
+      /<command-name>\/?(?:kit:)?task-readiness<\/command-name>/.test(
+        message.text,
+      );
     if (!plain && !expanded) continue;
     const arg = plain
       ? plain[1]?.trim()
@@ -114,7 +117,7 @@ export function compaction(on: On) {
         text:
           `kit: building ${now.slug} · Status: ${now.status} · criteria ${now.done}/${now.total}. ` +
           `Re-read docs/specs/${now.slug}.md (## Handoff first) before continuing; ` +
-          `if the /build procedure is no longer in context, run /build ${now.slug}.`,
+          `if the /task-readiness procedure is no longer in context, run /task-readiness ${now.slug}.`,
       });
     // Flow's open task, which the summary may have lost (flow.ts).
     const open = flowRecovery();

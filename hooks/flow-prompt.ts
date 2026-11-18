@@ -54,22 +54,20 @@ export function parseLabels(
 }
 
 // The prompt classifiers run together: what changes, what it needs verified, whether fresh
-// reading is needed. A direct question skips the first two, /build the first; without GPT,
-// the last. Only the questions asked go into the one call; none asked, no call.
+// reading is needed. A direct question skips the first two; without GPT, the last is skipped.
+// Only the questions asked go into the one call; none asked, no call.
 export async function classifyPrompt(
   $: EngineInterface,
   text: string,
   kind: Kind,
-  build: boolean,
   thin: boolean,
 ) {
   const input = text.slice(0, CLASSIFY_CHARS);
   const ready = balance(await $.clock.now()).ready;
   const direct = thin || kind === "question";
   const asks: Ask["name"][] = [];
-  if (!(build || direct)) asks.push("change"); // /build is heavy anyway
-  if (!direct) asks.push("verify"); // a risky /build still needs V3
-  if (ready && !build && !isThin(text)) asks.push("explore");
+  if (!direct) asks.push("change", "verify");
+  if (ready && !isThin(text)) asks.push("explore");
   const reply = asks.length
     ? await $.model
         .complete({

@@ -7,10 +7,10 @@ argument-hint: "[nothing | path to a keyword or Search Console CSV]"
 # SEO
 
 Turns the intake and real search data into a plan: which terms matter, which page answers each,
-and what goes on the roadmap for `/build`. Rerun it any time (quarterly, a new service): it
+and what goes on the roadmap for `/task-readiness`. Rerun it any time (quarterly, a new service): it
 never repeats the intake, and it reads the measurements to see what to improve first.
 
-Order for a client: `/scan` (baseline) → `/intake` (once) → `/seo` → `/build` per page →
+Order for a client: `/scan` (baseline) → `/intake` (once) → `/seo` → `/task-readiness` per page →
 `/audit` → `/launch` → `/scan` monthly. A new site: `/setup` and `/product` first, so the page
 plan decides which pages and URLs get built.
 
@@ -121,6 +121,6 @@ SEO · <first plan | rerun>
 terms      <n> · with volume <n> (<source>) · unknown <n>
 competitors <recurring domains | —>
 pages      <n> existing · <n> new · <n> rework
-roadmap    <n> items added · next: /build <slug>
+roadmap    <n> items added · next: /task-readiness <slug>
 assumed    <open intake answers used as assumptions | —>
 ```

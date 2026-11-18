@@ -71,7 +71,7 @@ remaining techniques (after two, returns usually drop). Nothing relevant left �
 ## 6. Pick and place
 
 Filter all ideas against the roadmap and `## Later` (no duplicates) and the roadmap rules in
-`SKILL.md` (one `/build` run each; too big → split). AskUserQuestion (multiSelect, max 4 per
+`SKILL.md` (one `/task-readiness` run each; too big → split). AskUserQuestion (multiSelect, max 4 per
 question, strongest first) which to add; per idea a description saying where it goes (phase or
 `## Later`) and why. An insight that changes product.md (a sharper **Core experience**, a
 challenged **Non-goal**) is offered as its own option. Apply the picks through **Update** steps

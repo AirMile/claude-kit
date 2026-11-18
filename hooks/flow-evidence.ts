@@ -55,8 +55,7 @@ export const byPrint = (t: Task, print: string | undefined): print is string =>
 // Whether code changed since the task began: by git when it can tell, else by the edits seen.
 export const changed = (t: Task, print: string | undefined): boolean =>
   byPrint(t, print) ? print !== t.basePrint : t.lastEditAt > 0;
-export const needsVerifier = (t: Task): boolean =>
-  t.track === "heavy" && t.spec;
+export const needsVerifier = (t: Task): boolean => t.track === "heavy";
 export const gateLevel = (t: Task): number =>
   Math.max(t.gateV ?? 0, t.track === "heavy" ? 2 : 0);
 export const roundOf = (t: Task, print: string | undefined): string =>
@@ -135,7 +134,7 @@ export function missing(t: Task, print: string | undefined): string[] {
         : ["a passing check on this code"]),
     );
   if (needsVerifier(t) && !verifierCurrent(t, print))
-    wants.push("the kit:verifier on the spec");
+    wants.push("the kit:verifier on the task criteria");
   const problem = gateLevel(t) >= 2 ? reviewProblem(t, print) : undefined;
   if (problem) wants.push(`a review: ${problem}`);
   return wants;
@@ -208,8 +207,8 @@ export function holdText(
       t.verifier === "fail"
         ? "kit flow: the kit:verifier reported failures on this heavy task: fix them, then run " +
             "it again."
-        : "kit flow: the checks pass, but this heavy task's spec has no verification yet: run " +
-            "the kit:verifier agent on it before you finish.",
+        : "kit flow: this heavy task has no current verification yet: run " +
+            "the kit:verifier agent on its criteria before you finish.",
     );
   const problem =
     review && gateLevel(t) >= 2 ? reviewProblem(t, print) : undefined;

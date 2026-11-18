@@ -129,7 +129,7 @@ test("a thin reply keeps the task's levels; growth and the first failing check r
   );
 });
 
-test("an answer that grows the task raises E and V; one that raises nothing gets no note; /build still asks for verify need", async ($, on) => {
+test("an answer that grows the task raises E and V; one that raises nothing gets no note; /task-readiness still asks for verify need", async ($, on) => {
   world(on, { mode: "off" });
   const sent: (readonly string[] | undefined)[] = [];
   let change = CHANGE_LABELS.light;
@@ -156,8 +156,9 @@ test("an answer that grows the task raises E and V; one that raises nothing gets
   await ask("No, keep the default at three retries");
   expect(String(sent.at(-1) ?? "")).not.toContain("kit task");
   await stop($, "Done.");
+  change = CHANGE_LABELS.heavy;
   verify = VERIFY_LABELS.risky;
-  await ask("/kit:build auth-migration");
+  await ask("/kit:task-readiness auth-migration");
   expect(String(sent.at(-1))).toContain("kit task: D2 E0 V3.");
 });
 

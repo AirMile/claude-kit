@@ -13,7 +13,7 @@ import { inRoot, parseSpec, type SpecState } from "./spec";
 // open features' specs, and edits open items in place (roadmap-file.ts keeps
 // every other line as is); its buttons run kit's skills in the chat. Draft: /product in plan
 // mode passes items as data, read-only. Drawing: roadmap-dashboard.tsx + roadmap-parts.tsx; done and in-progress
-// state stays /build's.
+// state stays /task-readiness's.
 
 export const PANE = "kit-roadmap";
 const PATH = "docs/roadmap.md";
@@ -114,7 +114,7 @@ export function roadmapView(on: On) {
         open.map((i) => i.slug),
       );
       away = elsewhere.lines;
-      Object.assign(specs, elsewhere.specs); // their /build step, from the worktree
+      Object.assign(specs, elsewhere.specs); // their /task-readiness step, from the worktree
     }
     chat = tab === "chat" && !draft ? await readChat($) : null;
     messages = tab === "messages" && !draft ? await readMessages($) : null;
@@ -154,7 +154,7 @@ export function roadmapView(on: On) {
       });
     };
     // Starts a linked session in its own worktree (ccd_session's start_session; the chip of
-    // spawn_task when refused) for /kit:build <slug>,
+    // spawn_task when refused) for /kit:task-readiness <slug>,
     // marked first so the card asks "Again?" at once. Failing: the old mark comes back.
     const toWorktree = async (slug: string) => {
       const now = await $.clock.now();
@@ -230,7 +230,7 @@ export function roadmapView(on: On) {
           needsLoad = true;
           redraw();
         },
-        build: (slug) => void run("kit:build", slug, true),
+        build: (slug) => void run("kit:task-readiness", slug, true),
         worktree: (slug) => void toWorktree(slug),
         run: (command, args = "") => void run(command, args, false),
         edit: (done, change) => void edit(done, change),

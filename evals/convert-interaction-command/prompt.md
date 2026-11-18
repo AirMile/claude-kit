@@ -6,7 +6,7 @@ allowed_tools: [Read, Glob, Grep, Write, Skill]
 
 /kit:convert
 
-The conversion is already complete inside /build. The Figma read, section plan,
+The conversion is already complete inside /task-readiness. The Figma read, section plan,
 CMS check (no Payload), and code build are finished. The new section has a tab row,
 an accordion and a carousel. Figma defines no motion or additional interaction states.
 

@@ -1,6 +1,6 @@
 // docs/roadmap.md, read and edited line by line (format: skills/product/SKILL.md § Formats).
 // Pure: text in, text out; every line the edit doesn't touch is kept byte for byte.
-// Edits refuse done and in-progress items: their state belongs to /build.
+// Edits refuse done and in-progress items: their state belongs to /task-readiness.
 
 export type Item = {
   slug: string;
@@ -65,7 +65,7 @@ function editable(r: Roadmap, slug: string): Item {
   const item = r.items.find((i) => i.slug === slug);
   if (!item) throw new Error(`no roadmap item "${slug}"`);
   if (!isEditable(item))
-    throw new Error(`"${slug}" is done or in progress: /build owns it`);
+    throw new Error(`"${slug}" is done or in progress: /task-readiness owns it`);
   return item;
 }
 

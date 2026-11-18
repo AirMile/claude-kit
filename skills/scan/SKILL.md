@@ -7,7 +7,7 @@ allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/scripts/seo-facts.js *)
 
 # Scan
 
-Measures where a site stands in search. It never fixes and never plans: fixing is `/build` and
+Measures where a site stands in search. It never fixes and never plans: fixing is `/task-readiness` and
 `/audit`, planning is `/seo`, and the questions for the client are `/intake` (asked once; a
 monthly scan never repeats them). Same steps every time, so measurements compare.
 
@@ -89,7 +89,7 @@ search     <clicks · impressions · avg position | not available>
 local      <reviews · score | none | n/a>
 ai         named <n>/3 (<engine>) · instead: <competitors>
 written    <file>
-next       <send the report | /intake | /seo | /build <slug>>
+next       <send the report | /intake | /seo | /task-readiness <slug>>
 ```
 
 Next: prospect → send the report; measure with an empty `## Intake` → `/intake`; intake done but

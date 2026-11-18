@@ -34,7 +34,7 @@ const CRITICAL = [
 const IGNORABLE = [
   [/(^|\/)node_modules\//, "node_modules/"],
   [/(^|\/)(vendor|__pycache__|\.venv|venv)\//, "dependency dir"],
-  // build/ and out/ only at the repo root: deeper they are often source dirs (e.g. skills/build/)
+  // build/ and out/ only at the repo root: deeper they are often source dirs (e.g. src/generated/)
   [/(^|\/)(dist|\.next|\.nuxt|\.output)\//, "build output"],
   [/^(build|out)\//, "build output"],
   [/(^|\/)\.DS_Store$/, ".DS_Store"],

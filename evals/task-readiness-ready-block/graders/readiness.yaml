@@ -1,0 +1,5 @@
+---
+type: regex
+target: last_message
+pattern: '(?is)(Goal:.*Verify:.*Baseline:.*Approvals:|all clear)'
+---

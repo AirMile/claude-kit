@@ -43,8 +43,8 @@ export type Chat = {
 export type Actions = {
   tab: (tab: Tab) => void; // shows another tab of the pane
   remember: (text: string) => void; // asks the model to keep it as a lesson (kit:lessons)
-  build: (slug: string) => void; // runs /clear, then /kit:build <slug> in the fresh chat
-  worktree: (slug: string) => void; // raises the desktop's chip: /kit:build <slug> in a worktree
+  build: (slug: string) => void; // runs /clear, then /kit:task-readiness <slug> in the fresh chat
+  worktree: (slug: string) => void; // raises the desktop's chip: /kit:task-readiness <slug> in a worktree
   run: (command: string, args?: string) => void; // runs the slash command at once
   edit: (done: string, change: (text: string) => string) => void;
   fold: (phase: string) => void;

@@ -178,10 +178,10 @@ test("a thin reply keeps the effort of the work it continues", async ($, on) => 
   expect(await shown()).toBe("▂");
 });
 
-test("/build runs at high, a plain heavy prompt at xhigh", async ($, on) => {
+test("/task-readiness runs at high, a plain heavy prompt at xhigh", async ($, on) => {
   world(on, { model: "claude-opus-5-5", label: HEAVY, turns: 5, drawn: true });
   const ui = await band($, on);
-  await $.prompt.submit({ text: "/build login-form", origin: TYPED });
+  await $.prompt.submit({ text: "/task-readiness login-form", origin: TYPED });
   expect(await runText(ui)).toBe("▆ Opus 5.5");
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
   expect(await runText(ui)).toBe("▇ Opus 5.5");

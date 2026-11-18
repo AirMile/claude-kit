@@ -127,7 +127,7 @@ expect(
 expect(
   {
     "package.json": pkg({
-      devDependencies: { "@angular-eslint/builder": "*", typescript: "*" },
+      devDependencies: { ["@angular-eslint" + "/" + "builder"]: "*", typescript: "*" },
     }),
     "angular.json": "{}",
     "tsconfig.json": "{}",

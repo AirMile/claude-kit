@@ -68,7 +68,7 @@ Written → continue here with **A** (don't stop at its report).
    into `AGENTS.md`, then delete them (show what moves first). A symlink between the two → one
    real `AGENTS.md`.
 4. `docs/`: create what is missing: `roadmap.md` and `decisions.md` with their format headers
-   (below). Never overwrite existing content. `docs/specs/` is created by `/build` when needed.
+   (below). Never overwrite existing content. `docs/specs/` is created by `/task-readiness` when needed.
 5. `.gitignore`: `AGENTS.md` and `docs/` must **not** be ignored; remove such lines (show them
    first). Add `.claude/worktrees/`.
 6. **Less to read**: checked-in generated or vendored code (`vendor/`, `*.generated.*`, a
@@ -77,10 +77,9 @@ Written → continue here with **A** (don't stop at its report).
    `claude-plugins-official` (e.g. `typescript-lsp`) → suggest it in the report; don't install.
 7. **Git** for `AGENTS.md § Git`, one AskUserQuestion with two questions. Workflow: Branches
    (Recommended for parallel sessions or a host that deploys the default branch) / Trunk (one
-   session at a time, commits straight to the default branch). Land, how a finished `/build`
-   goes in: Merge + push (Recommended solo) / Pull request (team, or CI to watch).
+   session at a time, commits straight to the default branch). Land, how finished work goes in: Merge + push (Recommended solo) / Pull request (team, or CI to watch).
 8. **Parallel sessions**: write `.worktreeinclude` with the gitignored files a fresh worktree
-   needs: `.env*` that exist and files the dev/build config loads (`git check-ignore`).
+   needs: `.env*` that exist and files the development and build config loads (`git check-ignore`).
    `.claude/launch.json` exists → set `"autoPort": true` on the dev server (the desktop app then
    passes a free port as `PORT`). A local database → fill the database line in `AGENTS.md § Git`.
 9. Report.
@@ -134,7 +133,7 @@ migrated      <n roadmap items, n lessons, worktrees kept/removed> (v1 only)
 git           <branches | trunk> · .worktreeinclude <files | —>
 context       deny <paths | —> · lsp <plugin to install | —>
 desktop       Settings → Claude Code: branch prefix (+ auto-archive after PR merge with Land: pr)
-next          /product (no roadmap) · /build (roadmap ready)
+next          /product (no roadmap) · /task-readiness (roadmap ready)
 ```
 
 Do not commit; offer `/commit`.

@@ -278,7 +278,7 @@ test("a hold names every missing item and preserves the check and verifier sente
     "src/a.ts changed after the last passing check. Run the check",
   );
   expect(hold).toContain(
-    "the checks pass, but this heavy task's spec has no verification yet",
+    "this heavy task has no current verification yet",
   );
   expect(hold).toContain("mcp__kit__delegate role review");
   expect(hold).toContain("no review yet");

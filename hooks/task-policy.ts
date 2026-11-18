@@ -65,12 +65,11 @@ export function decide(i: {
   change: Change | undefined;
   verify: VerifyNeed | undefined;
   explore: boolean;
-  build: boolean;
   council: boolean;
   room: Room;
   prev?: Levels;
 }): Decision {
-  const want = i.build ? "heavy" : i.change;
+  const want = i.change;
   const change = want !== undefined && want !== "none";
   const d: Level = i.council
     ? 3

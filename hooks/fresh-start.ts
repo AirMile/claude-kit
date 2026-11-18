@@ -2,8 +2,8 @@ import type { On, ToolSpec } from "claude-code";
 
 import { flowAnswer } from "./flow";
 
-// /build's safe point, automated: the model calls fresh_start after the user picked
-// "Fresh start"; when that turn ends, the chat clears and /kit:build <slug> resumes from the
+// /task-readiness's safe point, automated: the model calls fresh_start after the user picked
+// "Fresh start"; when that turn ends, the chat clears and /kit:task-readiness <slug> resumes from the
 // spec in the fresh one. Same chain as the roadmap pane's Pick up, but run from turn.complete.
 
 const TOOL = "mcp__kit__fresh_start";
@@ -14,7 +14,7 @@ let armed: string | null = null;
 export const freshTool: ToolSpec = {
   name: "fresh_start",
   description:
-    "kit /build safe point: after this turn ends, clear the chat and run /kit:build <slug> " +
+    "kit /task-readiness safe point: after this turn ends, clear the chat and run /kit:task-readiness <slug> " +
     "in the fresh one. Call it only after the user chose Fresh start, then end the turn.",
   inputSchema: {
     type: "object",
@@ -32,7 +32,7 @@ export function freshStart(on: On) {
       return { result: `Not armed: invalid slug "${slug}".` };
     armed = slug;
     return {
-      result: `Armed: when this turn ends, the chat clears and /kit:build ${slug} starts. End the turn now.`,
+      result: `Armed: when this turn ends, the chat clears and /kit:task-readiness ${slug} starts. End the turn now.`,
     };
   });
 
@@ -54,14 +54,14 @@ export function freshStart(on: On) {
       } catch (err) {
         // Building on in this same chat would defeat the point: leave it to the user.
         $.ui.toast(
-          `kit: could not clear (${String(err)}). Run /clear, then /build ${slug}`,
+          `kit: could not clear (${String(err)}). Run /clear, then /task-readiness ${slug}`,
         );
         return;
       }
       await $.command
-        .run({ command: "kit:build", args: slug })
+        .run({ command: "kit:task-readiness", args: slug })
         .catch((err) =>
-          $.ui.toast(`kit: could not start /build ${slug}: ${String(err)}`),
+          $.ui.toast(`kit: could not start /task-readiness ${slug}: ${String(err)}`),
         );
     });
     return done;

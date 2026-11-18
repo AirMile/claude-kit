@@ -63,7 +63,7 @@ Migrations, seed and writing documents change a database other people may use.
 
 - `AGENTS.md` forbids the step here (e.g. migrate only from the main checkout while this is a
   worktree) → write the schema, code and types only; the database step becomes a manual item
-  with exact commands (report; inside `/build` a manual item for its step 6).
+  with exact commands (report as a pending human check).
 - Otherwise ask first (AskUserQuestion), naming the host of `DATABASE_URL` (host only, never
   the credentials) and exactly what gets written. Production → never.
 - Migration: the project's flow from `AGENTS.md` (create, read the SQL, migrate, generate types,

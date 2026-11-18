@@ -7,8 +7,7 @@ allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/scripts/staging-check.js)
 
 # Commit
 
-Turns the working tree into one or more clean commits. Called by the user, or by `build` with
-`feature=<slug>`.
+Turns the working tree into one or more clean commits. Called by the user (`feature=<slug>` lands a finished spec's work).
 
 ## 1. Pre-flight
 
@@ -42,7 +41,7 @@ separate `chore:` commit).
 
 `AGENTS.md § Git` says `branches` (or nothing) and you are on the default branch → AskUserQuestion
 first: New branch `<type>/<scope>` (Recommended) / Commit on <default>. New branch → `git switch
--c` before staging. Skip in `feature=<slug>` mode (`/build` already branched).
+-c` before staging.
 
 Group changed paths by concern (directory + kind of change). Don't read diffs for this.
 
@@ -104,8 +103,9 @@ session.
 
 ## 6. Push
 
-`feature=<slug>` mode lands the finished work as the project chose; otherwise never push unless
-the user asked for it in this request, or answers yes now.
+`feature=<slug>` mode (only when the user typed it themself; "commit this" is a plain commit)
+lands the finished work as the project chose; otherwise never push unless the user asked for it
+in this request, or answers yes now.
 
 - **`feature=<slug>` mode** → `Land:` in `AGENTS.md § Git`, without asking. Missing → one
   AskUserQuestion (Merge into <default> + push / Push + PR), then write `- Land: <merge | pr>`

@@ -19,7 +19,6 @@ const ask = (over: Partial<Parameters<typeof decide>[0]> = {}) =>
     change: "light",
     verify: "behaviour",
     explore: false,
-    build: false,
     council: false,
     room: { gpt: true, astra: true },
     ...over,
@@ -51,14 +50,8 @@ test("classifies direct answers and bounded changes", () => {
   expect(ask({ verify: undefined }).levels.v).toBe(1);
 });
 
-test("heavy, build, explore, planning and council set define", () => {
+test("heavy, explore, planning and council set define", () => {
   expect(ask({ change: "heavy", verify: "cosmetic" }).levels).toEqual({
-    d: 2,
-    e: 2,
-    v: 2,
-    r: 0,
-  });
-  expect(ask({ build: true, change: "none" }).levels).toEqual({
     d: 2,
     e: 2,
     v: 2,

@@ -43,7 +43,7 @@ test("explore raises Define to D2; one call labels it; the decision is logged", 
   expect(decisions[0]?.gpt5h).toBe(10);
 });
 
-test("questions explore too; thin replies, build prompts and GPT off skip the explore classifier", async ($, on) => {
+test("questions and task-readiness explore; thin replies and GPT off skip the explore classifier", async ($, on) => {
   const w = world(on, { explore: true });
   await $.command.run({ command: "gpt", args: "" });
   const explored = () =>
@@ -53,11 +53,11 @@ test("questions explore too; thin replies, build prompts and GPT off skip the ex
   expect(explored()).toBe(1);
   await prompt($, "ja");
   expect(String(w.prompts.at(-1)?.context)).not.toContain("kit task");
-  await prompt($, "/kit:build retries");
-  expect(explored()).toBe(1);
+  await prompt($, "/kit:task-readiness retry-handling");
+  expect(explored()).toBe(2);
   await $.command.run({ command: "gpt", args: "off" });
   await prompt($);
-  expect(explored()).toBe(1);
+  expect(explored()).toBe(2);
   expect(String(w.prompts.at(-1)?.context)).not.toContain("kit task");
 });
 

@@ -39,7 +39,7 @@ Turns an idea into two files every later step reads: `docs/product.md` (what and
 
 ### Roadmap rules
 
-- Items are user-visible capabilities, each buildable on its own in one `/build` run.
+- Items are user-visible capabilities, each buildable on its own in one `/task-readiness` run.
   Too big for ~6 acceptance criteria → split. Infra-only items only when a feature needs them.
 - Order: dependencies first, then value. Greenfield → first item `scaffold` (handled by `/setup`).
 - Slugs: kebab-case, 1-3 words, unique.
@@ -139,7 +139,7 @@ in dialogue, then pick which land on the roadmap via **Update**. Follow
 PRODUCT · <new | update | critique | brainstorm>
 product.md  <created | updated | unchanged>
 roadmap     <n open> · next: <first open slug>
-next        /setup (no code yet) · /build <slug>
+next        /setup (no code yet) · /task-readiness <slug>
 ```
 
 Offer `/commit`. Working in parallel → add items from inside the worktree session that will

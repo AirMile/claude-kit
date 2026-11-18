@@ -6,8 +6,8 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
 
 ## Layout
 
-- `skills/<name>/SKILL.md`: one workflow per skill
-- `agents/verifier.md`: fresh-context verify subagent used by `build`
+- `skills/<name>/SKILL.md`: one workflow per skill; `task-readiness` is the core skill
+- `agents/verifier.md`: fresh-context verify subagent used by `task-readiness`
 - `hooks/hooks.json`: push-guard (PreToolUse) + format-on-save (PostToolUse);
   `hooks/push-guard.test.cjs` is its regression test. Its `modules` names `hooks/register.tsx`,
   the kit mod (Claude Code 2.1.287+): native compaction priorities and recovery note
@@ -21,7 +21,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   `hooks/flow-log.ts`, review and verifier glue in `hooks/flow-agents.ts`, evidence in
   `hooks/flow-evidence.ts`, task state in `hooks/flow-state.ts`, storage and git fingerprint in
   `hooks/flow-store.ts`: each change task's
-  track light/medium/heavy, its note at the start or on growth, the verify gate on `classic.Stop`
+  track light/medium/heavy, its note pointing to task-readiness at the start or on growth, the verify gate on `classic.Stop`
   from the worktree's git fingerprint, the checks, reviews and verifier's answer; unverified work stays open, `/flow` in `hooks/flow-command.ts`),
   `mcp__kit__delegate` (`hooks/delegate.ts` on the pure `hooks/delegate-policy.ts`: work handed
   to Claude or GPT by role and by which plan has room, the newest GPT model per family; the
@@ -40,8 +40,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   for the pause (`hooks/keep-warm.ts`, `/warm`), `/band` (the roadmap
   pane draws through the pure `roadmap-{dashboard,tabs,phase,card,later}.tsx` on `roadmap-parts.tsx`, with
   the Session tab's facts by `hooks/chat-facts.ts`),
-  and `mcp__kit__fresh_start` (`hooks/fresh-start.ts`), which `/build`'s safe point calls to
-  clear and resume. Only `register.tsx` registers events; `$` never crosses an import (the
+  and `mcp__kit__fresh_start` (`hooks/fresh-start.ts`), for clearing and resuming. Only `register.tsx` registers events; `$` never crosses an import (the
   validator refuses it), so `hooks/spec.ts` stays pure
 - `hooks/codex-hooks.json` (declared in `.codex-plugin/plugin.json`) → `hooks/codex-hooks.cjs`: push
   guard, format-on-save (also `apply_patch`) and, at session start, `hooks/codex-context.md`:
@@ -66,22 +65,22 @@ each file carries its own format in a `<!-- format: … -->` header:
 - no `CLAUDE.md`: its presence would stop Claude Code from reading `AGENTS.md`
 - `docs/product.md`, `docs/roadmap.md`, `docs/specs/<slug>.md`, `docs/decisions.md`
 - `docs/seo.md`: intake, keywords, page plan, measurements (`scan`, `intake`, `seo` write it;
-  `build`, `audit`, `launch` read it)
+  `task-readiness`, `audit`, `launch` read it)
 
 Change a format → update the header template in the skill that writes it (`product` for
-product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.md` for specs,
+product/roadmap, `setup` for AGENTS/decisions, `task-readiness/references/spec-template.md` for specs,
 `seo` for seo.md).
 
 ## Budgets (hard)
 
-- `SKILL.md` ≤ 150 lines (`build` ≤ 200); max 2 files in `references/`
+- `SKILL.md` ≤ 150 lines (`task-readiness` ≤ 120); max 2 files in `references/`
 - No `shared/` directory, no JSON state files
 - Scripts only for deterministic checks or conversions with fixed output (Node, so they run on
   macOS and Windows). Never for reading/editing roadmap or spec files: those are small and the
   model handles them; a script there is how v1 regrew. One exception: the roadmap pane edits
   open items of `docs/roadmap.md` (add, change phase, move to Later, remove, restore) via
   `hooks/roadmap-file.ts`, which keeps untouched lines byte for byte and refuses done and
-  in-progress items (their state is `/build`'s); `hooks/roadmap-file.test.ts` guards it
+  in-progress items (their state is managed by the task); `hooks/roadmap-file.test.ts` guards it
 - Hooks and scripts must work on Windows too (e.g. `npx` is `npx.cmd` there)
 - The mod (`hooks/*.ts*`) costs no context (it runs as code), so no total line budget: one
   purpose per file, ≤ ~300 lines each (larger → split). It reads only specs (`Status` +
@@ -107,8 +106,7 @@ product/roadmap, `setup` for AGENTS/decisions, `build/references/spec-template.m
 - Skill and agent files: English. Runtime output follows the user's language setting.
 - Lean on native Claude Code features (subagents, `/simplify`, `/security-review`,
   AGENTS.md loading) instead of rebuilding them.
-- Never push without the user's OK (`hooks/push-guard.cjs`), except `/build` landing per `Land:`
-  and a plain push in auto mode (a force push still asks).
+- Never push without the user's OK (`hooks/push-guard.cjs`), except a plain push in auto mode (a force push still asks).
 - Validate after edits: `claude plugin validate .`, `node hooks/push-guard.test.cjs` and
   `node hooks/codex-hooks.test.cjs`. At the root that validate only checks `marketplace.json`,
   never the mod: for hooks, copy `.claude-plugin/{plugin.json,types}`, `hooks`, `skills`,

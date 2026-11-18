@@ -22,7 +22,7 @@
 ## Git
 
 - Workflow: <branches | trunk>
-- Land: <pr | merge> (a finished `/build`: push the branch + open a PR, or merge into the default
+- Land: <pr | merge> (finished work: push the branch + open a PR, or merge into the default
   branch and push it; trunk pushes the default branch)
 - Fresh worktree: `<install cmd>` before anything else
 - Dev server: only use one this session started. Default port taken → a free one via `PORT`,

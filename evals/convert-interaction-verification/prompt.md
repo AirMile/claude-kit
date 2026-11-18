@@ -6,7 +6,7 @@ allowed_tools: [Read, Glob, Grep, Skill]
 
 /kit:convert
 
-The conversion is already complete inside /build. The Figma read, section plan,
+The conversion is already complete inside /task-readiness. The Figma read, section plan,
 CMS check (no Payload), and code build are finished. The page has navigation links,
 buttons, tabs, an accordion, a carousel, a contact form with three steps, a mobile
 menu, and a dialog. Figma defines no motion or additional interaction states.

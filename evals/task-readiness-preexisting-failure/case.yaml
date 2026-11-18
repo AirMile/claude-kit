@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: task-readiness-preexisting-failure
+tags: [task-readiness]
+context:
+  scaffold_script: fixture.sh

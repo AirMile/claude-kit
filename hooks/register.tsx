@@ -29,7 +29,7 @@ import { syncWindows } from "./window-sync";
 // - A pause before the plan limit runs out (limit-guard), and the cache kept warm while work
 //   is open or, on Warm, while the chat is idle (keep-warm); the band's limit button or
 //   /warm sets both per chat.
-// - fresh_start: /build's safe point clears the chat and resumes (fresh-start).
+// - fresh_start: /task-readiness's safe point clears the chat and resumes (fresh-start).
 // - delegate: work handed to Claude or GPT through Codex by role and room, ChatGPT's meters in
 //   the band while GPT is on, /gpt (delegate).
 // - run_task: a GPT change, host checks and repairs on the same thread (task-runner).

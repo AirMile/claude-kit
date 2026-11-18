@@ -7,7 +7,7 @@ export const SENT_TTL = 60 * 60 * 1000; // a chip not started within this counts
 export type Marks = Record<string, Record<string, number>>;
 
 // Commits on other branches (not reachable from HEAD) that touch a spec, each led by the ref
-// that reached it. /build commits a spec first: that commit is its claim on the slug.
+// that reached it. A spec commit is a claim on the slug.
 export const CLAIMS_GIT = [
   "log",
   "--all",
@@ -53,7 +53,7 @@ export function claims(out: string): Record<string, string> {
 }
 
 // The dim line under each open card that runs elsewhere, the spec to read for a claim checked
-// out in a worktree here (its /build step, live), and the marks still worth keeping: a claim
+// out in a worktree here (its /task-readiness step, live), and the marks still worth keeping: a claim
 // wins over a mark (and ends it), an expired mark is dropped.
 export function away(
   open: string[],
@@ -84,7 +84,7 @@ export function away(
 }
 
 // start_session's arguments: a session linked to this chat, in its own worktree, that runs
-// /kit:build <slug> at once and reports back here when it ends a turn.
+// /kit:task-readiness <slug> at once and reports back here when it ends a turn.
 export const session = (slug: string) => ({
   initiation: "user_asked",
   context: "fresh",
@@ -92,18 +92,18 @@ export const session = (slug: string) => ({
   title: `Build ${slug}`,
   name: slug.slice(0, 24).replace(/-+$/, ""),
   branch_name: slug,
-  prompt: `/kit:build ${slug}`,
+  prompt: `/kit:task-readiness ${slug}`,
   background:
     `Started from the kit roadmap pane by the user: build the roadmap feature ${slug} end to ` +
-    `end with /kit:build in this session's own worktree (its spec: docs/specs/${slug}.md).`,
+    `end with /kit:task-readiness in this session's own worktree (its spec: docs/specs/${slug}.md).`,
 });
 
 // spawn_task's arguments (the fallback when start_session is refused): a chip that, clicked,
-// starts /kit:build <slug> in a new worktree.
+// starts /kit:task-readiness <slug> in a new worktree.
 export const chip = (slug: string) => ({
   title: `Build ${slug}`,
-  tldr: `Started from the roadmap pane: builds ${slug} in its own worktree with /kit:build.`,
-  prompt: `/kit:build ${slug}`,
+  tldr: `Started from the roadmap pane: builds ${slug} in its own worktree with /kit:task-readiness.`,
+  prompt: `/kit:task-readiness ${slug}`,
 });
 
 // An MCP result → why it failed, or null when it started the session or raised the chip.

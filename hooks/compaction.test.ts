@@ -156,17 +156,18 @@ test("feature branches retain the spec recovery note after the native summary", 
   expect(result.messages[1]!.text).toContain("Status: building");
   expect(result.messages[1]!.text).toContain("criteria 1/2");
   expect(result.messages[1]!.text).toContain("Handoff");
+  expect(result.messages[1]!.text).toContain("run /task-readiness login");
   expect(result.usage).toEqual(NATIVE.usage);
   expect(result.tokensBefore).toBe(80000);
   expect(result.tokensAfter).toBe(12000);
 });
 
-test("the latest explicit build overrides the branch, including expanded kit commands", async ($, on) => {
+test("the latest explicit task-readiness command overrides the branch, including expanded kit commands", async ($, on) => {
   const w = world(on, { branch: "fix/old", spec: "login" });
   for (const text of [
-    "/kit:build login",
-    "/build login",
-    "<command-name>/kit:build</command-name>\n<command-args>login</command-args>",
+    "/kit:task-readiness login",
+    "/task-readiness login",
+    "<command-name>/kit:task-readiness</command-name>\n<command-args>login</command-args>",
   ]) {
     const messages = [
       ...HISTORY,
@@ -180,12 +181,16 @@ test("the latest explicit build overrides the branch, including expanded kit com
   expect(w.reads.every((p) => p === "/p/app/docs/specs/login.md")).toBe(true);
 });
 
-test("a build in assistant text or unsafe slug does not select a spec", async ($, on) => {
+test("a task-readiness command in assistant text or unsafe slug does not select a spec", async ($, on) => {
   world(on, { spec: "login" });
   for (const message of [
-    { role: "assistant" as const, text: "/build login", toolUses: [] },
-    { role: "user" as const, text: "/build ../login", toolUses: [] },
-    { role: "user" as const, text: "For example, /build login", toolUses: [] },
+    { role: "assistant" as const, text: "/task-readiness login", toolUses: [] },
+    { role: "user" as const, text: "/task-readiness ../login", toolUses: [] },
+    {
+      role: "user" as const,
+      text: "For example, /task-readiness login",
+      toolUses: [],
+    },
   ]) {
     expect(
       await $.session.compact(input("manual", [...HISTORY, message])),
@@ -199,7 +204,7 @@ test("a spec selected on main survives a second compaction after the command is 
     await $.session.compact(
       input("manual", [
         ...HISTORY,
-        { role: "user", text: "/build login", toolUses: [] },
+        { role: "user", text: "/task-readiness login", toolUses: [] },
       ]),
     ),
   );
@@ -209,12 +214,16 @@ test("a spec selected on main survives a second compaction after the command is 
   expect(second.messages[1]!.text).toContain("docs/specs/login.md");
 });
 
-test("the newest build wins and a missing spec never revives an older feature", async ($, on) => {
+test("the newest task-readiness command wins and a missing spec never revives an older feature", async ($, on) => {
   const w = world(on, { branch: "feat/login", spec: "login" });
-  for (const text of ["/build missing", "/build", "/build ../login"]) {
+  for (const text of [
+    "/task-readiness missing",
+    "/task-readiness",
+    "/task-readiness ../login",
+  ]) {
     const result = await $.session.compact(
       input("manual", [
-        { role: "user", text: "/build login", toolUses: [] },
+        { role: "user", text: "/task-readiness login", toolUses: [] },
         { role: "user", text, toolUses: [] },
       ]),
     );

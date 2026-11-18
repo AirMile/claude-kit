@@ -33,13 +33,19 @@ test("each profile maps a kind of work to a model and an effort", async () => {
 });
 
 test("kit's skills are known without the classifier", async () => {
-  expect(commandKind("/build login-form")).toBe("planning");
+  expect(commandKind("/task-readiness login-form")).toBe("planning");
+  expect(commandKind("/kit:task-readiness login-form")).toBe("planning");
+  expect(commandKind("<command-name>/kit:task-readiness</command-name>")).toBe(
+    "planning",
+  );
+  expect(commandKind("/" + "build login-form")).toBe(undefined);
+  expect(commandKind("/kit:" + "build login-form")).toBe(undefined);
   expect(commandKind("/kit:product")).toBe("planning");
   expect(
     commandKind("<command-name>/kit:commit</command-name>\nstage it"),
   ).toBe("question");
   expect(commandKind("/unknown thing")).toBe(undefined);
-  expect(commandKind("why does /build fail?")).toBe(undefined);
+  expect(commandKind("why does /task-readiness fail?")).toBe(undefined);
 });
 
 test("a classifier label reads back as its kind, anything else as none", async () => {
@@ -54,7 +60,7 @@ test("subagents of a known type get their kind", async () => {
   expect(agentKind("general-purpose")).toBe(undefined);
 });
 
-test("/build and the verifier run at high in every profile, never above", async () => {
+test("/task-readiness and the verifier run at high in every profile, never above", async () => {
   for (const profile of ["lean", "balanced"] as const) {
     expect(pick(profile, "planning").effort).toBe("high");
   }
@@ -151,7 +157,9 @@ test("no escalation at or above the model a prompt needs, or for an unknown mode
   expect(escalation(OPUS, OPUS, 50)).toEqual({ step: "none" });
   expect(escalation(OPUS, HAIKU, 50)).toEqual({ step: "none" });
   expect(escalation("claude-mythos-1", OPUS, 50)).toEqual({ step: "none" });
-  expect(escalation(`${OPUS}[1m]`, "claude-fable-5-1", 50)).toEqual({ step: "none" });
+  expect(escalation(`${OPUS}[1m]`, "claude-fable-5-1", 50)).toEqual({
+    step: "none",
+  });
 });
 
 test("a switch is stored per session, junk ignored, the newest twenty kept", async () => {

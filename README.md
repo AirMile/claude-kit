@@ -26,7 +26,6 @@ Code already has a native feature (subagents, `AGENTS.md` loading, `/simplify`,
 - [Skills](#skills)
   - [/product](#product)
   - [/setup](#setup)
-  - [/build](#build)
   - [/commit](#commit)
   - [/convert](#convert)
   - [/theme](#theme)
@@ -82,7 +81,7 @@ pushes them to GitHub.
 Check with `claude plugin details kit`: it should list 18 skills, 1 agent and 2 hooks. Skills
 are available in **new** sessions; in a running session use `/reload-plugins`.
 
-Skills are namespaced as `/kit:<skill>` (e.g. `/kit:build`). The bare name (`/build`) also works as
+Skills are namespaced as `/kit:<skill>` (e.g. `/kit:task-readiness`). The bare name (`/task-readiness`) also works as
 long as no other skill or command uses it.
 
 ### No CLAUDE.md in your projects
@@ -129,7 +128,7 @@ codex plugin add kit@airmile
   `hooks/codex-context.md`, which maps the Claude terms: questions become numbered options in
   chat, plan-mode approval becomes "plan shown, wait for your OK", the verifier runs as a
   subagent reading `agents/verifier.md`. No panes: `/product` prints the roadmap, `/theme`
-  shows its table, Fresh start means `/new` then the build skill with the slug. The frontend
+  shows its table. Resume a spec with `/task-readiness <slug>`. The frontend
   rule is read from `rules/frontend.md` on UI work.
 - **Projects are shared**: `AGENTS.md` and `docs/` are the same for both tools, so a spec
   started in Claude Code resumes in Codex and the other way around.
@@ -157,8 +156,7 @@ No access → the point is shown in chat with a note that it wasn't saved.
 /setup a habit tracker for people who quit after a week
                   → /product interview, scaffold, AGENTS.md
                     (started outside a project? it makes the folder first)
-/build             → builds the first roadmap item
-/build             → and the next one …
+/task-readiness <slug>      → work on a roadmap item
 ```
 
 **An existing repo**
@@ -166,7 +164,7 @@ No access → the point is shown in chat with a note that it wasn't saved.
 ```
 /setup            → reads the repo, writes AGENTS.md + docs/
 /product             → writes docs/product.md and the roadmap from a short interview
-/build <slug>
+/task-readiness <slug>
 ```
 
 **A quick change**: no skill needed. Ask for it in plain words (auto mode is fine), then:
@@ -176,13 +174,13 @@ No access → the point is shown in chat with a note that it wasn't saved.
 ```
 
 `AGENTS.md` and the frontend rule load in every chat, so a plain request still follows the
-project's conventions. Use `/build` once it's a real feature or a bug whose cause isn't obvious:
+project's conventions. Use `/task-readiness` once it's a real feature or a bug whose cause isn't obvious:
 that's where the spec, the independent verify and resuming in a new chat pay for themselves.
 
 **A bug**
 
 ```
-/build "fix: saving a habit twice creates a duplicate"
+/task-readiness "fix: saving a habit twice creates a duplicate"
 ```
 
 **Going live**
@@ -205,7 +203,7 @@ kit has no database, no JSON state, no background server and no checkpoint files
 skill needs to know lives in a handful of markdown files **committed to your repo**:
 
 - They sync between your machines through git, like the rest of your code.
-- A new chat can pick up any interrupted work by reading them (`/build <slug>` resumes from the
+- A new chat can pick up any interrupted work by reading them (`/task-readiness <slug>` resumes from the
   spec's `Status:` line and its checkboxes).
 - You can read and edit them by hand. Each file starts with a `<!-- format: … -->` header that
   describes its own format, so skills (and you) never need a separate schema document.
@@ -239,11 +237,11 @@ your-project/
 | ---------------------- | -------------------------- | ------------------------------------- | -------------------------------------------- |
 | `AGENTS.md` (root)     | `/setup`, `lessons`        | every session                         | always, at session start                     |
 | `<dir>/AGENTS.md`      | `lessons`                  | every session                         | lazily, when Claude reads a file in that dir |
-| `docs/product.md`      | `/product`                 | `/build`, `/convert`, `/setup`        | on demand                                    |
-| `docs/roadmap.md`      | `/product`, `/build`       | `/build`                              | on demand                                    |
-| `docs/specs/<slug>.md` | `/build`                   | `/build`, verifier                    | on demand                                    |
-| `docs/decisions.md`    | `/build`, `/setup`         | `/build`                              | on demand                                    |
-| `docs/seo.md`          | `/scan`, `/intake`, `/seo` | `/seo`, `/build`, `/audit`, `/launch` | on demand                                    |
+| `docs/product.md`      | `/product`                 | `/task-readiness`, `/convert`, `/setup`        | on demand                                    |
+| `docs/roadmap.md`      | `/product`, `/task-readiness`       | `/task-readiness`                              | on demand                                    |
+| `docs/specs/<slug>.md` | `/task-readiness`                   | `/task-readiness`, verifier                    | on demand                                    |
+| `docs/decisions.md`    | `/task-readiness`, `/setup`         | `/task-readiness`                              | on demand                                    |
+| `docs/seo.md`          | `/scan`, `/intake`, `/seo` | `/seo`, `/task-readiness`, `/audit`, `/launch` | on demand                                    |
 
 ### AGENTS.md
 
@@ -281,7 +279,7 @@ Habit tracker PWA for people who drop habits after a week.
 - Decisions and why: `docs/decisions.md`
 ```
 
-The **Commands** section matters: `/build` and the verifier use the dev command and port from it
+The **Commands** section matters: `/task-readiness` and the verifier use the dev command and port from it
 to run browser checks.
 
 Nested `AGENTS.md` files hold pitfalls that only matter in one module. Because they load only
@@ -290,7 +288,7 @@ when Claude touches that directory, they cost nothing the rest of the time.
 ### docs/product.md
 
 Product intent, under ~60 lines. Sections: **What**, **For whom**, **Why now**, **Core
-experience**, **Non-goals**, **Stack**, **Open questions**. `/build` reads the non-goals before
+experience**, **Non-goals**, **Stack**, **Open questions**. `/task-readiness` reads the non-goals before
 defining a feature, so scope creep is caught early.
 
 ### docs/roadmap.md
@@ -322,7 +320,7 @@ The three states are encoded in the line itself:
 
 ### docs/specs/\<slug\>.md
 
-Created by `/build` when you approve a feature plan. It is both the contract and the resume point:
+Used by `/task-readiness` for work spanning chats or on the roadmap. It is both the contract and the resume point:
 
 ```markdown
 # habit-crud
@@ -408,7 +406,7 @@ Turn an idea into `docs/product.md` + `docs/roadmap.md`, or update them later.
 4. Shows both files in the plan, and the draft roadmap in the [roadmap pane](#kit-mod).
    **Accept** writes them; **reject** revises.
 
-Roadmap rules: every item is a user-visible capability buildable in one `/build` run (≤ ~6
+Roadmap rules: every item is a user-visible capability buildable in one `/task-readiness` run (≤ ~6
 acceptance criteria, otherwise split); dependencies first, then value; greenfield projects start
 with a `scaffold` item; 5–15 items for an MVP, the rest under `## Later`.
 
@@ -461,109 +459,23 @@ you can delete it when satisfied:
 You get a preview and one confirmation before anything is written. `/setup` never commits; it
 offers `/commit`.
 
-### /build
+### /task-readiness
 
-For features and real bugs. It keeps feature progress in the spec so any new chat can resume.
-Small changes don't need it; if it gets one anyway, it takes a light path.
+The core skill prepares a multi-step, vague or risky task: it states the goal,
+checks assumptions and tools, chooses a check per criterion, records pre-existing
+failures and agrees on approval points. When all is clear it starts immediately.
+It chooses how to work, checks the result and asks the fresh-context verifier to
+assess the criteria. Human-only checks remain pending.
 
-```
-/build                         resume the in-progress item, else start the next roadmap item
-/build <slug>                  start or resume that feature
-/build "make X do Y"           small change or feature, decided by the size gate
-/build "fix: X is broken"      bugfix via the debug ladder
-```
-
-#### Routing
-
-| Input                        | Path                                                              |
-| ---------------------------- | ----------------------------------------------------------------- |
-| slug with an existing spec   | **Resume** at the step matching `Status`                          |
-| slug on the roadmap, no spec | **Feature**                                                       |
-| no argument                  | in-progress roadmap item → Resume; else first open item → Feature |
-| text describing a bug        | **Fix**                                                           |
-| other text                   | **size gate** → Small or Feature                                  |
-
-**Size gate.** A change is _Small_ only if none of these hold:
-
-1. It adds a capability (new page, route, endpoint, model, migration).
-2. It touches more than 3 source files.
-3. It needs a new test file or harness.
-4. It changes a shared layer used by more than 2 modules, or is a cross-cutting rename.
-
-The gate is re-checked while working: as soon as the real scope crosses a line, `/build` stops,
-tells you, and switches to the Feature path with a spec for what's left.
-
-#### Small path
-
-Make the change → scoped tests/lint → a screenshot check if it's UI → `lessons` if something
-surprising came up → `/commit`.
-
-#### Fix path (debug ladder)
-
-Effort scales with how well the cause is understood, judged from observable signals, never from
-"confidence":
-
-| Tier          | When                                                     | What                                                                                                              |
-| ------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| 1 Direct      | cause and symptom both visible; a known value; 1–2 files | change it, re-check live                                                                                          |
-| 2 Hypothesis  | symptom clear, cause unproven                            | reproduce → write the hypothesis and what evidence would confirm it → gather that evidence → fix the proven cause |
-| 3 Investigate | spans modules, intermittent, or a lower tier failed      | an Explore subagent traces the causal chain with `path:line` evidence; the fix is presented as a plan first       |
-
-Hard rule: **every failed fix moves up one tier**. The same fix is never retried without new
-evidence. The fix is done only when the reproduction passes (test green or you confirm it live).
-It's logged in the feature's spec under `## Fixes` and committed as `fix:`.
-
-#### Feature path
-
-1. **Define (your approval).** Reads docs/product.md (non-goals!), decisions, the roadmap line and the code
-   it touches. Asks only what it can't answer itself (usually 0–3 questions). Drafts the spec:
-   criteria split into happy / edge / error, the approach with files, an ASCII wireframe for UI,
-   and which test covers which criterion. More than 6 criteria → it proposes a split. It also
-   flags roadmap items this feature makes obsolete.
-   **Accept** writes `docs/specs/<slug>.md`, links it from the roadmap line (= in progress) and
-   records real decisions in `docs/decisions.md`. Then the **safe point**: Continue here, or
-   Fresh start, which drops the exploration and keeps the spec: the mod clears the chat after
-   that turn and runs `/build <slug>` in the fresh one (without the mod: `/clear`, then
-   `/build <slug>` yourself). Or stop early: **Stop here** keeps just the spec, **Build, then
-   stop** builds and leaves verify for later (`Status: verifying`, changes uncommitted until
-   Finish). `/build <slug>` or the roadmap pane picks it up at that step.
-   The [kit mod](#kit-mod) shows your context % above the prompt to help you choose.
-2. **Build (inline).** Test first where testable, then code, following `AGENTS.md`. If the spec
-   has a `Design:` source, the UI is built with the `/convert` procedure. Full suite +
-   typecheck/lint must be green.
-3. **Verify.** A fresh [verifier](#the-verifier-agent) subagent (which didn't build the code)
-   checks every criterion with evidence. Failures are fixed and re-checked, max 2 rounds; still
-   failing → it stops with the state written into the spec.
-4. **Manual.** Only for what can't be automated (real credentials, "does it feel smooth",
-   physical device, audio). You get concrete steps + the expected result and answer
-   Pass / Fail / Skip. A fail becomes a hypothesis-tier fix and the item is asked again.
-5. **Finish.** Spec `Status: done`, roadmap line checked, the verifier's improvement notes (max 3) added under `## Later` in the roadmap **without asking** (delete the ones you don't want;
-   `/build` never picks up `## Later` items by itself), `lessons`, then **one commit** with code +
-   spec + roadmap. The report suggests `/simplify` for diffs over ~150 lines and
-   `/security-review` for auth, stored user input or payments. When the feature closed the last
-   open item of its phase, the report says so and suggests `/launch` (`major` for a `vX` heading,
-   `minor` for `vX.Y`), then `/product` to sort
-   `## Later`. It never pushes.
-
-   Finish asks no questions, so a feature run only stops for the plan approval, the safe point
-   right after it, and manual checks that genuinely need you. That keeps it smooth in auto mode.
-
-#### Resuming
-
-Stop anywhere (close the chat, run out of context, come back tomorrow). Before every `Status`
-change `/build` rewrites the spec's `## Handoff` (max 5 lines: deviations, failed attempts,
-your corrections), so what was only said in the chat survives. In a new chat:
-
-```
-/build habit-crud      (or just /build)
-```
-
-It reads `Status`, `## Handoff`, the unchecked criteria and `git status`, says in one line where it picks up,
-and continues: `defined`/`building` → build, `verifying` → verify, `manual` → manual checks.
+Use `/task-readiness <task>` to start or `/task-readiness <slug>` to resume a
+spec in `docs/specs/`. Work spanning chats or on the roadmap keeps a spec; small
+obvious edits need no skill. It delegates self-contained work to Claude or GPT
+according to available subscription capacity and reviews the diff. Commit only
+when requested or allowed by the flow note.
 
 ### /commit
 
-Safe staging and a clean message. Called by you, or by `/build` as `commit feature=<slug>`.
+Safe staging and a clean message. Called when you request a commit or the flow note allows it.
 
 1. **Pre-flight**: stops if there's nothing to commit or a rebase/merge/cherry-pick is in
    progress. Large diffs (>1500 lines) are judged from the stat instead of being read in full.
@@ -583,7 +495,7 @@ Safe staging and a clean message. Called by you, or by `/build` as `commit featu
    otherwise it mirrors the repo's style (ticket prefix, `[TAG]`, plain). A ticket id in the
    branch name is used.
 5. **Confirm**: shows the message and asks Commit / Edit / Cancel, unless you already said to
-   commit or it runs from `/build`. A failed pre-commit hook → fix and make a **new** commit
+   commit. A failed pre-commit hook → fix and make a **new** commit
    (never amend after a failure); `--no-verify` only if you choose it.
 6. **Push**: only when you asked in the same request or say yes now. The push itself goes
    through the [push-guard](#push-guard).
@@ -603,7 +515,7 @@ there is one. Without the MCP an exported frame PNG works, but its values are es
 
 **Fidelity**: 1:1, each value mapped to the nearest existing token. Motion only as Figma defines
 it (variants, prototype interactions), verified by computed values; extra animation is a
-separate `/build` item.
+separate `/task-readiness` item.
 
 **Steps**: find tokens (none → `/theme` first, or a small set as CSS variables) → **a plan you approve**
 with sections, reused components, a figma → token mapping table, motion, assets, the mobile
@@ -619,13 +531,12 @@ already lives in the CMS; where `AGENTS.md` forbids them (e.g. in a worktree) th
 manual step. You get a manual check: read the page in `/admin` with the client role.
 
 An existing target file is treated as a **patch**: everything the frame doesn't show (data
-fetching, props, handlers, real copy) is kept. Standalone it ends with `/commit`; inside `/build`
-it is just the build step.
+fetching, props, handlers, real copy) is kept. Standalone it ends with `/commit`; within a larger task it supplies the UI work.
 
 ### /theme
 
 One source of truth for colors, type, spacing, radii, shadows and motion, written in the
-project's own idiom so `/convert`, `/build` and the frontend rule use tokens instead of raw values.
+project's own idiom so `/convert`, `/task-readiness` and the frontend rule use tokens instead of raw values.
 
 ```
 /theme "calm, trustworthy, B2B"     from a brief (+ the product's audience)
@@ -656,7 +567,7 @@ The way kit improves itself without growing back into v1. Only you can start it 
 appear in Claude's skill list, so it costs no context).
 
 ```
-/improve build "the size gate sent a 2-file copy change to the feature path"
+/improve task-readiness "the baseline was not reported"
 /improve commit            (uses the Skill Feedback points raised earlier in the chat)
 ```
 
@@ -792,7 +703,7 @@ competitors; volumes from a connected SEO tool or a CSV you export (Keyword Plan
 Console), otherwise `unknown`: it never makes up a number. Terms are grouped by intent into one
 page each (no page per place name without real work there), each with the questions it answers,
 its schema types and its links. `docs/seo.md` gets the keyword table and the page plan; new
-pages and rework go on the roadmap after one confirmation, for `/build`. Rerun it quarterly: it
+pages and rework go on the roadmap after one confirmation, for `/task-readiness`. Rerun it quarterly: it
 starts from the pages closest to page one.
 
 ### /explain
@@ -812,14 +723,7 @@ order (with `path:line` and _why_ it's written that way), names 1-2 ways it coul
 asks 2-3 multiple-choice questions to check understanding, re-explaining a part when an answer
 is wrong.
 
-### /task-readiness
 
-Check that a task is ready for an agent before it starts. `/build` runs it in its Define step
-for Features; run it by hand before any vague or risky task. It sizes the work, states the goal
-and its assumptions, probes the tools and ports, and names **one exact command per acceptance
-criterion** from `AGENTS.md § Commands` (a check counts once it has been seen failing). Existing
-failures, and `Security:`/`Quality:` output, are noted as the baseline so only new findings count
-later.
 
 ### /distill-skill
 
@@ -830,7 +734,7 @@ missing information, out of reach). Only runs when you ask.
 
 ### lessons (Claude-only)
 
-Not in the `/` menu; Claude invokes it at the end of `/build`, `/convert` and fixes, or whenever
+Not in the `/` menu; Claude invokes it at the end of `/task-readiness`, `/convert` and fixes, or whenever
 it learns something worth keeping. It writes a lesson only when it is **not derivable** from the
 code, **changes what the next session does**, and was **actually observed** (a bug, a failed
 attempt, your correction). Zero lessons is the normal outcome.
@@ -851,8 +755,7 @@ Code itself loads the right `AGENTS.md` at the right moment.
 ## The verifier agent
 
 `agents/verifier.md` runs on **Sonnet** in a fresh context, so it judges the code without the
-builder's assumptions. `/build` gives it the spec path, the dev command + port and the changed
-files.
+builder's assumptions. `/task-readiness` gives it the criteria, changed files and baseline.
 
 - It **doesn't edit source files** (throwaway scripts in a temp dir are allowed and removed).
 - It runs the full suite and typecheck/lint, and gives every criterion **pass/fail with
@@ -900,8 +803,8 @@ A [mod](https://code.claude.com/docs/en/plugins/mods/overview) (`hooks/register.
 files next to it): code that runs inside Claude Code. **Requires Claude Code 2.1.287+**; older
 versions skip it. It never writes files.
 
-**Context** (reads the spec selected by the latest explicit `/build <slug>` or expanded kit
-build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch):
+**Context** (reads the spec selected by the latest explicit `/task-readiness <slug>` or expanded kit
+task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>` branch):
 
 - **Before native compaction** (auto, `/compact`, plugin or precompute), it adds preservation
   priorities: the current request and user corrections, decisions and reasons, failed attempts,
@@ -939,8 +842,7 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
 - **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (the band's profile button cycles them,
   or `/mode lean|balanced|quality|off`). The choice is kept across sessions. Each prompt is sorted (kit's own skills by name, the rest by a Haiku
   classifier) into question, routine, planning or heavy work, and the profile maps that to a
-  model and effort. `/build` counts as planning work, not heavy: it starts from a spec and ends
-  in a fresh-context verifier, and xhigh costs about twice high on Opus for little gain. A short
+  model and effort. A short
   reply that is not a question (`ja`, `doe maar`, 30 characters or fewer) keeps the kind of the
   work before it, so it never drops to low in the middle of a build:
 
@@ -975,16 +877,15 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   band shows `paused until 14:05`, and **Resume now** ends the pause by hand. The prompt
   cache is kept warm meanwhile (see Keep warm), only when the reset is under 5 hours away:
   further out, a cold start is cheaper. At the reset a cut-off turn continues by itself.
-- **Flow**: the change workflow, for every request and without `/build`. Each change task gets
+- **Flow**: the change workflow, for every request and without `/task-readiness`. Each change task gets
   a track, from a Haiku classifier that judges the change's risk (not the model it needs):
 
   ```
   light   a small local change: make it, run a check that covers it
   medium  a bounded behaviour change: 2-4 criteria in the chat, test first, the checks
           that cover it (the full suite when shared code changed)
-  heavy   a new capability, a shared interface, a migration, unclear scope: the build
-          skill up to and including Verify (spec you approve, the verifier), committing
-          and pushing nothing unless you ask; /build is always heavy
+  heavy   a new capability, a shared interface, a migration or unclear scope:
+          task-readiness, checks and a verifier; commit or push only when authorized
   ```
 
   One note goes out at the start and when the task grows, never on every prompt. It grows by
@@ -1040,7 +941,7 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   is logged with both 5h meters; `/flow` shows the counts per level and how many E1+
   decisions saw a GPT run before the next one.
 
-- **Delegation**: flow's decision note (and `/build`) hands self-contained work to the tool
+- **Delegation**: flow's decision note (and `/task-readiness`) hands self-contained work to the tool
   `mcp__kit__delegate` with a role. The mod picks Claude or GPT by role and by which plan has
   room, on the newest model per family:
 
@@ -1063,10 +964,7 @@ build command, falling back to the current `feat/<slug>` or `fix/<slug>` branch)
   without asking (that switch is the standing request); with it off, a write asks first. A GPT run returns its final message, the files
   it changed and a `thread` for a follow-up without a new brief; its whole log stays in Codex's
   session file. Writing runs one at a time, commit nothing, and Claude reviews the diff and runs
-  the checks. A Claude route comes back as "run this as an Agent subagent on model X". With
-  the tool there, `/build` also gets a blind second plan for each spec (differences become Open points
-  for you), hands self-contained criteria to `build`, and adds a review by the other family to
-  its verify step. Not free: the brief, the report and the diff review still cost Claude
+  the checks. A Claude route comes back as "run this as an Agent subagent on model X". For heavy work, task-readiness also requests a review by the other model family. Not free: the brief, the report and the diff review still cost Claude
   tokens, so it pays off for work with many steps, not for a one-line fix.
 
 - **Task runner**: `mcp__kit__run_task` takes one change brief plus 1-3 covering checks (each
@@ -1133,10 +1031,10 @@ columns, above the prompt otherwise):
   click also counts when the pane didn't have focus yet; the catch is that Tab onto a button there presses it. The roadmap: `docs/roadmap.md` live, grouped by phase (a release: `v1 · MVP`, `v1.1 · Sharing`; any `##` heading works, shown as written): a
   card per feature with its state, and for one in progress its step (define → build → verify, with the criteria count while verifying). **Pick
   up** (open), **Build** (spec ready), **Resume** (building) or **Verify** (ready to verify)
-  clears the chat and runs `/build <slug>` in the fresh one, which continues at that step. A feature not started has **▶** (Pick up), on the desktop app **↗** (starts `/build <slug>` at once in a session of its own worktree, linked to this chat so it reports back here; when the app refuses that, a chip you click instead; the card then says "sent to worktree", later "runs on <branch>" once that session commits the spec, and pressing ↗ again asks "Again?") and **⋯**, a row of buttons that
+  clears the chat and runs `/task-readiness <slug>` in the fresh one, which continues at that step. A feature not started has **▶** (Pick up), on the desktop app **↗** (starts `/task-readiness <slug>` at once in a session of its own worktree, linked to this chat so it reports back here; when the app refuses that, a chip you click instead; the card then says "sent to worktree", later "runs on <branch>" once that session commits the spec, and pressing ↗ again asks "Again?") and **⋯**, a row of buttons that
   move it to another phase or to `## Later`, or remove it; a phase heading folds its
   cards (a folded heading turns dim), finished phases wait behind one "✓ v1 · MVP, …" line, and in an unfinished one the done features fold into one "✓ n done" line; **Remove** asks once ("Remove?") before it acts; **+ Add** in a phase heading adds one, and **+ Add** in the Later heading adds an idea there; a Later idea's ⋯ restores it. Done and in-progress features can't
-  be edited there (their state is `/build`'s). The whole heading text folds a phase, or Later. In plan
+  be edited there (their state is `/task-readiness`'s). The whole heading text folds a phase, or Later. In plan
   mode it shows the draft, read-only, without the dashboard.
 - **Theme**: `/theme` shows its proposal before you approve it: colors for light and dark
   with contrast ratios, a sample card and button, the type scale in the real fonts, spacing,
@@ -1146,7 +1044,7 @@ columns, above the prompt otherwise):
 
 The skills pass their data to the panes as tool calls (`mcp__kit__roadmap_view`,
 `mcp__kit__theme_view`); those are display-only and allowed without a prompt. So is
-`mcp__kit__fresh_start`, which `/build` calls only after you picked Fresh start.
+`mcp__kit__fresh_start` for clearing and resuming a chat.
 
 Trunk mode or no matching spec → the context part shows nothing. To turn every mod off, set
 `"disableAllHooks": true` (this also stops push-guard and format-on-save).
@@ -1155,71 +1053,9 @@ Trunk mode or no matching spec → the context part shows nothing. To turn every
 
 ## Git, branches and parallel sessions
 
-**Branches, landed per project.** The default branch is always live (on Vercel and similar
-hosts, a push to it deploys). Every feature or fix gets its own branch. How a finished `/build`
-lands is set per project with `Land:` in `AGENTS.md § Git`: `merge` merges it straight into the
-default branch and pushes, `pr` pushes the branch and opens a pull request. Missing → `/build`
-asks once and writes the answer.
-
-Set per project in `AGENTS.md § Git` (`/setup` asks):
-
-| Mode                 | When                                                                                            | What the skills do                                                                                                                                             |
-| -------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `branches` (default) | parallel sessions, or the host deploys from the default branch                                  | `/build` creates `feat/<slug>` / `fix/<slug>` when you're on the default branch and lands it per `Land:` when the feature is done; `/launch` tags and versions |
-| `trunk`              | solo, **one session at a time**, nothing deploys from the default branch (e.g. school projects) | commits straight to the default branch                                                                                                                         |
-
-**Parallel sessions: use the desktop app's worktrees.** Start each task in its own session with
-the **worktree** option next to the branch name. Every session then has its own copy of the
-project on its own branch, so sessions can't overwrite each other's files. kit doesn't build its
-own worktree system; it makes itself safe for this:
-
-- **Specs travel with the branch.** `docs/` is committed, so a worktree has the full roadmap and
-  specs without any syncing (v1 needed symlinks for this).
-- **Claims.** `/build` commits a feature's spec as soon as you approve the plan. Other sessions
-  see that commit (worktrees share git history), and `/build` never starts a slug that is
-  claimed on another branch: without an argument it takes the next free item.
-- **Fresh worktrees start ready.** `/setup` writes a `.worktreeinclude` with the gitignored
-  files a worktree needs (such as `.env`), and `AGENTS.md § Git` names the install command that
-  `/build` runs first in an empty worktree.
-- **Own dev server per session.** The default port may already serve another session's code
-  (or the app's own preview). So every session uses only a server it started itself, on a free
-  port when the default is taken, with the app's URL variables (e.g. `NEXT_PUBLIC_SERVER_URL`)
-  pointed at it; the verifier tests only the URL it is given. The rule lives in
-  `AGENTS.md § Git`, so it also holds in plain chats. `/setup` turns on `autoPort` in
-  `.claude/launch.json` so the app's preview picks a free port by itself.
-- **Shared state outside git.** Worktrees share everything git doesn't track, such as a local
-  database. Some frameworks change the schema just by running (Payload's Postgres adapter pushes
-  its schema in development), so `/setup` writes a database line in `AGENTS.md § Git`: its own
-  `DATABASE_URL` per worktree, or schema push off outside the main checkout, and migrations
-  only from the main checkout.
-- **Merge conflicts** in `docs/roadmap.md`, `docs/decisions.md` or `AGENTS.md` when a branch syncs
-  with the default branch keep compatible additions of both sides (each session adds its own),
-  drop duplicates and superseded lines, and never leave two contradicting rules.
-- **Add roadmap items from inside the worktree session** that will build them. A new worktree
-  can start from `origin/<default>` rather than your local branch, so an unpushed roadmap edit on
-  main may be missing there (and pushing main may deploy).
-- **Claims reach teammates.** With a remote, `/build` pushes the feature branch right after the
-  plan is approved (the plan says so), and fetches before checking claims.
-- **Worktrees are always the app's.** `/build` never creates one itself: a worktree made from
-  inside a session works for git, but the desktop app doesn't know about it, so you'd lose the
-  PR panel, syncing with the base branch and auto-archive (tested).
-
-How two parallel sessions play out:
-
-```
-Session A (+ New session, "worktree")        Session B (same)
- own branch + .env (.worktreeinclude)         own branch + .env
- /build → installs deps → takes "reminders"   /build → skips "reminders" (claimed)
- plan → accept → spec commit = claim           → takes "streaks" → spec commit
- build → verifier on its own port             build → verifier on its own port
- → commit → Land: merge → main + pushed         → commit → Land: pr → push + PR
- → archive the session (worktree removed)      app follows CI → merge → session auto-archives
-```
-
-**Recommended desktop settings** (Settings → Claude Code): a branch prefix to keep these
-branches together, and with `Land: pr` _Auto-archive after PR merge or close_ so finished
-sessions clean themselves up (the app follows the PR's CI and can auto-fix or auto-merge it).
-With `Land: merge` no PR exists, so archive a finished worktree session yourself.
+`AGENTS.md` records the project's Git conventions. Use separate app worktrees for
+parallel tasks when appropriate; keep uncommitted work and shared dependencies in
+mind. Ask before pushing unless the session has already authorized it.
 
 ### Plain chats (no skill)
 
@@ -1235,50 +1071,34 @@ than in skills:
 | Branch first in `branches` mode                                   | `/commit` offers a branch when you're on the default branch |
 
 What a plain chat skips on purpose: specs, claims and the independent verify. That's fine for
-small changes; use `/build` once it's a feature.
+small changes; use `/task-readiness` once it's a feature.
 
 ## Common flows, step by step
 
 | Situation                 | Flow                                                                              |
 | ------------------------- | --------------------------------------------------------------------------------- |
-| New idea                  | `/setup <idea>` (folder, interview, scaffold) → `/build` → `/build` …             |
-| Existing repo, no kit yet | `/setup` → `/product` → `/build`                                                  |
-| v1 project                | `/setup` (migrate) → check the roadmap → `/build`                                 |
-| Interrupted work          | new chat → `/build` (or `/build <slug>`)                                          |
-| Bug in a finished feature | `/build "fix: …"` → logged in that spec's `## Fixes`                              |
+| New idea                  | `/setup <idea>` (folder, interview, scaffold) → `/task-readiness <task>`             |
+| Existing repo, no kit yet | `/setup` → `/product` → `/task-readiness <slug>`                                                  |
+| v1 project                | `/setup` (migrate) → check the roadmap → `/task-readiness <slug>`                                 |
+| Interrupted work          | new chat → `/task-readiness <slug>`                                          |
+| Bug in a finished feature | `/task-readiness "fix: …"` → reproduce, fix and verify                              |
 | Small tweak               | just ask in chat, then `/commit`                                                  |
-| Several things at once    | one desktop session per task, each with the **worktree** option; `/build` in each |
+| Several things at once    | one desktop session per task, each with the **worktree** option; `/task-readiness` in each |
 | Go live / release         | `/launch` (checks, notes, merge or version tag)                                   |
 | Before delivering a site  | `/audit` → fix the small things → `/launch`                                       |
 | Free check for a prospect | `/scan <url>` outside a project → send the one-page report                        |
-| SEO for a client          | `/scan` → `/intake` (once) → `/seo` → `/build` per page → `/audit` → `/launch`    |
-| Monthly SEO               | `/scan` → `/build` the points it adds; `/seo` again each quarter                  |
+| SEO for a client          | `/scan` → `/intake` (once) → `/seo` → `/task-readiness` per page → `/audit` → `/launch`    |
+| Monthly SEO               | `/scan` → `/task-readiness` the points it adds; `/seo` again each quarter                  |
 | Understand what was built | `/explain` (last change), `/explain <slug>` or `/explain <file>`                  |
 | New idea mid-project      | `/product add <idea>`; verifier notes are also offered as roadmap items           |
 | Rethink the plan          | `/product critique`                                                               |
-| Design → code             | `/convert <source>`, or put the source in a spec's `Design:` and `/build`         |
+| Design → code             | `/convert <source>`, or put the source in a spec's `Design:` and `/task-readiness`         |
 | Visual foundation         | `/theme` before the first UI work, or `/theme from-code` to clean up              |
 | A kit skill annoyed you   | `/improve <skill> "what happened"`                                                |
 | Commit stray work         | `/commit`                                                                         |
 
-**Example: building one feature**
-
-```
-you   /build
-kit   Next open item: habit-crud. (reads product.md + code, drafts the spec)
-kit   One question: should deleting a habit also delete its history?  [Yes / Keep history / …]
-you   Keep history
-kit   (plan: 3 criteria, approach, tests, wireframe)          → you accept
-kit   writes docs/specs/habit-crud.md, links it in the roadmap
-kit   builds test-first; suite green
-kit   verifier: 3/3 pass (2 by test, 1 in browser), 0 manual
-kit   adds the verifier's 1 improvement note under ## Later
-kit   commit: feat(habit-crud): add create, rename and delete
-      BUILD · habit-crud · feature
-      criteria   3/3 verified (0 manual)
-      later      +1 idea added under ## Later
-      next       streaks
-```
+**Example:** `/task-readiness habit-crud` resumes the spec, checks the goal and
+baseline, then works toward the criteria and reports verification evidence.
 
 ---
 
@@ -1290,8 +1110,8 @@ kit   commit: feat(habit-crud): add create, rename and delete
 | Every session                   | `~/.claude/CLAUDE.md` and the project's root `AGENTS.md` | your files        |
 | Claude reads a file in `src/x/` | `src/x/AGENTS.md`                                        | only then         |
 | You run a skill                 | that skill's `SKILL.md` (~0.4k–1.6k tokens)              | only then         |
-| `/build` fix path / define      | `references/debug.md` / `references/spec-template.md`    | only on that path |
-| `/build` verify                 | the verifier runs in its own context                     | not in your chat  |
+| `/task-readiness` spec          | `references/spec-template.md`                            | only when needed  |
+| `/task-readiness` verify                 | the verifier runs in its own context                     | not in your chat  |
 | A skill needs project state     | the relevant `docs/` file                                | on demand         |
 
 Hooks run outside the model and add no tokens.
@@ -1319,8 +1139,8 @@ in the project stops Claude Code from reading `AGENTS.md` at all; run `/setup` (
 Run `/memory` or `/context` and look for the file under memory files. Nested files only load
 after Claude reads a file in that directory.
 
-**`/build` isn't found.** Run `claude plugin details kit`; in an open session run
-`/reload-plugins`. If another skill uses the bare name, use `/kit:build`.
+**`/task-readiness` isn't found.** Run `claude plugin details kit`; in an open session run
+`/reload-plugins`. If another skill uses the bare name, use `/kit:task-readiness`.
 
 **A push was denied.** That's the push-guard in bypass mode. Say "yes, push" in chat; Claude
 re-runs it with `KIT_PUSH_OK=1`.
@@ -1329,7 +1149,7 @@ re-runs it with `KIT_PUSH_OK=1`.
 doubt; a manual item should only cover credentials, perception, devices or audio. Answer it,
 then add the test as a roadmap item if it matters.
 
-**A spec and the code disagree after a crash.** `/build <slug>` compares the spec with
+**A spec and the code disagree after a crash.** `/task-readiness <slug>` compares the spec with
 `git status` on resume and tells you what it found. Correct the spec's `Status` by hand if needed.
 It's just markdown.
 
@@ -1343,10 +1163,8 @@ and grades what happened: files written, tools called, the order of calls, text 
 
 | Case                      | What it guards                                                                                                      |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `build-routes-small`      | a one-line change takes the small path: no spec, no plan mode                                                       |
-| `build-routes-feature`    | a roadmap feature stops for approval with happy/edge/error criteria, no code edits yet                              |
-| `build-routes-fix`        | a bug is reproduced (tests run) before the code is edited, and actually fixed                                       |
-| `build-resumes`           | `/build` with no argument resumes the in-progress spec and starts the verifier                                      |
+| `task-readiness-ready-block` | readiness fields or the all-clear line appear |
+| `task-readiness-preexisting-failure` | an existing failure is reported and left untouched |
 | `commit-blocks-env`       | `staging-check.js` runs and a `.env` file never ends up in the commit                                               |
 | `commit-no-push`          | `/commit` commits but never pushes on its own                                                                       |
 | `setup-migrates-v1`       | the v1 migration keeps real items/lessons and drops v1-only ones (judged by a model)                                |
@@ -1386,7 +1204,7 @@ behind it can go. Eval runs use the CLI's own login: if they fail with `Not logg
 .claude-plugin/plugin.json        manifest (name: kit)
 .claude-plugin/marketplace.json   marketplace (airmile)
 skills/<name>/SKILL.md            one workflow per skill
-skills/build/references/           debug.md, spec-template.md (loaded on demand)
+skills/task-readiness/references/   spec-template.md (loaded on demand)
 skills/commit/scripts/            staging-check.js
 skills/setup/scripts/             migrate-v1.js, detect-tools.js (+ .test.cjs)
 skills/scan/scripts/              seo-facts.js, seo-facts.test.cjs
@@ -1398,7 +1216,7 @@ AGENTS.md                         rules for working on this repo
 
 Rules (also in `AGENTS.md`):
 
-- **Budgets**: `SKILL.md` ≤ 150 lines (`build` ≤ 200), max 2 files in `references/`. Check with
+- **Budgets**: `SKILL.md` ≤ 150 lines (`task-readiness` ≤ 110), max 2 files in `references/`. Check with
   `wc -l skills/*/SKILL.md`.
 - **No `shared/` folder and no state files.** Skills share files in the target project, and
   each file documents its own format in its header. Changing a format means changing the

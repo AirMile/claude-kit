@@ -1,6 +1,14 @@
 import { expect, test } from "claude-code/testing";
 
-import { away, claims, failure, SENT_TTL, session, worktrees } from "./roadmap-worktree";
+import {
+  away,
+  chip,
+  claims,
+  failure,
+  SENT_TTL,
+  session,
+  worktrees,
+} from "./roadmap-worktree";
 
 const LOG = [
   "refs/heads/claude/great-hypatia",
@@ -86,11 +94,14 @@ test("failure reads why a call was refused, or null when it went through", async
   );
 });
 
-test("session starts /kit:build in a linked worktree session with a valid name", async () => {
+test("session starts /kit:task-readiness in a linked worktree session with a valid name", async () => {
   const s = session("a-very-long-feature-slug-for-tests");
   expect(s.use_worktree).toBe(true);
   expect(s.initiation).toBe("user_asked");
-  expect(s.prompt).toBe("/kit:build a-very-long-feature-slug-for-tests");
+  expect(s.prompt).toBe(
+    "/kit:task-readiness a-very-long-feature-slug-for-tests",
+  );
   expect(/^[a-z0-9-]{1,24}$/.test(s.name) && !s.name.endsWith("-")).toBe(true);
   expect(s.background.length >= 80).toBe(true);
+  expect(chip("login").prompt).toBe("/kit:task-readiness login");
 });

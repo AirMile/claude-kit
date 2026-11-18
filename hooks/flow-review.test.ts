@@ -103,7 +103,7 @@ test("a verifier binds to its spawn print and an untracked answer is ignored", a
     reason: "answer",
   } as never);
   await bash($, "npm test");
-  expect((await stop($)).block).toContain("spec has no verification yet");
+  expect((await stop($)).block).toContain("this heavy task has no current verification yet");
 });
 
 test("skip ends as waived on the next request", async ($, on) => {
@@ -206,4 +206,19 @@ test("clear logs reset for an open task", async ($, on) => {
   await write($, "src/a.ts");
   await $.session.end({ reason: "clear" } as never);
   expect((w.store.flowLog as { event?: string; outcome?: string }[]).at(-1)).toMatchObject({ event: "end", outcome: "reset" });
+});
+
+test("heavy recovery requires the verifier without a spec", async ($, on) => {
+  world(on, stored({ track: "heavy", lastEditAt: 1 }));
+  on("session.compact", async () => ({
+    messages: [{ role: "user", text: "Summary", toolUses: [] }],
+    tokensBefore: 10,
+    tokensAfter: 1,
+  }));
+  await stop($);
+  const result = await $.session.compact({
+    trigger: "manual",
+    messages: [{ role: "user", text: "Continue", toolUses: [] }],
+  });
+  expect(JSON.stringify(result)).toContain("kit:verifier on its criteria");
 });

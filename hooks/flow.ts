@@ -37,9 +37,6 @@ export type CheckStart = {
   kinds: CheckKind[];
 };
 
-const BUILD =
-  /^\s*\/(kit:)?build\b|<command-name>\/?(kit:)?build<\/command-name>/;
-
 let promptPrint: string | undefined; // the worktree when the last prompt came in
 let endedOnQuestion = false; // the last turn ended on a question to the user
 
@@ -112,17 +109,14 @@ export async function flowPrompt(
   const now = await $.clock.now();
   const p = await worktreePrint($);
   promptPrint = p;
-  const build = BUILD.test(text);
-  // A short reply ("ja") continues an open task; without one it is a request of its own, and
-  // so is /build, however short.
-  const thin = !!state.task && !build && isThin(text);
-  const labels = await classifyPrompt($, text, kind, build, thin);
+  // A short reply ("ja") continues an open task; without one it is a request of its own.
+  const thin = !!state.task && isThin(text);
+  const labels = await classifyPrompt($, text, kind, thin);
   const { change, verify, explore, ready } = labels;
   const step = policy.onPrompt({
     task: state.task,
     kind,
     change,
-    build,
     thin,
     answering: endedOnQuestion,
     text,
@@ -141,7 +135,6 @@ export async function flowPrompt(
     verify,
     explore,
     ready,
-    build,
     thin,
     prev: kept ? state.task?.levels : undefined,
     gate: kept ? (state.task?.gateV ?? state.task?.levels?.v) : undefined,
@@ -162,7 +155,7 @@ export async function flowPrompt(
       text: text.trim().slice(0, 60),
       track: state.task?.track,
       kind,
-      change: build ? "heavy" : change,
+      change,
       reason:
         step.event === "fold"
           ? "new request on open work"
@@ -274,10 +267,9 @@ export async function flowStop(
 export function flowRecovery(): string | undefined {
   if (!state.task || state.task.lastEditAt === 0) return undefined;
   const files = state.task.files.slice(0, 5).join(", ") || "code";
-  const verifier =
-    state.task.track === "heavy" && state.task.spec
-      ? " and the kit:verifier on its spec"
-      : "";
+  const verifier = policy.needsVerifier(state.task)
+    ? " and the kit:verifier on its criteria"
+    : "";
   const review =
     gateLevel(state.task) >= 2 ? " and an other-family review" : "";
   return `kit flow: an open ${state.task.track} task changed ${files}; before you finish, run the check that covers it${verifier}${review}.`;

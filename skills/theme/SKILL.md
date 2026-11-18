@@ -7,7 +7,7 @@ argument-hint: "[brief | image | url | from-code]"
 # Theme
 
 Gives a project one source of truth for its visual values, in the project's own idiom, so
-`/convert`, `/build` and the frontend rule can use tokens instead of raw values.
+`/convert`, `/task-readiness` and the frontend rule can use tokens instead of raw values.
 
 ## 0. Detect
 
@@ -91,7 +91,7 @@ file       <path>
 colors     <n> roles · contrast: all pass (lowest <ratio>)
 type       <families> · <n> steps
 replaced   <n raw values> (from-code only)
-next       /convert or /build
+next       /convert or /task-readiness
 ```
 
 Then offer `/commit`.

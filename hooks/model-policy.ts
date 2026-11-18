@@ -66,11 +66,9 @@ export function kindOfLabel(label: string | undefined): Kind | undefined {
   return (Object.keys(LABELS) as Kind[]).find((k) => LABELS[k] === label);
 }
 
-// kit's own skills need no classifier: their work is known. `build` works from a spec with
-// acceptance criteria and a verifier that reads it afresh, so it needs no more than planning:
-// xhigh costs about twice high on Opus for little gain (see README, Model and effort).
+// kit's own skills need no classifier: their work is known.
 const COMMANDS: Record<string, Kind> = {
-  build: "planning",
+  "task-readiness": "planning",
   product: "planning",
   seo: "planning",
   theme: "planning",
@@ -80,7 +78,7 @@ const COMMANDS: Record<string, Kind> = {
   lessons: "question",
 };
 
-// `/build x`, `/kit:build x`, or an expanded skill's `<command-name>/kit:build</command-name>`.
+// Plain or kit-prefixed slash commands, including an expanded skill's command-name tag.
 export function commandKind(text: string): Kind | undefined {
   const m =
     /^\s*\/([\w:-]+)/.exec(text) ??
@@ -216,4 +214,3 @@ const FILL: Partial<Record<string, string>> = {
   max: "█",
 };
 export const effortLabel = (effort: string): string => FILL[effort] ?? effort;
-
