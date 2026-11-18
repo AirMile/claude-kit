@@ -2,6 +2,7 @@
 name: launch
 description: Take finished work live safely: checks, release notes, merge or version tag. Use with /launch.
 argument-hint: "[nothing | patch | minor | major]"
+disable-model-invocation: true
 ---
 
 # Launch

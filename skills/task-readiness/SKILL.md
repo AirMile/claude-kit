@@ -1,6 +1,6 @@
 ---
 name: task-readiness
-description: Get a task ready for an agent, then do it: a clear goal, the tools, an exact check per criterion, agreed approval points; works features and bugs end to end. Use before a multi-step, vague or risky task, with a slug (`/task-readiness <slug>`) to resume, or when asked whether a task is ready. Skip small, obvious edits.
+description: Prepare and execute a code change: establish the goal, required tools, acceptance checks and approval points. Use before adding a capability, changing a shared interface, migrating data, or starting work with unclear scope or verification; also use to assess task readiness or resume a spec by slug (`/task-readiness <slug>`). Skip small, obvious local edits and routine bounded fixes with clear checks. For readiness-only requests, assess without implementing.
 argument-hint: "[task or slug]"
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Stage safely and write a conventional commit message, optionally push. Use with /commit.
+description: Stage safely and write a conventional commit message, optionally push. Use with /commit, or when the user asks to commit; never on its own initiative.
 argument-hint: "[extra context | feature=<slug>]"
 allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/scripts/staging-check.js)
 ---
