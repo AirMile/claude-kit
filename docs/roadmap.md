@@ -31,8 +31,6 @@
 
 ## Later
 
-- **check-compound-kinds** · `hooks/flow-check.ts` `checkOf`: `npm run lint && npm test` takes the kind of the first segment only; a test failure then opens `static`, and a green compound does not close an open `test`
-- **evidence-stale-kind** · `hooks/flow-evidence.ts` `onCheck`: the last open kind's pass stamps the evidence, so a kind that passed on older code stays closed after a later edit; track the print per kind
 - **detect-watch-scripts** · `skills/setup/scripts/detect-tools.js`: a `test` script with `--watch` (`vitest --watch`, `jest --watch`) is written as is and hangs; only Angular is corrected
 - **detect-dotnet-multi** · several csproj without a sln, several sln or a `.slnx` still give a bare `dotnet test` (MSB1011)
 - **detect-polish** · Gradle `./gradlew` on Windows cmd; `bandit`/`vulture` scan `.venv`; clippy offered without manifest evidence; Gradle text match includes comments

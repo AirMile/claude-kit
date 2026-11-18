@@ -49,3 +49,15 @@ test("a /task-readiness kit started on the user's click gets the profile's model
   });
   expect(await runText(ui)).toContain("▆ Opus 5.5");
 });
+
+test("/task-readiness <slug> is heavy again, whatever the classifier says", async ($, on) => {
+  const w = world(on, {
+    model: "claude-opus-5-5",
+    label: QUESTION,
+    labels: [ROUTINE],
+    change: CHANGE_LABELS.light,
+    turns: 5,
+  });
+  await $.prompt.submit({ text: "/task-readiness login", origin: TYPED });
+  expect(String(w.sent[0]?.context)).toContain("kit flow (heavy)");
+});

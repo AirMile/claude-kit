@@ -53,6 +53,11 @@ export function parseLabels(
   return out;
 }
 
+// `/task-readiness <slug>` resumes a spec's work: always heavy, whatever the classifier says.
+const RESUME =
+  /^\s*\/(?:kit:)?task-readiness\s+[a-z0-9][a-z0-9-]*\b|<command-name>\/?(?:kit:)?task-readiness<\/command-name>[\s\S]*<command-args>\s*[a-z0-9][a-z0-9-]*/i;
+export const isResume = (text: string): boolean => RESUME.test(text);
+
 // The prompt classifiers run together: what changes, what it needs verified, whether fresh
 // reading is needed. A direct question skips the first two; without GPT, the last is skipped.
 // Only the questions asked go into the one call; none asked, no call.

@@ -3,8 +3,9 @@ import type { EngineInterface, On } from "claude-code";
 import { gateLevel } from "./flow-evidence";
 import { checkOf, checkPassed, type CheckKind } from "./flow-check";
 import { flowCommandRun } from "./flow-command";
+import { ensureRequired } from "./flow-required";
 import { promptLevels, raiseLevels } from "./flow-levels";
-import { classifyPrompt } from "./flow-prompt";
+import { classifyPrompt, isResume } from "./flow-prompt";
 import { endEntry, type Ending } from "./flow-log";
 import * as policy from "./flow-policy";
 import { log, worktreePrint } from "./flow-store";
@@ -62,6 +63,7 @@ export async function flowCheckStart(
 ): Promise<CheckStart | undefined> {
   await load($);
   if (!state.task) return undefined;
+  await ensureRequired($);
   return {
     startedAt: await $.clock.now(),
     startPrint: await worktreePrint($),
@@ -73,6 +75,7 @@ export async function flowCheckEnd(
   $: EngineInterface,
   start: CheckStart,
   passed: boolean,
+  output?: string,
 ): Promise<string | undefined> {
   await load($);
   if (!state.task) return undefined;
@@ -82,6 +85,7 @@ export async function flowCheckEnd(
     start.startedAt,
     start.startPrint,
     start.kinds,
+    output,
   );
   // The task's first failing check raises its levels once; later ones are the same work.
   const note =
@@ -112,7 +116,8 @@ export async function flowPrompt(
   // A short reply ("ja") continues an open task; without one it is a request of its own.
   const thin = !!state.task && isThin(text);
   const labels = await classifyPrompt($, text, kind, thin);
-  const { change, verify, explore, ready } = labels;
+  const { verify, explore, ready } = labels;
+  const change = isResume(text) ? "heavy" : labels.change;
   const step = policy.onPrompt({
     task: state.task,
     kind,
@@ -127,6 +132,7 @@ export async function flowPrompt(
   if (step.ended)
     await log($, endEntry(step.ended, ending(step.ended, p), now));
   state.task = step.task;
+  await ensureRequired($);
   const kept = ["continue", "escalate", "fold"].includes(step.event);
   const decided = await promptLevels($, {
     text,
@@ -180,6 +186,7 @@ export async function flowEdit(
   const step = policy.onEdit(state.task, path, now, now, promptPrint, gpt);
   if (!step) return undefined;
   state.task = step.task;
+  await ensureRequired($);
   await save($);
   if (step.started)
     await log($, {
@@ -293,7 +300,7 @@ export function flow(on: On) {
     const ran = await next(e);
     if (!start || !check || ran.deny !== undefined) return ran;
     const passed = checkPassed(check, ran.isError === true, ran.text ?? "");
-    const note = await flowCheckEnd($, start, passed);
+    const note = await flowCheckEnd($, start, passed, ran.text ?? "");
     return note ? { ...ran, context: [...(ran.context ?? []), note] } : ran;
   });
 

@@ -71,6 +71,10 @@ export type Task = {
   closedKinds?: CheckKind[]; // failed kinds closed by a later pass; an edit reopens them
   closedPrints?: Partial<Record<CheckKind, string>>; // the worktree each closed kind passed on
   failedAt?: Partial<Record<CheckKind, number>>; // when each kind last failed or was reopened
+  required?: CheckKind[]; // the kinds AGENTS.md § Commands lists; undefined: not read yet
+  passedPrints?: Partial<Record<CheckKind, string>>; // the worktree each kind last passed on
+  passedAt?: Partial<Record<CheckKind, number>>; // when each kind last passed (no git)
+  baseline?: Partial<Record<CheckKind, string>>; // failure hash of a kind red before the first edit
   verifier?: "pass" | "fail";
   blocks: number;
   blockedRound?: string; // the round of changes the last hold was for

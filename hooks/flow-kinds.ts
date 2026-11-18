@@ -1,4 +1,5 @@
 import type { CheckKind } from "./flow-check";
+import { failureHash, pristine } from "./flow-required";
 import type { Task } from "./flow-policy";
 
 // Evidence per kind of check, pure. A failing check opens its kinds; a pass closes a kind only
@@ -9,14 +10,16 @@ const without = (kinds: CheckKind[], gone: Iterable<CheckKind>) => {
   return kinds.filter((k) => !drop.has(k));
 };
 
-// A check ran. A pass is evidence for the worktree it started on; a failure wipes earlier
-// evidence (a later lint pass must not stand in for failing tests).
+// A check ran. A pass is evidence for the worktree it started on, per kind; a failure wipes
+// earlier evidence (a later lint pass must not stand in for failing tests). A failure before the
+// task's first edit is its baseline: the same failure later (same `output` hash) opens nothing.
 export function onCheck(
   task: Task,
   passed: boolean,
   startedAt: number,
   startPrint: string | undefined,
   checked: CheckKind | readonly CheckKind[],
+  output?: string,
 ): Task {
   const kinds = typeof checked === "string" ? [checked] : checked;
   if (passed) {
@@ -29,12 +32,50 @@ export function onCheck(
   }
   const failedAt = { ...task.failedAt };
   if (!passed) {
-    for (const k of kinds)
+    const hash = output === undefined ? undefined : failureHash(output);
+    const baseline = { ...task.baseline };
+    const same: CheckKind[] = []; // failures that were already there
+    const isNew: CheckKind[] = [];
+    for (const k of kinds) {
+      if (hash !== undefined && baseline[k] === hash) same.push(k);
+      else if (
+        hash !== undefined &&
+        kinds.length === 1 && // a compound run's output does not say which kind failed
+        baseline[k] === undefined &&
+        pristine(task, startPrint)
+      ) {
+        baseline[k] = hash;
+        same.push(k);
+      } else isNew.push(k);
+    }
+    // The kind ran on this code and showed nothing new: that counts as its run.
+    const passedPrints = { ...task.passedPrints };
+    const passedAt = { ...task.passedAt };
+    for (const k of same) {
+      if (startPrint !== undefined) passedPrints[k] = startPrint;
+      passedAt[k] = startedAt;
+    }
+    const stillOpen = without(task.openKinds ?? [], same);
+    if (!isNew.length)
+      return {
+        ...task,
+        baseline,
+        passedPrints,
+        passedAt,
+        openKinds: stillOpen,
+        ...(!stillOpen.length
+          ? { lastCheckAt: startedAt, checkedPrint: startPrint }
+          : {}),
+      };
+    for (const k of isNew)
       failedAt[k] = Math.max(failedAt[k] ?? 0, startedAt);
     return {
       ...task,
-      openKinds: [...new Set([...(task.openKinds ?? []), ...kinds])],
-      closedKinds: without(task.closedKinds ?? [], kinds),
+      baseline,
+      passedPrints,
+      passedAt,
+      openKinds: [...new Set([...stillOpen, ...isNew])],
+      closedKinds: without(task.closedKinds ?? [], isNew),
       failedAt,
       failed: task.failed + 1,
       lastCheckAt: 0,
@@ -49,10 +90,21 @@ export function onCheck(
   const closedPrints = { ...task.closedPrints };
   for (const k of closing)
     if (startPrint !== undefined) closedPrints[k] = startPrint;
+  const passedPrints = { ...task.passedPrints };
+  const passedAt = { ...task.passedAt };
+  const baseline = { ...task.baseline };
+  for (const k of kinds) {
+    if (startPrint !== undefined) passedPrints[k] = startPrint;
+    passedAt[k] = startedAt;
+    delete baseline[k];
+  }
   return {
     ...task,
     openKinds,
     closedPrints,
+    passedPrints,
+    passedAt,
+    baseline,
     closedKinds: [...new Set([...(task.closedKinds ?? []), ...closing])],
     failedAt,
     checks: task.checks + 1,

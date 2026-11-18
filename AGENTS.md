@@ -84,7 +84,7 @@ product/roadmap, `setup` for AGENTS/decisions, `task-readiness/references/spec-t
 - Hooks and scripts must work on Windows too (e.g. `npx` is `npx.cmd` there)
 - The mod (`hooks/*.ts*`) costs no context (it runs as code), so no total line budget: one
   purpose per file, ≤ ~300 lines each (larger → split). It reads only specs (`Status` +
-  criteria), `docs/roadmap.md` and read-only git state (spec commits and
+  criteria), `AGENTS.md § Commands` (flow: which kinds of check a task must pass), `docs/roadmap.md` and read-only git state (spec commits and
   worktrees on other branches); it writes only through `roadmap-file.ts` and
   `$.store` (worktree marks, pins). It starts Codex only for `mcp__kit__delegate`,
   `mcp__kit__run_task` and the window-sync ping: what a writing run changes is Codex's work, in

@@ -219,3 +219,21 @@ test("run_task records the same check kinds as Bash", async ($, on) => {
     },
   });
 });
+
+test("AGENTS.md § Commands makes every listed kind required for a medium task", async ($, on) => {
+  const w = world(on);
+  on("fs.read", async (_$, e) => {
+    if (!e.path.endsWith("/AGENTS.md")) throw new Error("missing");
+    return { value: "## Commands\n\n- Test: `npm test`\n- Lint: `npm run lint`\n" };
+  });
+  for (const f of ["a", "b", "c", "d"]) await write($, `/p/app/src/${f}.ts`);
+  w.later(1000);
+  await bash($, "npm run lint");
+  w.later(1000);
+  expect((await stop($)).block).toContain("a passing test run");
+  await write($, "/p/app/src/e.ts");
+  w.later(1000);
+  await bash($, "npm run lint && npm test");
+  w.later(1000);
+  expect((await stop($)).block).toBe(undefined);
+});

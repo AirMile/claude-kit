@@ -1,5 +1,6 @@
 import type { CheckKind } from "./flow-check";
 import type { Task } from "./flow-policy";
+import { requiredMissing } from "./flow-required";
 
 // Evidence, pure: checks and reviews belong to the code they started on, by git's fingerprint
 // or, without git, the order of observed edits. A missing reviewer excuses a hold, not evidence.
@@ -63,7 +64,8 @@ export const roundOf = (t: Task, print: string | undefined): string =>
 
 const checked = (t: Task, print: string | undefined) =>
   !(t.openKinds ?? []).length &&
-  (byPrint(t, print) ? t.checkedPrint === print : t.lastCheckAt > t.lastEditAt);
+  (byPrint(t, print) ? t.checkedPrint === print : t.lastCheckAt > t.lastEditAt) &&
+  !requiredMissing(t, print).length;
 const verifierCurrent = (t: Task, print: string | undefined) =>
   byPrint(t, print)
     ? t.verifiedPrint === print
@@ -119,18 +121,38 @@ const KIND_NAME: Record<CheckKind, string> = {
   static: "typecheck/lint",
   build: "the build",
 };
-const checkNeeds = (t: Task): string[] =>
-  (t.openKinds ?? []).map(
+const KIND_RUN: Record<CheckKind, string> = {
+  test: "test run",
+  static: "typecheck/lint",
+  build: "build",
+};
+const checkNeeds = (t: Task, print?: string): string[] => [
+  ...(t.openKinds ?? []).map(
     (kind) =>
-      `a passing ${kind === "test" ? "test run" : kind === "static" ? "typecheck/lint" : "build"} on this code (${KIND_NAME[kind]} failed earlier)`,
+      `a passing ${KIND_RUN[kind]} on this code (${KIND_NAME[kind]} failed earlier)`,
+  ),
+  ...requiredMissing(t, print)
+    .filter((kind) => !(t.openKinds ?? []).includes(kind))
+    .map(
+      (kind) =>
+        `a passing ${KIND_RUN[kind]} on this code (this project's AGENTS.md lists it)`,
+    ),
+];
+const baselineNote = (t: Task): string => {
+  const kinds = Object.keys(t.baseline ?? {}).filter(
+    (k) => !(t.openKinds ?? []).includes(k as CheckKind),
   );
+  return kinds.length
+    ? ` Pre-existing, unchanged failures (not this task's): ${kinds.join(", ")}.`
+    : "";
+};
 
 export function missing(t: Task, print: string | undefined): string[] {
   const wants: string[] = [];
   if (!checked(t, print))
     wants.push(
-      ...((t.openKinds ?? []).length
-        ? checkNeeds(t)
+      ...(checkNeeds(t, print).length
+        ? checkNeeds(t, print)
         : ["a passing check on this code"]),
     );
   if (needsVerifier(t) && !verifierCurrent(t, print))
@@ -196,11 +218,12 @@ export function holdText(
   const sentences: string[] = [];
   if (!checked(t, print))
     sentences.push(
-      ((t.openKinds ?? []).length
-        ? `kit flow: ${short(t.files)} still needs ${checkNeeds(t).join("; ")}. Run each failed check `
+      (checkNeeds(t, print).length
+        ? `kit flow: ${short(t.files)} still needs ${checkNeeds(t, print).join("; ")}. Run each missing check `
         : `kit flow: ${short(t.files)} changed after the last passing check. Run the check `) +
         "that covers the change (test, typecheck or lint, without a pipe that hides its exit " +
-        "code) and fix what fails. This project has no such check → say so and stop.",
+        "code) and fix what fails. This project has no such check → say so and stop." +
+        baselineNote(t),
     );
   if (needsVerifier(t) && !verifierCurrent(t, print))
     sentences.push(

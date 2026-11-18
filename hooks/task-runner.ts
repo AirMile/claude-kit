@@ -148,6 +148,7 @@ async function runTask($: EngineInterface, input: RunInput, toolUseId: string) {
             $,
             start,
             result.code === 0 && !result.error,
+            result.output,
           );
           if (note) notes.push(note);
         }
