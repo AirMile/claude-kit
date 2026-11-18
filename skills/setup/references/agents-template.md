@@ -10,6 +10,7 @@
 - Build: `<cmd>`
 - Security: `<cmd>` (dependency audit, secrets; omit when none)
 - Quality: `<cmd>` (dead code, duplication; omit when none)
+- Protected: `<globs>` (lint, type and test config, CI files, test helpers: what defines green; the user locks them with /guard on; omit when none)
 
 ## Conventions
 

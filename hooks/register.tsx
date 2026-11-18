@@ -6,6 +6,7 @@ import { codexHint, gptCached, gptOn, gptStatus } from "./codex-run";
 import { delegateTool, delegation, gptCommand } from "./delegate";
 import { runTaskTool, taskRunner } from "./task-runner";
 import { noteClaudeLimits } from "./delegate-balance";
+import { guard, guardCommand } from "./guard";
 import { flow, flowCommand, flowEdit, flowStop, resetFlow } from "./flow";
 import { noteFile, resetChat } from "./chat-facts";
 import { compaction } from "./compaction";
@@ -110,6 +111,7 @@ export const register: Register = (on) => {
   readWatch(on);
   delegation(on);
   taskRunner(on);
+  guard(on);
   flow(on);
   autoModel(on);
   kitBand(on);
@@ -128,6 +130,7 @@ export const register: Register = (on) => {
     await $.command.register(bandCommand);
     await $.command.register(gptCommand);
     await $.command.register(flowCommand);
+    await $.command.register(guardCommand);
     await refresh($);
     if (await gptOn($))
       void gptStatus($).then((st) => {

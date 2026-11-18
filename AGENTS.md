@@ -23,6 +23,8 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   `hooks/flow-store.ts`: each change task's
   track light/medium/heavy, its note pointing to task-readiness at the start or on growth, the verify gate on `classic.Stop`
   from the worktree's git fingerprint, the checks, reviews and verifier's answer; unverified work stays open, `/flow` in `hooks/flow-command.ts`),
+  the checker guard (`hooks/guard.ts` on the pure `hooks/guard-policy.ts`: `/guard on` denies edits to the
+  `Protected:` globs of `AGENTS.md § Commands`, the lock in `$.store`),
   `mcp__kit__delegate` (`hooks/delegate.ts` on the pure `hooks/delegate-policy.ts`: work handed
   to Claude or GPT by role and by which plan has room, the newest GPT model per family; the
   Codex side, its catalog, the ChatGPT meters, the GPT switch and a run, in `hooks/codex-run.ts`;
@@ -84,7 +86,7 @@ product/roadmap, `setup` for AGENTS/decisions, `task-readiness/references/spec-t
 - Hooks and scripts must work on Windows too (e.g. `npx` is `npx.cmd` there)
 - The mod (`hooks/*.ts*`) costs no context (it runs as code), so no total line budget: one
   purpose per file, ≤ ~300 lines each (larger → split). It reads only specs (`Status` +
-  criteria), `AGENTS.md § Commands` (flow: which kinds of check a task must pass), `docs/roadmap.md` and read-only git state (spec commits and
+  criteria), `AGENTS.md § Commands` (flow: which kinds of check a task must pass; guard: `Protected:` globs), `docs/roadmap.md` and read-only git state (spec commits and
   worktrees on other branches); it writes only through `roadmap-file.ts` and
   `$.store` (worktree marks, pins). It starts Codex only for `mcp__kit__delegate`,
   `mcp__kit__run_task` and the window-sync ping: what a writing run changes is Codex's work, in
