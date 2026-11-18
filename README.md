@@ -985,18 +985,18 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
 - **Keep warm**: keeps a chat's prompt cache alive while it waits. After 50 idle minutes (the
   cache lives an hour) a tiny request, a fork of the chat that replies "ok", reads the cached
   context again and so renews it. The band's limit button decides when:
-  - `⏸ Limit` (default): only while work is open: a plan-limit pause (when the reset is under
+  - `⏸ Limit`: only while work is open: a plan-limit pause (when the reset is under
     5 hours away), or a turn that ended with background work still running (subagents,
     shells, workflows) or a wake-up or `/loop` still to come. A turn that ends with nothing
     open stops it.
   - `⏸♨ Warm` (or `/warm`, `/warm on|off`): also whenever the chat is idle, for a chat whose
     context you want to keep; it stops after 24 hours without a turn.
-  - `⏸ Off`: never.
+  - `⏸ Off` (default for every new chat): never.
 
   Each ping costs a cache read of the whole context (0.05× the input price on Opus 5.5)
   where a rebuild costs a cache write (2× for the 1-hour cache), so warm is cheaper when you
   return within about 33 hours; pings count toward your limits. A failed ping stops it
-  (`⏸♨ Warm` drops back to `⏸ Limit`). A ping only goes out in the cache's last 10 minutes:
+  (`⏸♨ Warm` drops back to `⏸ Off`). A ping only goes out in the cache's last 10 minutes:
   after a sleep (or any gap past the hour) the cache is already cold and a ping would pay the
   full rebuild, so none is sent until the chat runs again. The 24 hours count from your last
   turn, sleep included; a ping's own turn does not reset them.

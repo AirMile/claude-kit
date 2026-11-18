@@ -92,10 +92,10 @@ async function tick($: EngineInterface) {
     pings += 1;
   } else if (r?.reason === "api-error") {
     // The limit (or the API) refused it: retrying every 5 minutes would not help.
-    // Warm drops back to Limit; limit-guard.ts sees that and stores it.
+    // Warm drops back to Off (the default); limit-guard.ts sees that and stores it.
     if (pauseUntil !== null) pauseRefused = true;
     else if (hold === "warm") {
-      hold = "pause";
+      hold = DEFAULT_HOLD;
       $.ui.toast("kit: keep warm stopped, a ping failed (api error).");
     } else openWork = false;
   }

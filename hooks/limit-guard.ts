@@ -85,12 +85,12 @@ export async function setHold($: EngineInterface, next: Hold) {
   $.ui.invalidate("ui.render");
 }
 
-// /warm: on is the hold with keep warm, off drops back to the plain pause.
+// /warm: on is the hold with keep warm, off drops back to Off (the default).
 export async function warmCommandRun($: EngineInterface, args: string) {
   const arg = args.trim().toLowerCase();
   const now = await getHold($);
   const on = arg === "on" ? true : arg === "off" ? false : now !== "warm";
-  await setHold($, on ? "warm" : now === "warm" ? "pause" : now);
+  await setHold($, on ? "warm" : now === "warm" ? DEFAULT_HOLD : now);
   return on
     ? "Keep warm on: after 50 idle minutes a tiny request renews the prompt cache."
     : "Keep warm off.";

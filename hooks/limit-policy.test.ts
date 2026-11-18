@@ -71,8 +71,8 @@ test("the limit button cycles off, warm, pause (Limit); each chat keeps its own"
   expect(nextHold("off")).toBe("warm");
   expect(nextHold("warm")).toBe("pause");
   expect(nextHold("pause")).toBe("off");
-  expect(holdOf(undefined, "s1")).toBe("pause"); // a new chat pauses
-  expect(holdOf({ s1: "off", s2: "bogus" }, "s2")).toBe("pause");
+  expect(holdOf(undefined, "s1")).toBe("off"); // a new chat starts Off
+  expect(holdOf({ s1: "pause", s2: "bogus" }, "s2")).toBe("off");
   const kept = withHold({ s1: "off" }, "s2", "warm");
   expect(kept).toEqual({ s1: "off", s2: "warm" });
   const many = Object.fromEntries(

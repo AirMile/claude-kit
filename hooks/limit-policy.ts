@@ -90,7 +90,7 @@ export function clockTime(at: number, now: number): string {
 // pause (Limit: kept warm while work is open: a pause, background work, a wake-up). Kept in $.store per session id, the newest MAX_HOLDS.
 export type Hold = "off" | "pause" | "warm";
 export const HOLDS: readonly Hold[] = ["off", "warm", "pause"]; // the press order: Off, Warm, Limit
-export const DEFAULT_HOLD: Hold = "pause";
+export const DEFAULT_HOLD: Hold = "off"; // every new chat starts with the button off
 const MAX_HOLDS = 20;
 
 const isHold = (v: unknown): v is Hold => HOLDS.includes(v as Hold);

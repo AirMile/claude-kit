@@ -43,7 +43,7 @@ const measure = (percentUsed: number) =>
 const TYPED = { text: "next step", origin: { kind: "composer" }, wait: false } as const;
 
 test("under the pause point prompts go through", async ($, on) => {
-  const w = world(on);
+  const w = world(on, { s1: "pause" });
   await $.session.measure(measure(80));
   const r = await $.prompt.submit(TYPED);
   expect(r.drop).toBe(undefined);
@@ -51,7 +51,7 @@ test("under the pause point prompts go through", async ($, on) => {
 });
 
 test("near the limit the chat pauses and keeps new prompts for the reset", async ($, on) => {
-  const w = world(on);
+  const w = world(on, { s1: "pause" });
   await $.session.measure(measure(97));
   expect(w.toasts.some((t) => t.includes("paused until"))).toBe(true);
   const r = await $.prompt.submit(TYPED);
@@ -59,7 +59,7 @@ test("near the limit the chat pauses and keeps new prompts for the reset", async
   expect(w.entered).toEqual([]);
 });
 
-test("a chat with the limit button off never pauses", async ($, on) => {
+test("a chat with the limit button off (the default) never pauses", async ($, on) => {
   const w = world(on, { s1: "off" });
   await $.session.measure(measure(97));
   expect(w.toasts.some((t) => t.includes("paused until"))).toBe(false);
@@ -72,5 +72,5 @@ test("/warm keeps the hold with keep warm for this chat", async ($, on) => {
   await $.command.run({ command: "warm", args: "on" } as never);
   expect(w.store.limitHold).toEqual({ s1: "warm" });
   await $.command.run({ command: "warm", args: "off" } as never);
-  expect(w.store.limitHold).toEqual({ s1: "pause" });
+  expect(w.store.limitHold).toEqual({ s1: "off" });
 });
