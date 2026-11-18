@@ -67,10 +67,10 @@ test("resume time reads as a clock time, with the day when not today", async () 
   expect(clockTime(at.getTime() + 24 * 60 * 60_000, at.getTime())).toMatch(/^\w{3} 14:05$/);
 });
 
-test("the limit button cycles off, pause, warm; each chat keeps its own", async () => {
-  expect(nextHold("off")).toBe("pause");
-  expect(nextHold("pause")).toBe("warm");
-  expect(nextHold("warm")).toBe("off");
+test("the limit button cycles off, warm, pause (Limit); each chat keeps its own", async () => {
+  expect(nextHold("off")).toBe("warm");
+  expect(nextHold("warm")).toBe("pause");
+  expect(nextHold("pause")).toBe("off");
   expect(holdOf(undefined, "s1")).toBe("pause"); // a new chat pauses
   expect(holdOf({ s1: "off", s2: "bogus" }, "s2")).toBe("pause");
   const kept = withHold({ s1: "off" }, "s2", "warm");

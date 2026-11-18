@@ -85,11 +85,11 @@ export function clockTime(at: number, now: number): string {
     : `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()]} ${hm}`;
 }
 
-// The band's limit button, a setting per chat: off (no pause, no pings), pause (the cache kept
-// warm while work is open: a pause, background work, a wake-up), or warm (also whenever the
-// chat is idle, up to ALWAYS_FOR_MS). Kept in $.store per session id, the newest MAX_HOLDS.
+// The band's limit button, a setting per chat, pressed in the order off, warm, pause: off (no pause,
+// no pings), warm (the cache also kept warm whenever the chat is idle, up to ALWAYS_FOR_MS), or
+// pause (Limit: kept warm while work is open: a pause, background work, a wake-up). Kept in $.store per session id, the newest MAX_HOLDS.
 export type Hold = "off" | "pause" | "warm";
-export const HOLDS: readonly Hold[] = ["off", "pause", "warm"];
+export const HOLDS: readonly Hold[] = ["off", "warm", "pause"]; // the press order: Off, Warm, Limit
 export const DEFAULT_HOLD: Hold = "pause";
 const MAX_HOLDS = 20;
 
