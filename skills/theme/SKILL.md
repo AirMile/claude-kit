@@ -1,6 +1,7 @@
 ---
 name: theme
 description: Create or update the visual theme: colors, fonts, spacing, motion as CSS variables. Use with /theme.
+disable-model-invocation: true
 argument-hint: "[brief | image | url | from-code]"
 ---
 

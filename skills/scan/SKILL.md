@@ -1,6 +1,7 @@
 ---
 name: scan
 description: Measure how findable a live site is: a free check for a prospect, or the monthly measurement. Use with /scan.
+disable-model-invocation: true
 argument-hint: "[url | nothing for the production URL]"
 allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/scripts/seo-facts.js *)
 ---

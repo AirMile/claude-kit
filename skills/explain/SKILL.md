@@ -1,6 +1,7 @@
 ---
 name: explain
 description: Explain code or a change at the user's level, with check questions. Use with /explain.
+disable-model-invocation: true
 argument-hint: "[nothing = last change | path or symbol | feature slug]"
 ---
 

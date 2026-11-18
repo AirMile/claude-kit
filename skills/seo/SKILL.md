@@ -1,6 +1,7 @@
 ---
 name: seo
 description: Plan search terms and pages from the intake and real search data, onto the roadmap. Use with /seo.
+disable-model-invocation: true
 argument-hint: "[nothing | path to a keyword or Search Console CSV]"
 ---
 

@@ -1,6 +1,7 @@
 ---
 name: convert
 description: Turn a Figma frame into working UI code, wired to the project's Payload CMS when it has one. Use with /convert.
+disable-model-invocation: true
 argument-hint: "[figma url | exported frame png] [target page/component]"
 ---
 

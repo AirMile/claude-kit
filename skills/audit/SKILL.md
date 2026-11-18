@@ -1,6 +1,7 @@
 ---
 name: audit
 description: Audit a whole site before delivery: errors, links, mobile, accessibility, SEO, images. Use with /audit.
+disable-model-invocation: true
 argument-hint: "[url | nothing for the local app]"
 ---
 

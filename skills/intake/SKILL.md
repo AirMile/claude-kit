@@ -1,6 +1,7 @@
 ---
 name: intake
 description: Draft the one-time client questions for SEO and record the answers in docs/seo.md. Use with /intake.
+disable-model-invocation: true
 argument-hint: "[nothing | the client's answers, pasted or as a file path]"
 ---
 

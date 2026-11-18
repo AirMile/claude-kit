@@ -1,6 +1,7 @@
 ---
 name: setup
 description: Set up or migrate a project for kit (AGENTS.md, docs/, scaffold). Use with /setup.
+disable-model-invocation: true
 argument-hint: "[nothing | idea for a new project]"
 allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/scripts/migrate-v1.js *), Bash(node ${CLAUDE_SKILL_DIR}/scripts/detect-tools.js *)
 ---
