@@ -82,11 +82,13 @@ const EXOTIC = /`|\$\(|<<|[(){}]/;
 const DQUOTED = /"(?:[^"\\]|\\.)*"|'[^']*'/g;
 const substitutes = (raw: string): boolean =>
   (raw.match(DQUOTED) ?? []).some((q) => q[0] === '"' && /`|\$[({]/.test(q));
-// A flag glued to a quote (`"--help"`, `--he"lp"`) hides node's own info flags from the whitelist.
-// After a bare `--` the words belong to the script (`npm test -- -t "-x"`): not read.
-const QUOTED_FLAG = /["']-|(?:^|\s)-[\w-]*["']/;
-const flagsQuoted = (raw: string): boolean =>
-  QUOTED_FLAG.test(raw.split(/\s--(?=\s|$)/)[0] ?? "");
+// A flag led or glued by a quote (`"--help"`, `--he"lp"`) hides an info flag from the whitelist.
+// Node reads flags anywhere, so its whole command is guarded; any other runner's words after its
+// own bare `--` belong to the script (`npm test -- -t "-x"`) and are not.
+const QUOTE_LED = /["']-/;
+const NODE_QUOTED = /["']-|(?:^|[\s\\])-[\w-]*["']/;
+const NODE_OWN = /^(?:yarn\s+)?node(?:\.exe)?(?:\s|$)/i;
+const BARE_DASHES = /\s--(?:\s|$)/;
 // `set -o pipefail` makes a pipeline's status the failing stage's: the pipe hides nothing.
 const PIPEFAIL = /^\s*set\s+(?:-\w+\s+)*-\w*o\s+pipefail\s*(?:;|&&|\n)/;
 const SETS = /\b(?:set|shopt)\b/g;
@@ -115,13 +117,18 @@ export function checkOf(raw: string): Check | undefined {
   const found: CheckKind[] = [];
   let piped = false;
   let masked = false;
+  let quotedFlag = false;
   for (let i = 0; i < parts.length; i += 2) {
     const seg = (parts[i] ?? "").trim();
     const first = seg.split(/(?<!\|)\|(?!\|)/)[0] ?? "";
     const head = first.replace(/(\S)(&?[<>])/g, "$1 $2");
-    const kind = kindOf(head.replace(PREFIX, ""));
+    const own = head.replace(PREFIX, "");
+    const kind = kindOf(own);
     if (!kind) continue;
     found.push(kind);
+    quotedFlag ||= NODE_OWN.test(own)
+      ? NODE_QUOTED.test(raw)
+      : !BARE_DASHES.test(own) && QUOTE_LED.test(raw);
     piped ||=
       first.length < seg.length &&
       !(PIPEFAIL.test(command) && (command.match(SETS)?.length ?? 0) === 1);
@@ -149,7 +156,7 @@ export function checkOf(raw: string): Check | undefined {
     ESCAPED.test(raw) ||
     EXOTIC.test(command) ||
     substitutes(raw) ||
-    flagsQuoted(raw);
+    quotedFlag;
   const [kind] = found;
   if (!kind) return undefined;
   const check: Check = { piped, kind, kinds: [...new Set(found)] };

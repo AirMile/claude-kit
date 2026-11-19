@@ -451,6 +451,10 @@ test("quoted text is text: realistic commands with quoted brackets still count",
     'yarn node --test "--help"',
     'node --test "${BASH_VERSION:+--version}"',
     'node --test "${| REPLY=--version; }"',
+    'cd -- . && node --test "--version"',
+    'node --title="a -- b" --test "--version"',
+    'node --test \\--ver"sion"',
+    'cd -- . && npm test "--help"',
   ])
     expect(
       checkOf(command)?.masked ?? checkOf(command)?.piped ?? "none",
@@ -458,6 +462,10 @@ test("quoted text is text: realistic commands with quoted brackets still count",
     ).not.toBe(false);
   // a hyphen inside a quoted path is no flag
   expect(checkOf('cd "C:/my-app" && npm test')?.masked).toBe(undefined);
+  expect(checkOf('npx vitest run -t "parses --help"')?.masked).toBe(undefined);
+  expect(checkOf('cd "C:/Program Files -x86" && npm test')?.masked).toBe(
+    undefined,
+  );
 });
 
 test("the status line wins: the last line decides, whatever the log said before", async () => {
