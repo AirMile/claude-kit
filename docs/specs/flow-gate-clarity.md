@@ -65,6 +65,12 @@ Plan only. Reviewed by Astra 2026-11-19 (3 P1: masked exit status via `; echo ex
 
 Slices 2-3 built (hold wording `noCheckSeen`, delegate `changedLines`). Known gaps, not redesigned: (1) `parseRequired` (flow-required.ts:38-39) silently drops a `Test:` command `checkOf` does not recognise (e.g. `./scripts/test.sh`), so the "add `Test:`" advice only helps for a command starting with a recognised runner; the advice says so. (2) A later task after a verified one starts with no checks and gets the "no command recognised" advice. (3) A masked or denied check counts as seen. (4) The runner list in the hold text is a literal and can drift from `RUNNERS`. The flow sees only Bash calls, not PowerShell: the advice says so.
 
+Known gaps of `checkOf` (a quoted-flag and unpaired-quote fix, 3a4816b, masks a whole-word quoted info flag after a forwarding runner's `--` and an unpaired quote; nothing more, a sealed-runner design is separate work), pinned by KNOWN tests in `hooks/flow-check.test.ts`:
+- partly quoted words after `--`: `npm test -- ""--help`, `"--"help`, `"--hel"p`, `"-"h`, `''--help`
+- unquoted info flags after a forwarding runner's `--`: `npm test -- --help`, `cargo test -- --help`
+- other no-run flags: `--listTests`, `--showConfig`, `-hV`, `--help=1`
+- the quote regex in `blank` is quadratic on a long run of escaped quotes (40k take about 1 s)
+
 ## Verify
 
 Slices 2-3 (branch claude/flow-gate-slice23-517f3f): kit:verifier pass on all criteria; Opus review pass, no P0/P1; GPT review not run (ChatGPT had no room). Tests: flow, commit-gate and delegate files green except what is red on origin/main too (`AGENTS.md § Commands makes every listed kind required for a medium task`, guard.test.ts).

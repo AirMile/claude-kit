@@ -483,6 +483,63 @@ test("quoted text is text: realistic commands with quoted brackets still count",
   );
 });
 
+test("a quoted info flag after the runner's own `--` is forwarded and masks; a quoted value is not", async () => {
+  for (const command of [
+    'npm test -- "--help"',
+    'npm test -- "--version"',
+    "npm test -- '-h'",
+    'yarn test -- "--help"',
+    'pnpm test -- "-v"',
+    'npm test -- -t "x" "-V"',
+    'npm test -- --he"lp"',
+    'npx -- vitest "--help"',
+    'npx -- vitest "--version"',
+  ])
+    expect(checkOf(command)?.masked, command).toBe(true);
+  for (const command of [
+    'npm test -- -t "-x"',
+    'npm test -- --grep "foo (bar)"',
+    "npm test -- -t '$(ls)'",
+    'npx vitest run -t "parses --help"',
+    'npm test -- --grep "--helpful"',
+  ])
+    expect(checkOf(command)?.masked, command).toBe(undefined);
+});
+
+test("an unclosed quote runs nothing: it gives no evidence", async () => {
+  for (const command of [
+    'npm test " && true',
+    'node --test "',
+    "node --test '",
+    "npm test -- -t \"it's",
+    'npm test "a" "',
+  ])
+    expect(checkOf(command)?.masked, command).toBe(true);
+  for (const command of [
+    `npm test -- -t "it's"`,
+    "npm test -- -t 'say \"hi\"'",
+  ])
+    expect(checkOf(command)?.masked, command).toBe(undefined);
+  expect(checkOf(`npm test -- -t "it's"`)?.masked).toBe(undefined);
+  expect(checkOf("npm test # don't")?.masked).toBe(undefined);
+});
+
+// KNOWN gaps: these pin today's unmasked result, so a later fix (the sealed runner) flips them.
+test("KNOWN gap: partly quoted and unquoted info flags after a forwarding runner's `--` still count", async () => {
+  for (const command of [
+    'npm test -- ""--help',
+    'npm test -- "--"help',
+    'npm test -- "--hel"p',
+    'npm test -- "-"h',
+    "npm test -- ''--help",
+    "npm test -- --help",
+    "cargo test -- --help",
+    "npm test -- --listTests",
+    "npm test -- --help=1",
+  ])
+    expect(checkOf(command)?.masked, command).toBe(undefined);
+});
+
 test("the status line wins: the last line decides, whatever the log said before", async () => {
   const check = checkOf("node --test > f.log 2>&1; echo exit=$?")!;
   expect(checkSettled(check, false, "# fail 0\nexit=1\n")).toBe(false);
