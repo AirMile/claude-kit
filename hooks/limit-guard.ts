@@ -79,9 +79,11 @@ export async function setHold($: EngineInterface, next: Hold) {
   syncHold($, next);
   if (holdFor) {
     const stored = await $.store.get(HOLD_KEY).catch(() => undefined);
-    await $.store.set(HOLD_KEY, withHold(stored, holdFor, next)).catch(() => {});
+    await $.store
+      .set(HOLD_KEY, withHold(stored, holdFor, next))
+      .catch(() => {});
   }
-  if (next === "off") await resumeNow($);
+  if (next !== "pause") await resumeNow($); // Off and Warm never hold a chat
   $.ui.invalidate("ui.render");
 }
 
@@ -106,7 +108,7 @@ export async function noteLimits(
     if (d !== null) rises = [...rises, d].slice(-5);
     last.set(r.kind, r);
   }
-  if (paused || (await getHold($)) === "off") return;
+  if (paused || (await getHold($)) !== "pause") return; // only the Limit hold pauses
   const now = await $.clock.now();
   const hit = overLimit(readings, stopAt(rises), now);
   if (hit) await pause($, hit.until, hit.percent, now);
