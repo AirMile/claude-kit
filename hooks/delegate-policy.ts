@@ -306,3 +306,13 @@ export function parseAgyModels(stdout: string): string[] {
 
 // agy reads the prompt only from the flag's own value, so a brief has a ceiling (argv limits).
 export const AGY_MAX_BRIEF = 200_000;
+
+// The "Changed:" lines of a delegate answer. A read-only run changed nothing by definition: a
+// working tree that differs afterwards is someone else's edit (the user, a hook, another run).
+export function changedLines(writes: boolean, files: string[]): string {
+  if (writes)
+    return files.length ? `Changed: ${files.join(", ")}` : "Changed: nothing";
+  return files.length
+    ? `Changed: nothing (read-only run)\nChanged meanwhile, not by this run: ${files.join(", ")}`
+    : "Changed: nothing (read-only run)";
+}

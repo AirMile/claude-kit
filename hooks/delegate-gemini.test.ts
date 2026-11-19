@@ -303,3 +303,16 @@ test("the retry names the approved folders it may read", async ($, on) => {
   await delegate($, { role: "research", brief: "x", provider: "gemini", dirs: ["/notes/vault/x"] });
   expect(w.spawned[1]?.argv.at(-1)).toContain("no files outside /p/app, /notes/vault/x");
 });
+
+test("a read-only Gemini run claims no changes; a tree that differs is listed apart", async ($, on) => {
+  const w = world(on, { agy: { json: ok("Fine.") } });
+  const out = await delegate($, {
+    role: "research",
+    brief: "Weigh this.",
+    provider: "gemini",
+  });
+  expect(w.spawned[0]?.argv).not.toContain("accept-edits");
+  expect(out).toContain("Changed: nothing (read-only run)");
+  expect(out).toContain("Changed meanwhile, not by this run: src/a.ts");
+  expect(out).not.toContain("\nChanged: src/a.ts");
+});

@@ -3,7 +3,7 @@ Criteria are checked [x] when built AND verified. -->
 
 # flow-gate-clarity
 
-Status: building (slices 1-2 built; slice 2 awaiting verifier and review; slice 3 and investigations open)
+Status: verifying (slices 1-3 built; slices 2-3 awaiting verifier and other-family review; investigations open)
 Design: —
 
 ## Goal
@@ -33,7 +33,7 @@ Slice 2 (what the hold says):
 
 Slice 3 (delegate):
 
-- [ ] `mcp__kit__delegate` on a read-only run no longer prints `Changed: <files>` from the working tree: it prints `Changed: nothing (read-only run)` and, when the tree differs, a separate `Changed meanwhile, not by this run: <files>`. Both routes: GPT (`r.sandbox`, delegate.ts:197) and Gemini (`writes`, delegate.ts:321, delegate-run.ts:179-182, 240-243). Check: delegate.test.ts, delegate-gemini.test.ts, delegate-reliability.test.ts.
+- [x] `mcp__kit__delegate` on a read-only run no longer prints `Changed: <files>` from the working tree: it prints `Changed: nothing (read-only run)` and, when the tree differs, a separate `Changed meanwhile, not by this run: <files>`. Both routes: GPT (`r.sandbox`, delegate.ts:197) and Gemini (`writes`, delegate.ts:321, delegate-run.ts:179-182, 240-243). Check: delegate.test.ts, delegate-gemini.test.ts, delegate-reliability.test.ts.
 
 Separate tasks (investigations, no code unless cheap and safe; results go under Handoff of their own spec):
 
