@@ -119,16 +119,16 @@ export function checkOf(raw: string): Check | undefined {
   const found: CheckKind[] = [];
   let piped = false;
   let masked = false;
-  // Every segment is read, not only the check's: `set "-n"` or `npx --ver"sion"` change what runs.
-  const quotedFlag = parts.some(
-    (p, i) =>
-      i % 2 === 0 &&
-      QUOTED_FLAG.test(
-        NODE_OWN.test(p.trim().replace(PREFIX, ""))
-          ? p
-          : (p.split(BARE_DASHES)[0] ?? ""),
-      ),
-  );
+  // A check's whole segment (its prefix too: `npx --ver"sion"`, `ADDOPTS="--x"`) and a shell
+  // option setter (`set "-n"`); other commands (`echo "--- done ---"`) change nothing that runs.
+  const quotedFlag = parts.some((p, i) => {
+    if (i % 2 !== 0) return false;
+    const own = p.trim().replace(PREFIX, "");
+    if (!kindOf(own) && !/^\s*(?:set|shopt)\s/.test(p)) return false;
+    return QUOTED_FLAG.test(
+      NODE_OWN.test(own) ? p : (p.split(BARE_DASHES)[0] ?? ""),
+    );
+  });
   for (let i = 0; i < parts.length; i += 2) {
     const seg = (parts[i] ?? "").trim();
     const first = seg.split(/(?<!\|)\|(?!\|)/)[0] ?? "";

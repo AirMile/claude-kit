@@ -465,6 +465,10 @@ test("quoted text is text: realistic commands with quoted brackets still count",
       checkOf(command)?.masked ?? checkOf(command)?.piped ?? "none",
       command,
     ).not.toBe(false);
+  // a banner after the check is no flag: its failure must still count
+  const banner = checkOf('node --test x && echo "--- tests complete ---"');
+  expect(banner?.masked).toBe(undefined);
+  expect(checkSettled(banner!, true, "")).toBe(false);
   // a hyphen inside a quoted path is no flag
   expect(checkOf('cd "C:/my-app" && npm test')?.masked).toBe(undefined);
   expect(checkOf('npm test -- -t "-x" && npm run lint')).toMatchObject({
