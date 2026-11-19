@@ -3,7 +3,7 @@ Criteria are checked [x] when built AND verified. -->
 
 # flow-gate-clarity
 
-Status: building (slice 1 built and verified; slices 2-3 and investigations open)
+Status: building (slices 1-2 built; slice 2 awaiting verifier and review; slice 3 and investigations open)
 Design: —
 
 ## Goal
@@ -29,7 +29,7 @@ Slice 1 (what the gate sees):
 
 Slice 2 (what the hold says):
 
-- [ ] When the generic fallback "a passing check on this code" would be printed (no required and no open kind) and no Bash command seen this task was recognised as a check, the hold text (`holdText`, `reminderText`, `openLine`, `commitBlock`) says no command was recognised as a check, names the recognised runner families in one short line and tells the model to run the project's test command or ask the user to add `Test:` to `AGENTS.md § Commands`. Check, four separate tests on the pure text functions: no shell call at all; only unrecognised calls and no required kind; a recognised failing check; a stale pass (print changed). Only the fourth and third keep the old wording. Files: flow-evidence.test.ts, commit-gate-policy.test.ts.
+- [x] When the generic fallback "a passing check on this code" would be printed (no required and no open kind) and no Bash command seen this task was recognised as a check, the hold text (`holdText`, `reminderText`, `openLine`, `commitBlock`) says no command was recognised as a check, names the recognised runner families in one short line and tells the model to run the project's test command or ask the user to add `Test:` to `AGENTS.md § Commands`. Check, four separate tests on the pure text functions: no shell call at all; only unrecognised calls and no required kind; a recognised failing check; a stale pass (print changed). Only the fourth and third keep the old wording. Files: flow-evidence.test.ts, commit-gate-policy.test.ts.
 
 Slice 3 (delegate):
 

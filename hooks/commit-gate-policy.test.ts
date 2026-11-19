@@ -96,3 +96,21 @@ test("a failing suite held open blocks the commit; a passing one on the same pri
   const failed = onCheck(medium(), false, 6, "p1", "test");
   expect(commitBlock(onCheck(failed, true, 7, "p1", "test"), "p1")).toBeUndefined();
 });
+
+const NONE = "no command this task was recognised as a check";
+
+test("commitBlock says no command was recognised when no check was seen (none or only unrecognised calls)", () => {
+  expect(commitBlock(medium(), "p1")).toContain(NONE);
+  expect(commitBlock({ ...medium(), shellCalls: 4 }, "p1")).toContain(NONE);
+  expect(commitBlock(medium(), "p1")).toContain("`Test:`");
+  expect(commitBlock(medium(), "p1")).toContain("node --test");
+});
+
+test("commitBlock keeps the old wording for a failing check and for a stale pass", () => {
+  const failed = commitBlock(onCheck(medium(), false, 6, "p1", "test"), "p1");
+  expect(failed).toContain("tests failed earlier");
+  expect(failed).not.toContain(NONE);
+  const stale = commitBlock(onCheck(medium(), true, 6, "p1", "test"), "p2");
+  expect(stale).toContain("a passing check on this code");
+  expect(stale).not.toContain(NONE);
+});

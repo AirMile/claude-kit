@@ -14,7 +14,7 @@ test("flow holds a turn that ends with unchecked changes, once per round", async
   await write($, "/p/app/src/a.ts");
   w.later(1000);
   expect((await stop($)).block).toContain(
-    "src/a.ts changed after the last passing check",
+    "src/a.ts changed and no command this task was recognised as a check",
   );
   expect((await stop($)).block).toBe(undefined); // the same round: let through
   await write($, "/p/app/src/a.ts");
@@ -47,7 +47,7 @@ test("with git, a change made through the shell is held until a check ran on it"
   git.work = "b2"; // sed -i, no Edit or Write call
   await bash($, "sed -i s/a/b/ src/a.ts");
   expect((await stop($)).block).toContain(
-    "Code changed after the last passing check",
+    "Code changed and no command this task was recognised as a check",
   );
   await bash($, "set -o pipefail; npm test 2>&1 | tail -5");
   expect((await stop($)).block).toBe(undefined);
@@ -291,7 +291,7 @@ test("an unchanged print stays passing; a log file written in the repo reopens t
   git.work = "b2";
   await bash($, "sed -i s/a/b/ src/a.ts");
   expect((await stop($)).block).toContain(
-    "changed after the last passing check",
+    "no command this task was recognised as a check",
   );
   await bash($, "npm test");
   w.later(1000);
@@ -299,8 +299,9 @@ test("an unchanged print stays passing; a log file written in the repo reopens t
   expect((await stop($)).block).toBe(undefined); // and still, with the same print
   git.fresh = "f.log"; // the suite's own log: a new, non-ignored file
   w.later(1000);
+  // the verified task ended: this is a new task, and it has seen no check yet
   expect((await stop($)).block).toContain(
-    "changed after the last passing check",
+    "no command this task was recognised as a check",
   );
 });
 
@@ -318,3 +319,15 @@ for (const [status, denied] of [
     if (denied) expect(block).toContain("tests failed earlier");
     else expect(block).toBeUndefined();
   });
+
+test("Bash calls that are not checks are counted; a recognised one, even masked, is counted apart", async ($, on) => {
+  const w = world(on);
+  await write($, "/p/app/src/a.ts");
+  w.later(1000);
+  await bash($, "ls src");
+  await bash($, "git status");
+  expect(w.store.flowTasks).toMatchObject({ s1: { shellCalls: 2 } });
+  expect((await stop($)).block).toContain("2 shell commands ran, none a check");
+  await bash($, "npm test");
+  expect(w.store.flowTasks).toMatchObject({ s1: { shellCalls: 2, checkCalls: 1 } });
+});

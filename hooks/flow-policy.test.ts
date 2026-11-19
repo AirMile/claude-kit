@@ -95,7 +95,7 @@ test("the gate holds once per round and twice per request, never on a question",
   };
   const first = stopVerdict(t, "Done.", undefined);
   expect(first.block).toContain(
-    "src/a.ts changed after the last passing check",
+    "src/a.ts changed and no command this task was recognised as a check",
   );
   expect(stopVerdict(first.task, "Done.", undefined).outcome).toBe(
     "pass-unverified",
@@ -124,11 +124,11 @@ test("a V2 hold names check and review at once; no reviewer excuses only this ro
     lastEditAt: 5,
   };
   const hold = stopVerdict(task, "Done.", "p1");
-  expect(hold.block).toContain("last passing check");
+  expect(hold.block).toContain("no command this task was recognised as a check");
   expect(hold.block).toContain("no review yet");
   const refused = onNoReviewer(task, "GPT is off", "p1");
   const checkHold = stopVerdict(refused, "Done.", "p1");
-  expect(checkHold.block).toContain("last passing check");
+  expect(checkHold.block).toContain("no command this task was recognised as a check");
   expect(checkHold.block).not.toContain("review");
   const checked = onCheck(refused, true, 6, "p1", "test");
   const pass = stopVerdict(checked, "Done.", "p1");
