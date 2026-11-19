@@ -33,6 +33,8 @@ const work = (over: Partial<Task> = {}): Task => ({
   gateV: 2,
   ...over,
 });
+const ADVICE =
+  "Recognised: node --test, npm/pnpm/yarn test, vitest, jest, pytest, go test, cargo test, tsc, eslint, build scripts. Run the project's test command through the Bash tool (the flow does not see PowerShell calls), or ask the user to add `Test:` to AGENTS.md § Commands; that command must start with one of the recognised runners, or it is ignored.";
 const review = (over: Partial<ReviewRecord> = {}): ReviewRecord => ({
   outcome: "pass",
   family: "gpt",
@@ -119,7 +121,9 @@ test("heavy floors the gate at V2; V0/V1 need only the passing check", async () 
   expect(gateLevel(work({ track: "heavy", gateV: 3 }))).toBe(3);
   for (const gateV of [0, 1] as const) {
     const t = work({ gateV, levels: { d: 1, e: 0, v: 3, r: 0 } });
-    expect(missing(t, "p1")[0]).toContain("a passing check on this code");
+    expect(missing(t, "p1")).toEqual([
+      `a passing check on this code (no command this task was recognised as a check. ${ADVICE})`,
+    ]);
     expect(verified(onCheck(t, true, 6, "p1", "test"), "p1")).toBe(true);
   }
   const t = onCheck(work(), true, 6, "p1", "test");
@@ -345,10 +349,9 @@ test("open line describes current evidence, waiver and closed work", async () =>
   const t = work({ files: ["a", "b", "c", "d"] });
   expect(openLine(undefined, "p1")).toBe("open: none");
   expect(openLine(t, "p0")).toBe("open: none");
-  const line =
-    'open: light task, a, b, c and 1 more: still needs a passing check on this code (no command this task was recognised as a check';
-  expect(openLine(t, "p1")).toContain(line);
-  expect(openLine(t, "p1")).toContain('; a review: no review yet. "skip verify" waives it.');
+  expect(openLine(t, "p1")).toBe(
+    `open: light task, a, b, c and 1 more: still needs a passing check on this code (no command this task was recognised as a check. ${ADVICE}); a review: no review yet. "skip verify" waives it.`,
+  );
   const refused = onNoReviewer(t, "GPT is off", "p1");
   expect(openLine(refused, "p1")).toContain("; no reviewer: GPT is off.");
   expect(openLine(refused, "p2")).not.toContain("GPT is off");
@@ -566,6 +569,9 @@ test("no shell call at all: the hold says no command was recognised as a check",
   const hold = holdText(t, "p1", false);
   expect(hold).toContain("node --test");
   expect(hold).toContain("`Test:`");
+  expect(hold).toContain("through the Bash tool");
+  expect(hold).toContain("must start with one of the recognised runners");
+  expect(hold).toContain("This project has no such check → say so and stop.");
   expect(hold).toContain("AGENTS.md § Commands");
 });
 

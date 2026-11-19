@@ -3,7 +3,7 @@ Criteria are checked [x] when built AND verified. -->
 
 # flow-gate-clarity
 
-Status: verifying (slices 1-3 built; slices 2-3 awaiting verifier and other-family review; investigations open)
+Status: verifying (slices 1-3 built; slices 2-3 verified by kit:verifier and Opus review; GPT review not run; investigations open)
 Design: —
 
 ## Goal
@@ -63,6 +63,8 @@ Each slice has its own checks and verifier; nothing is pushed without the user.
 
 Plan only. Reviewed by Astra 2026-11-19 (3 P1: masked exit status via `; echo exit=$?`, self-certifying declared commands, baseline per kind not per command; regex boundary consumed twice; cause stated too strongly; slicing order), all adopted above. Origin: the angular-port-kit session of 2026-11-19 (a commit held four times with a green suite, verifier pass and other-family review); `checkOf` run on the actual commands to confirm. Not done: any code, the Codex temp-dir test, the classifier read.
 
+Slices 2-3 built (hold wording `noCheckSeen`, delegate `changedLines`). Known gaps, not redesigned: (1) `parseRequired` (flow-required.ts:38-39) silently drops a `Test:` command `checkOf` does not recognise (e.g. `./scripts/test.sh`), so the "add `Test:`" advice only helps for a command starting with a recognised runner; the advice says so. (2) A later task after a verified one starts with no checks and gets the "no command recognised" advice. (3) A masked or denied check counts as seen. (4) The runner list in the hold text is a literal and can drift from `RUNNERS`. The flow sees only Bash calls, not PowerShell: the advice says so.
+
 ## Verify
 
-Not yet.
+Slices 2-3 (branch claude/flow-gate-slice23-517f3f): kit:verifier pass on all criteria; Opus review pass, no P0/P1; GPT review not run (ChatGPT had no room). Tests: flow, commit-gate and delegate files green except what is red on origin/main too (`AGENTS.md § Commands makes every listed kind required for a medium task`, guard.test.ts).

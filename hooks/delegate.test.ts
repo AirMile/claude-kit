@@ -252,3 +252,10 @@ test("a read-only GPT run claims no changes; a tree that differs is listed apart
   expect(out).toContain("Changed meanwhile, not by this run: src/a.ts");
   expect(out).not.toContain("\nChanged: src/a.ts");
 });
+
+test("a read-only run with an unchanged tree prints only the nothing line", async ($, on) => {
+  world(on, { events: EVENTS, clean: true });
+  const out = await delegate($, { role: "search", brief: "Find it." });
+  expect(out).toContain("Changed: nothing (read-only run)");
+  expect(out).not.toContain("Changed meanwhile");
+});
