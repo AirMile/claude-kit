@@ -457,6 +457,9 @@ test("quoted text is text: realistic commands with quoted brackets still count",
     'cd -- . && npm test "--help"',
     'npm test "--help" --',
     'npm test --he"lp"',
+    'set "-n"\nnode --test x',
+    'npx --ver"sion" node --test',
+    'PYTEST_ADDOPTS="--collect-only" pytest',
   ])
     expect(
       checkOf(command)?.masked ?? checkOf(command)?.piped ?? "none",

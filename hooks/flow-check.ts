@@ -119,7 +119,16 @@ export function checkOf(raw: string): Check | undefined {
   const found: CheckKind[] = [];
   let piped = false;
   let masked = false;
-  let quotedFlag = false;
+  // Every segment is read, not only the check's: `set "-n"` or `npx --ver"sion"` change what runs.
+  const quotedFlag = parts.some(
+    (p, i) =>
+      i % 2 === 0 &&
+      QUOTED_FLAG.test(
+        NODE_OWN.test(p.trim().replace(PREFIX, ""))
+          ? p
+          : (p.split(BARE_DASHES)[0] ?? ""),
+      ),
+  );
   for (let i = 0; i < parts.length; i += 2) {
     const seg = (parts[i] ?? "").trim();
     const first = seg.split(/(?<!\|)\|(?!\|)/)[0] ?? "";
@@ -128,9 +137,6 @@ export function checkOf(raw: string): Check | undefined {
     const kind = kindOf(own);
     if (!kind) continue;
     found.push(kind);
-    quotedFlag ||= NODE_OWN.test(own)
-      ? QUOTED_FLAG.test(own)
-      : QUOTED_FLAG.test(own.split(BARE_DASHES)[0] ?? "");
     piped ||=
       first.length < seg.length &&
       !(PIPEFAIL.test(command) && (command.match(SETS)?.length ?? 0) === 1);
