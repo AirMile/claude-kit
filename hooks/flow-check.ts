@@ -97,10 +97,13 @@ const QUOTED_FLAG = /["']-|(?:^|[\s\\])-[\w-]*["']/;
 const NODE_OWN = /^(?:yarn\s+)?node(?:\.exe)?(?:\s|$)/i;
 const BARE_DASHES = /\s--(?:\s|$)/;
 // npm, yarn, pnpm and bun hand the words after their own `--` to the script's runner, which
-// prints help and exits 0 for an info flag; a quoted one (`"-!"`) or a glued one is not followed.
+// prints help and exits 0 for an info flag. Only a whole-word quoted one (`"-!"`) or a word with a
+// quote glued after its dash run (`--he"lp"`) masks; partly quoted words (`"--"help`), unquoted
+// info flags and other no-run flags (`--listTests`) are not followed (see the spec's Known gaps).
 const FORWARDS = /^(?:npm|pnpm|yarn|bun)\s/;
 const QUOTED_INFO = /"-!"|(?:^|\s)-[\w-]*["']/;
 // A quote left after pairing has no partner: bash stops with a syntax error and runs nothing.
+// (The quote regex in `blank` is quadratic on a very long run of escaped quotes: no linear claim.)
 const UNPAIRED = /["']/;
 // `set -o pipefail` makes a pipeline's status the failing stage's: the pipe hides nothing.
 const PIPEFAIL = /^\s*set\s+(?:-\w+\s+)*-\w*o\s+pipefail\s*(?:;|&&|\n)/;

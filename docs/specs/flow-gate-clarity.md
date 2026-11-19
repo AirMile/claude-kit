@@ -63,6 +63,12 @@ Each slice has its own checks and verifier; nothing is pushed without the user.
 
 Plan only. Reviewed by Astra 2026-11-19 (3 P1: masked exit status via `; echo exit=$?`, self-certifying declared commands, baseline per kind not per command; regex boundary consumed twice; cause stated too strongly; slicing order), all adopted above. Origin: the angular-port-kit session of 2026-11-19 (a commit held four times with a green suite, verifier pass and other-family review); `checkOf` run on the actual commands to confirm. Not done: any code, the Codex temp-dir test, the classifier read.
 
+Known gaps of `checkOf` (a quoted-flag and unpaired-quote fix, 3a4816b, masks a whole-word quoted info flag after a forwarding runner's `--` and an unpaired quote; nothing more, a sealed-runner design is separate work), pinned by KNOWN tests in `hooks/flow-check.test.ts`:
+- partly quoted words after `--`: `npm test -- ""--help`, `"--"help`, `"--hel"p`, `"-"h`, `''--help`
+- unquoted info flags after a forwarding runner's `--`: `npm test -- --help`, `cargo test -- --help`
+- other no-run flags: `--listTests`, `--showConfig`, `-hV`, `--help=1`
+- the quote regex in `blank` is quadratic on a long run of escaped quotes (40k take about 1 s)
+
 ## Verify
 
 Not yet.
