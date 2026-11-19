@@ -59,12 +59,17 @@ const kindOf = (command: string): CheckKind | undefined =>
   find(command.replace(/^node\.exe(?=\s)/i, "node")) ??
   find(command.replace(/^yarn\s+/, ""));
 
+const INFO_FLAG = /^--?(?:h|help|v|version|V)$/;
+
 // Quoted strings and comments are text, not shell structure: `echo 'a && node --test'` runs no suite.
 const blank = (command: string): string =>
   command
     .replace(/>\|/g, ">")
-    // a string that starts with `-` keeps a marker: it may be a flag (`"--help"`)
-    .replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, (q) => (q[1] === "-" ? '"-"' : '""'))
+    // a string that starts with `-` keeps a marker: it may be a flag (`"--help"`); `"-!"` marks
+    // an info flag (`"-h"`), which a forwarding runner hands on after its own `--`
+    .replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, (q) =>
+      q[1] !== "-" ? '""' : INFO_FLAG.test(q.slice(1, -1)) ? '"-!"' : '"-"',
+    )
     .replace(/(^|\s)#.*$/gm, "$1");
 
 // The commands joined by &&, || or ; one of which may be a check, each with its own pipe.
@@ -91,6 +96,12 @@ const substitutes = (raw: string): boolean =>
 const QUOTED_FLAG = /["']-|(?:^|[\s\\])-[\w-]*["']/;
 const NODE_OWN = /^(?:yarn\s+)?node(?:\.exe)?(?:\s|$)/i;
 const BARE_DASHES = /\s--(?:\s|$)/;
+// npm, yarn, pnpm and bun hand the words after their own `--` to the script's runner, which
+// prints help and exits 0 for an info flag; a quoted one (`"-!"`) or a glued one is not followed.
+const FORWARDS = /^(?:npm|pnpm|yarn|bun)\s/;
+const QUOTED_INFO = /"-!"|(?:^|\s)-[\w-]*["']/;
+// A quote left after pairing has no partner: bash stops with a syntax error and runs nothing.
+const UNPAIRED = /["']/;
 // `set -o pipefail` makes a pipeline's status the failing stage's: the pipe hides nothing.
 const PIPEFAIL = /^\s*set\s+(?:-\w+\s+)*-\w*o\s+pipefail\s*(?:;|&&|\n)/;
 const SETS = /\b(?:set|shopt)\b/g;
@@ -125,8 +136,12 @@ export function checkOf(raw: string): Check | undefined {
     if (i % 2 !== 0) return false;
     const own = p.trim().replace(PREFIX, "");
     if (!kindOf(own) && !/^\s*(?:set|shopt)\s/.test(p)) return false;
-    return QUOTED_FLAG.test(
-      NODE_OWN.test(own) ? p : (p.split(BARE_DASHES)[0] ?? ""),
+    if (NODE_OWN.test(own)) return QUOTED_FLAG.test(p);
+    const t = p.trim();
+    const [before = "", ...after] = own.split(BARE_DASHES);
+    return (
+      QUOTED_FLAG.test(t.slice(0, t.length - own.length) + before) ||
+      (FORWARDS.test(own) && QUOTED_INFO.test(after.join(" ")))
     );
   });
   for (let i = 0; i < parts.length; i += 2) {
@@ -164,7 +179,8 @@ export function checkOf(raw: string): Check | undefined {
     ESCAPED.test(raw) ||
     EXOTIC.test(command) ||
     substitutes(raw) ||
-    quotedFlag;
+    quotedFlag ||
+    UNPAIRED.test(command.replace(/""|"-!?"/g, ""));
   const [kind] = found;
   if (!kind) return undefined;
   const check: Check = { piped, kind, kinds: [...new Set(found)] };
