@@ -1,6 +1,7 @@
 import { expect, test } from "claude-code/testing";
 
-import { CHANGE_LABELS, newTask } from "./flow-policy";
+import { commitBlock } from "./commit-gate-policy";
+import { CHANGE_LABELS, newTask, type Task } from "./flow-policy";
 import { LABELS } from "./model-policy";
 import { VERIFY_LABELS } from "./task-policy";
 
@@ -48,7 +49,7 @@ test("with git, a change made through the shell is held until a check ran on it"
   expect((await stop($)).block).toContain(
     "Code changed after the last passing check",
   );
-  await bash($, "npm test 2>&1 | tail -5");
+  await bash($, "set -o pipefail; npm test 2>&1 | tail -5");
   expect((await stop($)).block).toBe(undefined);
   const log = w.store.flowLog as { event: string; reason?: string }[];
   expect(log[0]?.reason).toBe("changes git saw");
@@ -224,7 +225,9 @@ test("AGENTS.md § Commands makes every listed kind required for a medium task",
   const w = world(on);
   on("fs.read", async (_$, e) => {
     if (!e.path.endsWith("/AGENTS.md")) throw new Error("missing");
-    return { value: "## Commands\n\n- Test: `npm test`\n- Lint: `npm run lint`\n" };
+    return {
+      value: "## Commands\n\n- Test: `npm test`\n- Lint: `npm run lint`\n",
+    };
   });
   for (const f of ["a", "b", "c", "d"]) await write($, `/p/app/src/${f}.ts`);
   w.later(1000);
@@ -268,5 +271,38 @@ test("a masked or never-run suite credits nothing", async ($, on) => {
   await bash($, "node --test || true");
   await bash($, "node --test; echo done");
   expect(w.store.flowTasks).toMatchObject({ s1: { openKinds: [], checks: 0 } });
+  expect((await stop($)).block).toContain(
+    "changed after the last passing check",
+  );
+});
+
+test("an unchanged print stays passing; a log file written in the repo reopens the work", async ($, on) => {
+  const git = { index: "a1", work: "a1", fresh: "" };
+  const w = world(on, {}, git);
+  await stop($); // a clean turn sets the baseline
+  git.work = "b2";
+  await bash($, "sed -i s/a/b/ src/a.ts");
+  expect((await stop($)).block).toContain("changed after the last passing check");
+  await bash($, "npm test");
+  w.later(1000);
+  expect((await stop($)).block).toBe(undefined); // checked on this very code
+  expect((await stop($)).block).toBe(undefined); // and still, with the same print
+  git.fresh = "f.log"; // the suite's own log: a new, non-ignored file
+  w.later(1000);
   expect((await stop($)).block).toContain("changed after the last passing check");
 });
+
+for (const [status, denied] of [
+  ["exit=1", true],
+  ["exit=0", false],
+] as const)
+  test(`commitBlock on the task the Bash hook recorded: ${status} ${denied ? "denies" : "clears"} the commit`, async ($, on) => {
+    const w = statusWorld(on, `${status}\n`);
+    await write($, "/p/app/src/a.ts");
+    w.later(1000);
+    await bash($, SUITE);
+    const task = (w.store.flowTasks as Record<string, Task>).s1;
+    const block = commitBlock({ ...task, track: "medium" }, undefined);
+    if (denied) expect(block).toContain("tests failed earlier");
+    else expect(block).toBeUndefined();
+  });

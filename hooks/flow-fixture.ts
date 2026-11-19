@@ -11,7 +11,7 @@ function result(value: unknown, failed: boolean): ToolCallResult {
 export function world(
   on: On,
   store: Record<string, unknown> = {},
-  git?: { index: string; work: string },
+  git?: { index: string; work: string; fresh?: string },
   out: (command: string) => string = () => "",
 ) {
   let now = Date.parse("2026-10-27T12:00:00Z");
@@ -46,7 +46,7 @@ export function world(
       sub === "ls-files"
         ? flag === "-s"
           ? `100644 ${git.index} 0\tsrc/a.ts\n`
-          : ""
+          : `${git.fresh ?? ""}\n`
         : sub === "diff"
           ? edited
             ? "M\tsrc/a.ts\n"
@@ -75,12 +75,10 @@ export function world(
       (e as { file_path: string }).file_path.includes("broken"),
     ),
   );
-  on("tool.call", { tool: "Bash" }, async (_$, e) =>
-    ({
-      ...result({ stdout: "", stderr: "" }, e.command.includes("fail")),
-      text: out(e.command),
-    }),
-  );
+  on("tool.call", { tool: "Bash" }, async (_$, e) => ({
+    ...result({ stdout: "", stderr: "" }, /\bfail\b/.test(e.command)),
+    text: out(e.command),
+  }));
   return { store, later: (ms: number) => (now += ms) };
 }
 

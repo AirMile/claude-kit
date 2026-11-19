@@ -70,7 +70,11 @@ test("detect-tools commands share their kinds in shell and argv checks", async (
 });
 
 test("only real check runs count; a piped check passes only without failure words", async () => {
-  expect(checkOf("npm test")).toEqual({ piped: false, kind: "test", kinds: ["test"] });
+  expect(checkOf("npm test")).toEqual({
+    piped: false,
+    kind: "test",
+    kinds: ["test"],
+  });
   expect(checkOf("cd app && pnpm run typecheck")).toEqual({
     piped: false,
     kind: "static",
@@ -93,10 +97,33 @@ test("only real check runs count; a piped check passes only without failure word
       "Tests: 2 failed, 10 passed",
     ),
   ).toBe(false);
+  // a pipe hides the status: no failure words prove nothing; pipefail restores the status
   expect(
-    checkPassed({ piped: true, kind: "test", kinds: ["test"] }, false, " 0 fail\n 95 pass"),
+    checkPassed(
+      { piped: true, kind: "test", kinds: ["test"] },
+      false,
+      " 0 fail\n 95 pass",
+    ),
+  ).toBe(false);
+  expect(
+    checkSettled(
+      { piped: true, kind: "test", kinds: ["test"] },
+      false,
+      " 0 fail\n 95 pass",
+    ),
+  ).toBe(undefined);
+  expect(checkOf("set -o pipefail; npm test 2>&1 | tail -3")?.piped).toBe(
+    false,
+  );
+  expect(
+    checkSettled(checkOf("set -o pipefail; npm test | tail")!, false, "ok"),
   ).toBe(true);
-  expect(checkPassed({ piped: false, kind: "test", kinds: ["test"] }, true, "")).toBe(false);
+  expect(
+    checkSettled(checkOf("set -o pipefail; npm test | tail")!, true, ""),
+  ).toBe(false);
+  expect(
+    checkPassed({ piped: false, kind: "test", kinds: ["test"] }, true, ""),
+  ).toBe(false);
   expect(hashText("a")).not.toBe(hashText("b"));
 });
 
@@ -195,9 +222,16 @@ test("prefixes, boundaries and first matching check keep their behaviour", async
     "uv run ",
     "poetry run ",
   ])
-    expect(checkOf(`${prefix}pytest`)).toEqual({ piped: false, kind: "test", kinds: ["test"] });
+    expect(checkOf(`${prefix}pytest`)).toEqual({
+      piped: false,
+      kind: "test",
+      kinds: ["test"],
+    });
   expect(checkOf("npm run lint && npm test")?.kind).toBe("static");
-  expect(checkOf("npm run lint && npm test")?.kinds).toEqual(["static", "test"]);
+  expect(checkOf("npm run lint && npm test")?.kinds).toEqual([
+    "static",
+    "test",
+  ]);
   expect(checkOf("gradle build test")?.kind).toBe("build");
   expect(checkOf("cd app; ng test | tail -3")).toEqual({
     piped: true,
@@ -323,4 +357,28 @@ test("separators anywhere after the check, quotes, comments, pipes and node info
   const check = checkOf("node --test > f.log; echo FAIL=$?")!;
   expect(withoutStatus(check, "FAIL=1\n")).toBe("");
   expect(withoutStatus(check, "log line\nFAIL=1")).toBe("log line");
+});
+
+test("info options in either order, background runs, redirects and node.exe", async () => {
+  for (const command of [
+    "node --test --help",
+    "node --help --test",
+    "node --v8-options --test",
+    "node --test -v",
+    "node --check x --test",
+    "node --completion-bash --test",
+    "node --test -c",
+  ])
+    expect(checkOf(command), command).toBe(undefined);
+  for (const command of ["node --test & wait", "node --test &", "node --test x & echo $!"])
+    expect(checkOf(command)?.masked, command).toBe(true);
+  expect(checkOf("node --test > f.log 2>&1")?.masked).toBe(undefined);
+  expect(checkOf("node --test &> f.log")?.masked).toBe(undefined);
+  expect(checkOf("node --test x 2>&1 && node --test y")?.masked).toBe(undefined);
+  // `||` controls only its own list: a `;` ends it
+  expect(checkOf("setup || fallback; npm test")?.masked).toBe(undefined);
+  expect(checkOf("setup || npm test")?.masked).toBe(true);
+  expect(checkOf("node --test>f.log")?.kind).toBe("test");
+  expect(checkOf("node.exe --test")?.kind).toBe("test");
+  expect(checkOf("node --test; echo exit=$?")?.status).toBe("exit");
 });

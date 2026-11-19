@@ -22,7 +22,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   `hooks/flow-evidence.ts`, task state in `hooks/flow-state.ts`, storage and git fingerprint in
   `hooks/flow-store.ts`: each change task's
   track light/medium/heavy, its note pointing to task-readiness at the start or on growth, the verify gate on `classic.Stop`
-  from the worktree's git fingerprint, the checks (a masked exit status, `;`/`||` after or `||` before the check, never credits a pass: only a trailing `; echo <word>=$?` whose output shows 0 does), reviews and verifier's answer; unverified work stays open, `/flow` in `hooks/flow-command.ts`),
+  from the worktree's git fingerprint, the checks (a masked exit status never credits a pass: `;`/`||` after the check, `||` before it in the same list, a background `&` or a pipe without `set -o pipefail` leave it indeterminate; only the check's own trailing `; echo <word>=$?` or `; echo $?` whose output shows 0 passes, and a final echo does not rescue a preceding `||`), reviews and verifier's answer; unverified work stays open, `/flow` in `hooks/flow-command.ts`),
   the checker guard (`hooks/guard.ts` on the pure `hooks/guard-policy.ts`: `/guard on` denies edits to the
   `Protected:` globs of `AGENTS.md § Commands`, the lock in `$.store`), the commit gate (`hooks/commit-gate.ts` on
   `hooks/commit-gate-policy.ts`: `git commit` is denied while the open medium or heavy task is unverified, by the

@@ -43,7 +43,7 @@ const RUNNER: [CheckKind, string][] = [
   // never run it. The boundary is a lookahead: RUNNERS adds its own (?:\s|$).
   [
     "test",
-    "node(?:\\s+(?!--(?:eval|print|version|help|check)\\b)(?:--(?:import|require|loader|experimental-loader)(?:=\\S+|\\s+\\S+)|-r\\s+\\S+|--(?!(?:import|require|loader|experimental-loader)\\b)[\\w-]+(?:=\\S+)?))*\\s+--test(?=\\s|$)",
+    "node(?!(?:\\s+\\S+)*?\\s+(?:-h|--help|-v|--version|--v8-options|-c|--check|--completion-bash|--print-bash-completion|-e|--eval|-p|--print|-i|--interactive)(?=[\\s=]|$))(?:\\s+(?!--(?:eval|print|version|help|check)\\b)(?:--(?:import|require|loader|experimental-loader)(?:=\\S+|\\s+\\S+)|-r\\s+\\S+|--(?!(?:import|require|loader|experimental-loader)\\b)[\\w-]+(?:=\\S+)?))*\\s+--test(?=\\s|$)",
   ],
   ["static", "ng\\s+lint|phpstan|psalm|phpcs|golangci-lint|staticcheck"],
   ["build", "ng\\s+build|dotnet\\s+build|mvn\\s+compile"],
@@ -56,7 +56,8 @@ const find = (command: string): CheckKind | undefined =>
   RUNNERS.find(([, pattern]) => pattern.test(command))?.[0];
 // `yarn vitest run` runs a binary without `exec`; `yarn add jest` is no check.
 const kindOf = (command: string): CheckKind | undefined =>
-  find(command) ?? find(command.replace(/^yarn\s+/, ""));
+  find(command.replace(/^node\.exe(?=\s)/i, "node")) ??
+  find(command.replace(/^yarn\s+/, ""));
 
 // Quoted strings and comments are text, not shell structure: `echo 'a && node --test'` runs no suite.
 const blank = (command: string): string =>
@@ -67,6 +68,11 @@ const blank = (command: string): string =>
 // The commands joined by &&, || or ; one of which may be a check, each with its own pipe.
 // Even entries are commands, odd ones the operators between them.
 const split = (command: string): string[] => command.split(/(&&|\|\||;|\n)/);
+
+// A standalone `&` backgrounds a command, its status gone (`2>&1`, `&>f` and `&&` are not one).
+const BACKGROUND = /(?<![&>|])&(?![&>\d])/;
+// `set -o pipefail` makes a pipeline's status the failing stage's: the pipe hides nothing.
+const PIPEFAIL = /\bpipefail\b/;
 
 // `; echo <word>=$?` or `; echo $?` at the end: the status of the command before it, printed.
 const STATUS_ECHO = /;\s*echo\s+(?:(\w+)=)?\$\?\s*$/;
@@ -94,14 +100,19 @@ export function checkOf(raw: string): Check | undefined {
   let masked = false;
   for (let i = 0; i < parts.length; i += 2) {
     const seg = (parts[i] ?? "").trim();
-    const head = seg.split(/(?<!\|)\|(?!\|)/)[0] ?? "";
+    const head = (seg.split(/(?<!\|)\|(?!\|)/)[0] ?? "").replace(
+      /(\S)([<>])/g,
+      "$1 $2",
+    );
     const kind = kindOf(head.replace(PREFIX, ""));
     if (!kind) continue;
     found.push(kind);
-    piped ||= head.length < seg.length;
+    piped ||= head.length < seg.length && !PIPEFAIL.test(command);
     masked ||= parts.some(
       (p, j) =>
-        (j < i && p === "||") ||
+        (j < i &&
+          p === "||" &&
+          parts.slice(j + 1, i).every((q) => q !== ";" && q !== "\n")) ||
         (j > i &&
           j % 2 === 1 &&
           p !== "&&" &&
@@ -109,6 +120,7 @@ export function checkOf(raw: string): Check | undefined {
     );
     if (!all) break;
   }
+  masked ||= BACKGROUND.test(command);
   const [kind] = found;
   if (!kind) return undefined;
   const check: Check = { piped, kind, kinds: [...new Set(found)] };
@@ -151,7 +163,9 @@ export function checkSettled(
     ).exec(last);
     return shown ? shown[1] === "0" : undefined;
   }
-  return !(check.piped && FAILED.test(output));
+  // A pipe hides the status: failure words show a failure, their absence proves nothing.
+  if (check.piped) return FAILED.test(output) ? false : undefined;
+  return true;
 }
 
 // The output without the status line a `; echo <word>=$?` added: it is no failure signature.
