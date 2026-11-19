@@ -237,3 +237,36 @@ test("AGENTS.md § Commands makes every listed kind required for a medium task",
   w.later(1000);
   expect((await stop($)).block).toBe(undefined);
 });
+
+const statusWorld = (on: Parameters<typeof world>[0], out: string) =>
+  world(on, {}, undefined, (command) => (command.includes("echo") ? out : ""));
+const SUITE = "node --test test/*.test.mjs > f.log 2>&1; echo exit=$?";
+
+test("a failing suite behind a status echo opens the kind and blocks a commit", async ($, on) => {
+  const w = statusWorld(on, "exit=1\n");
+  await write($, "/p/app/src/a.ts");
+  w.later(1000);
+  await bash($, SUITE);
+  expect(w.store.flowTasks).toMatchObject({ s1: { openKinds: ["test"] } });
+  expect((await stop($)).block).toContain("tests failed earlier");
+});
+
+test("a passing suite behind a status echo is recorded", async ($, on) => {
+  const w = statusWorld(on, "exit=0\n");
+  await write($, "/p/app/src/a.ts");
+  w.later(1000);
+  await bash($, SUITE);
+  expect(w.store.flowTasks).toMatchObject({ s1: { openKinds: [], checks: 1 } });
+  expect((await stop($)).block).toBe(undefined);
+});
+
+test("a masked or never-run suite credits nothing", async ($, on) => {
+  const w = statusWorld(on, "exit=0\n");
+  await write($, "/p/app/src/a.ts");
+  w.later(1000);
+  await bash($, "true || node --test");
+  await bash($, "node --test || true");
+  await bash($, "node --test; echo done");
+  expect(w.store.flowTasks).toMatchObject({ s1: { openKinds: [], checks: 0 } });
+  expect((await stop($)).block).toContain("changed after the last passing check");
+});

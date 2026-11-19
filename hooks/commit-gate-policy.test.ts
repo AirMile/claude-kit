@@ -88,3 +88,11 @@ test("a heavy task also needs the verifier and a review, unless no reviewer exis
   expect(excused).toContain("kit:verifier");
   expect(excused).not.toContain("a review");
 });
+
+test("a failing suite held open blocks the commit; a passing one on the same print does not", () => {
+  expect(commitBlock(onCheck(medium(), false, 6, "p1", "test"), "p1")).toContain("tests failed earlier");
+  expect(commitBlock(onCheck(medium(), true, 6, "p1", "test"), "p1")).toBeUndefined();
+  // a failure on this code, then a pass on the same code, clears it
+  const failed = onCheck(medium(), false, 6, "p1", "test");
+  expect(commitBlock(onCheck(failed, true, 7, "p1", "test"), "p1")).toBeUndefined();
+});

@@ -4,6 +4,8 @@ import {
   checkKindOfArgv,
   checkOf,
   checkPassed,
+  checkSettled,
+  withoutStatus,
   hashText,
   isCheckArgv,
 } from "./flow-check";
@@ -239,4 +241,86 @@ test("bare yarn binaries and compound && commands", async () => {
   expect(checkOf("npm run lint || npm test")?.kinds).toEqual(["static"]);
   expect(checkOf("npm test || true")?.kinds).toEqual(["test"]);
   expect(checkOf("npm run lint && npm test | tail -3")?.piped).toBe(true);
+});
+
+test("Node's built-in runner is a test check; commands that only mention it are not", async () => {
+  for (const command of [
+    "node --test",
+    "node --test test/*.test.mjs",
+    "node --experimental-test-coverage --test x",
+    "node --import ./setup.mjs --test x",
+    "node --require ./setup.cjs --test x",
+    "node -r ./setup.cjs --test x",
+    "NODE_ENV=x node --test",
+    "cd x && node --test test/*.test.mjs > f.log 2>&1",
+  ]) {
+    expect(checkOf(command)?.kind, command).toBe("test");
+    expect(checkOf(command)?.masked, command).toBe(undefined);
+  }
+  expect(checkKindOfArgv(["node", "--test", "test/a.test.mjs"])).toBe("test");
+  for (const command of [
+    "node --version",
+    "echo node --test",
+    'node -e "1"',
+    "node --eval 1 --test",
+    "node -p 1",
+    "node --print 1 --test",
+    "node --test-only",
+    "node --test-reporter=spec",
+    "node --testing",
+  ])
+    expect(checkOf(command), command).toBe(undefined);
+});
+
+test("a masked exit status never credits a pass", async () => {
+  const echoed = checkOf("node --test > f.log 2>&1; echo exit=$?");
+  expect(echoed).toMatchObject({ kind: "test", status: "exit" });
+  expect(echoed?.masked).toBe(undefined);
+  expect(checkOf("node --test; echo $?")).toMatchObject({ status: "" });
+  expect(checkOf("true || node --test")?.masked).toBe(true);
+  expect(checkOf("node --test || true")?.masked).toBe(true);
+  expect(checkOf("node --test; true")?.masked).toBe(true);
+  expect(checkOf("node --test; echo done")?.masked).toBe(true);
+  expect(checkOf("true || node --test; echo $?")?.masked).toBe(true);
+  expect(checkOf("node --test > f.log 2>&1")?.masked).toBe(undefined);
+  const settled = (c: string, error: boolean, out: string) =>
+    checkSettled(checkOf(c)!, error, out);
+  const word = "node --test > f.log 2>&1; echo exit=$?";
+  expect(settled(word, false, "exit=0\n")).toBe(true);
+  expect(settled(word, false, "some log\nexit=0")).toBe(true);
+  expect(settled(word, false, "exit=1\n")).toBe(false);
+  expect(settled(word, false, "")).toBe(undefined);
+  expect(settled("node --test; echo $?", false, "0\n")).toBe(true);
+  expect(settled("node --test; echo $?", false, "2\n")).toBe(false);
+  expect(settled("true || node --test", false, "")).toBe(undefined);
+  expect(settled("node --test || true", false, "")).toBe(undefined);
+  expect(settled("node --test > f.log 2>&1", false, "")).toBe(true);
+  expect(settled("node --test > f.log 2>&1", true, "")).toBe(false);
+  expect(checkPassed(checkOf("true || node --test")!, false, "")).toBe(false);
+  expect(checkPassed(checkOf(word)!, false, "exit=0")).toBe(true);
+});
+
+test("separators anywhere after the check, quotes, comments, pipes and node info flags", async () => {
+  for (const command of [
+    "node --test x && true || true",
+    "node --test x && true; true",
+    "node --test x\ntrue",
+    "node --test x | tee y; echo $?",
+    "npm test | tee x; echo $?",
+    "true || x && node --test",
+  ])
+    expect(checkOf(command)?.masked, command).toBe(true);
+  for (const command of [
+    "echo 'before && node --test && after'",
+    'echo "a; node --test"',
+    "true # ignored && node --test",
+    "node --version --test",
+    "node --help --test",
+  ])
+    expect(checkOf(command), command).toBe(undefined);
+  expect(checkOf("node --test x && echo ok")?.masked).toBe(undefined);
+  expect(checkOf(`node ${"--import=x ".repeat(30)}--foo`)).toBe(undefined);
+  const check = checkOf("node --test > f.log; echo FAIL=$?")!;
+  expect(withoutStatus(check, "FAIL=1\n")).toBe("");
+  expect(withoutStatus(check, "log line\nFAIL=1")).toBe("log line");
 });

@@ -39,6 +39,12 @@ const RUNNER: [CheckKind, string][] = [
   ["static", "python3?\\s+-m\\s+mypy"],
   ["test", "claude\\s+plugin\\s+test|node\\s+\\S*\\.test\\.[cm]?[jt]s"],
   ["test", "ng\\s+test"],
+  // Node's built-in runner: flags (an operand only after import/require) before `--test`; -e/-p
+  // never run it. The boundary is a lookahead: RUNNERS adds its own (?:\s|$).
+  [
+    "test",
+    "node(?:\\s+(?!--(?:eval|print|version|help|check)\\b)(?:--(?:import|require|loader|experimental-loader)(?:=\\S+|\\s+\\S+)|-r\\s+\\S+|--(?!(?:import|require|loader|experimental-loader)\\b)[\\w-]+(?:=\\S+)?))*\\s+--test(?=\\s|$)",
+  ],
   ["static", "ng\\s+lint|phpstan|psalm|phpcs|golangci-lint|staticcheck"],
   ["build", "ng\\s+build|dotnet\\s+build|mvn\\s+compile"],
   ["build", "mvn\\s+(?:-D\\S+\\s+)*package"],
@@ -52,33 +58,67 @@ const find = (command: string): CheckKind | undefined =>
 const kindOf = (command: string): CheckKind | undefined =>
   find(command) ?? find(command.replace(/^yarn\s+/, ""));
 
-// The commands joined by &&, || or ; one of which may be a check, each with its own pipe.
-function segments(command: string): string[] {
-  return command
-    .split(/&&|\|\||;|\n/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
+// Quoted strings and comments are text, not shell structure: `echo 'a && node --test'` runs no suite.
+const blank = (command: string): string =>
+  command
+    .replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""')
+    .replace(/(^|\s)#.*$/gm, "$1");
 
-export type Check = { piped: boolean; kind: CheckKind; kinds: CheckKind[] };
+// The commands joined by &&, || or ; one of which may be a check, each with its own pipe.
+// Even entries are commands, odd ones the operators between them.
+const split = (command: string): string[] => command.split(/(&&|\|\||;|\n)/);
+
+// `; echo <word>=$?` or `; echo $?` at the end: the status of the command before it, printed.
+const STATUS_ECHO = /;\s*echo\s+(?:(\w+)=)?\$\?\s*$/;
+
+export type Check = {
+  piped: boolean;
+  kind: CheckKind;
+  kinds: CheckKind[];
+  masked?: true; // the exit status is hidden by `;`, `||` or a branch: never a pass
+  status?: string; // the word the command echoes before its status ("" for a bare `echo $?`)
+};
 
 // Joined by && only, every recognised segment ran when it passed: all their kinds count (and
 // all open on a failure, since the output may not say which). With `||`, `;` or a newline
-// only the first check counts.
-export function checkOf(command: string): Check | undefined {
-  const all = !/\|\||;|\n/.test(command);
+// only the first check counts, and it counts as a result only through the trailing status echo
+// (`; echo exit=$?`): any other `;`/`||` after it, or `||` before it, masks its status.
+export function checkOf(raw: string): Check | undefined {
+  const command = blank(raw);
+  const echo = STATUS_ECHO.exec(command);
+  const body = echo ? command.slice(0, echo.index) : command;
+  const all = !/\|\||;|\n/.test(body);
+  const parts = split(body);
   const found: CheckKind[] = [];
   let piped = false;
-  for (const seg of segments(command)) {
+  let masked = false;
+  for (let i = 0; i < parts.length; i += 2) {
+    const seg = (parts[i] ?? "").trim();
     const head = seg.split(/(?<!\|)\|(?!\|)/)[0] ?? "";
     const kind = kindOf(head.replace(PREFIX, ""));
     if (!kind) continue;
     found.push(kind);
     piped ||= head.length < seg.length;
+    masked ||= parts.some(
+      (p, j) =>
+        (j < i && p === "||") ||
+        (j > i &&
+          j % 2 === 1 &&
+          p !== "&&" &&
+          parts.slice(j + 1).some((q) => q.trim())),
+    );
     if (!all) break;
   }
   const [kind] = found;
-  return kind ? { piped, kind, kinds: [...new Set(found)] } : undefined;
+  if (!kind) return undefined;
+  const check: Check = { piped, kind, kinds: [...new Set(found)] };
+  if (masked) check.masked = true;
+  else if (echo) {
+    // a pipe's echoed status is its last stage's, not the check's
+    if (piped) check.masked = true;
+    else check.status = echo[1] ?? "";
+  }
+  return check;
 }
 
 // An argv run without a shell (mcp__kit__run_task): its own command only, so `;` or `|` inside
@@ -95,14 +135,37 @@ export const isCheckArgv = (argv: readonly string[]): boolean =>
 const FAILED =
   /\b[1-9]\d* (?:failed|failing|errors?)\b|^\s*FAIL\b|\bFAILED\b|\bTests?:\s+\d+ failed|✗|✖|\berror TS\d+|\bError:/m;
 
-export function checkPassed(
+// true: passed, false: failed, undefined: no evidence (a masked status, or an echo that shows
+// none): the check is neither credited nor opened.
+export function checkSettled(
   check: Check,
   isError: boolean,
   output: string,
-): boolean {
+): boolean | undefined {
+  if (check.masked) return undefined;
   if (isError) return false;
+  if (check.status !== undefined) {
+    const last = output.trim().split(/\r?\n/).at(-1)?.trim() ?? "";
+    const shown = new RegExp(
+      `^${check.status ? `${check.status}=` : ""}(\\d+)$`,
+    ).exec(last);
+    return shown ? shown[1] === "0" : undefined;
+  }
   return !(check.piped && FAILED.test(output));
 }
+
+// The output without the status line a `; echo <word>=$?` added: it is no failure signature.
+export function withoutStatus(check: Check, output: string): string {
+  return check.status === undefined
+    ? output
+    : output.trimEnd().split(/\r?\n/).slice(0, -1).join("\n");
+}
+
+export const checkPassed = (
+  check: Check,
+  isError: boolean,
+  output: string,
+): boolean => checkSettled(check, isError, output) === true;
 
 // FNV-1a, 32 bits, as hex: enough to tell one worktree state from another.
 export function hashText(text: string): string {

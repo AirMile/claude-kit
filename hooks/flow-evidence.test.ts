@@ -536,3 +536,15 @@ test("a pass on other code reopens kinds that were closed on older code (a Bash 
   expect(u.openKinds).toEqual([]);
   expect(verified(u, "p1")).toBe(true);
 });
+
+test("a check passes only on the code it ran on: an unchanged print stays, a changed one (a log file too) does not", async () => {
+  const base = { ...newTask(1, "medium", "p0"), files: ["src/a.ts"], lastEditAt: 5 };
+  const checked = onCheck(base, true, 6, "p1", "test");
+  expect(missing(checked, "p1")).toEqual([]);
+  expect(verified(checked, "p1")).toBe(true);
+  // the same print, however often it is read, is still passing
+  expect(missing(checked, "p1")).toEqual([]);
+  // a changed print, e.g. from a log file written inside the repository, is not
+  expect(missing(checked, "p1-with-f.log")).toEqual(["a passing check on this code"]);
+  expect(isOpen(checked, "p1-with-f.log")).toBe(true);
+});

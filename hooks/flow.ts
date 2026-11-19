@@ -1,7 +1,7 @@
 import type { EngineInterface, On } from "claude-code";
 
 import { gateLevel } from "./flow-evidence";
-import { checkOf, checkPassed, type CheckKind } from "./flow-check";
+import { checkOf, checkSettled, withoutStatus, type CheckKind } from "./flow-check";
 import { flowCommandRun } from "./flow-command";
 import { ensureRequired } from "./flow-required";
 import { promptLevels, raiseLevels } from "./flow-levels";
@@ -299,8 +299,10 @@ export function flow(on: On) {
     const start = check ? await flowCheckStart($, check.kinds) : undefined;
     const ran = await next(e);
     if (!start || !check || ran.deny !== undefined) return ran;
-    const passed = checkPassed(check, ran.isError === true, ran.text ?? "");
-    const note = await flowCheckEnd($, start, passed, ran.text ?? "");
+    const passed = checkSettled(check, ran.isError === true, ran.text ?? "");
+    if (passed === undefined) return ran; // a masked status: no evidence either way
+    const text = ran.text ?? "";
+    const note = await flowCheckEnd($, start, passed, withoutStatus(check, text));
     return note ? { ...ran, context: [...(ran.context ?? []), note] } : ran;
   });
 

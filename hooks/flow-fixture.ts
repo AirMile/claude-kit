@@ -12,6 +12,7 @@ export function world(
   on: On,
   store: Record<string, unknown> = {},
   git?: { index: string; work: string },
+  out: (command: string) => string = () => "",
 ) {
   let now = Date.parse("2026-10-27T12:00:00Z");
   on("session.id", async () => ({ value: "s1" }));
@@ -75,7 +76,10 @@ export function world(
     ),
   );
   on("tool.call", { tool: "Bash" }, async (_$, e) =>
-    result({ stdout: "", stderr: "" }, e.command.includes("fail")),
+    ({
+      ...result({ stdout: "", stderr: "" }, e.command.includes("fail")),
+      text: out(e.command),
+    }),
   );
   return { store, later: (ms: number) => (now += ms) };
 }
