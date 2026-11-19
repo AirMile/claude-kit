@@ -254,6 +254,14 @@ test("a failing suite behind a status echo opens the kind and blocks a commit", 
   expect((await stop($)).block).toContain("tests failed earlier");
 });
 
+test("the status line is the last line: '# fail 0' then exit=1 opens the kind", async ($, on) => {
+  const w = statusWorld(on, "# fail 0\nexit=1\n");
+  await write($, "/p/app/src/a.ts");
+  w.later(1000);
+  await bash($, SUITE);
+  expect(w.store.flowTasks).toMatchObject({ s1: { openKinds: ["test"] } });
+});
+
 test("a passing suite behind a status echo is recorded", async ($, on) => {
   const w = statusWorld(on, "exit=0\n");
   await write($, "/p/app/src/a.ts");
@@ -282,14 +290,18 @@ test("an unchanged print stays passing; a log file written in the repo reopens t
   await stop($); // a clean turn sets the baseline
   git.work = "b2";
   await bash($, "sed -i s/a/b/ src/a.ts");
-  expect((await stop($)).block).toContain("changed after the last passing check");
+  expect((await stop($)).block).toContain(
+    "changed after the last passing check",
+  );
   await bash($, "npm test");
   w.later(1000);
   expect((await stop($)).block).toBe(undefined); // checked on this very code
   expect((await stop($)).block).toBe(undefined); // and still, with the same print
   git.fresh = "f.log"; // the suite's own log: a new, non-ignored file
   w.later(1000);
-  expect((await stop($)).block).toContain("changed after the last passing check");
+  expect((await stop($)).block).toContain(
+    "changed after the last passing check",
+  );
 });
 
 for (const [status, denied] of [

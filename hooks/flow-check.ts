@@ -63,7 +63,8 @@ const kindOf = (command: string): CheckKind | undefined =>
 const blank = (command: string): string =>
   command
     .replace(/>\|/g, ">")
-    .replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""')
+    // a string that starts with `-` keeps a marker: it may be a flag (`"--help"`)
+    .replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, (q) => (q[1] === "-" ? '"-"' : '""'))
     .replace(/(^|\s)#.*$/gm, "$1");
 
 // The commands joined by &&, || or ; one of which may be a check, each with its own pipe.
@@ -76,7 +77,20 @@ const BACKGROUND = /(?<![&>|<])&(?![&>])/;
 const ESCAPED = /\\[\s;&|#<>"'()$`]/;
 // Syntax this reader does not follow (substitution, subshell, group, heredoc, a flag with a quote
 // inside it): such a command gives no evidence, whatever it prints.
-const EXOTIC = /`|\$\(|<<|[(){}]|["']-|-[\w-]*["']/;
+// Tested on the blanked command, so quoted text never counts; `DQUOTED` re-reads the double
+// quotes, where `$(` and a backtick still substitute (single quotes are literal).
+const EXOTIC = /`|\$\(|<<|[(){}]/;
+const DQUOTED = /"(?:[^"\\]|\\.)*"|'[^']*'/g;
+const substitutes = (raw: string): boolean =>
+  (raw.match(DQUOTED) ?? []).some((q) => q[0] === '"' && /`|\$[({]/.test(q));
+// A flag led or glued by a quote (`"--help"`, `--he"lp"`) hides an info flag from the whitelist.
+// Node reads flags anywhere, so its whole command is guarded; any other runner's words after its
+// own bare `--` belong to the script (`npm test -- -t "-x"`) and are not.
+// Read on the check's own blanked segment, where a quoted flag shows as `"-"` and a glued one
+// as `--he""`.
+const QUOTED_FLAG = /["']-|(?:^|[\s\\])-[\w-]*["']/;
+const NODE_OWN = /^(?:yarn\s+)?node(?:\.exe)?(?:\s|$)/i;
+const BARE_DASHES = /\s--(?:\s|$)/;
 // `set -o pipefail` makes a pipeline's status the failing stage's: the pipe hides nothing.
 const PIPEFAIL = /^\s*set\s+(?:-\w+\s+)*-\w*o\s+pipefail\s*(?:;|&&|\n)/;
 const SETS = /\b(?:set|shopt)\b/g;
@@ -105,11 +119,22 @@ export function checkOf(raw: string): Check | undefined {
   const found: CheckKind[] = [];
   let piped = false;
   let masked = false;
+  // A check's whole segment (its prefix too: `npx --ver"sion"`, `ADDOPTS="--x"`) and a shell
+  // option setter (`set "-n"`); other commands (`echo "--- done ---"`) change nothing that runs.
+  const quotedFlag = parts.some((p, i) => {
+    if (i % 2 !== 0) return false;
+    const own = p.trim().replace(PREFIX, "");
+    if (!kindOf(own) && !/^\s*(?:set|shopt)\s/.test(p)) return false;
+    return QUOTED_FLAG.test(
+      NODE_OWN.test(own) ? p : (p.split(BARE_DASHES)[0] ?? ""),
+    );
+  });
   for (let i = 0; i < parts.length; i += 2) {
     const seg = (parts[i] ?? "").trim();
     const first = seg.split(/(?<!\|)\|(?!\|)/)[0] ?? "";
     const head = first.replace(/(\S)(&?[<>])/g, "$1 $2");
-    const kind = kindOf(head.replace(PREFIX, ""));
+    const own = head.replace(PREFIX, "");
+    const kind = kindOf(own);
     if (!kind) continue;
     found.push(kind);
     piped ||=
@@ -134,7 +159,12 @@ export function checkOf(raw: string): Check | undefined {
     );
     if (!all) break;
   }
-  masked ||= BACKGROUND.test(command) || ESCAPED.test(raw) || EXOTIC.test(raw);
+  masked ||=
+    BACKGROUND.test(command) ||
+    ESCAPED.test(raw) ||
+    EXOTIC.test(command) ||
+    substitutes(raw) ||
+    quotedFlag;
   const [kind] = found;
   if (!kind) return undefined;
   const check: Check = { piped, kind, kinds: [...new Set(found)] };
