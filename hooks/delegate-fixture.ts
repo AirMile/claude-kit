@@ -28,6 +28,7 @@ export function world(
     status?: Record<string, unknown>; // what codex-status.js prints
     events?: string[]; // what Codex writes on stdout
     agy?: { json?: string; code?: number }; // what agy prints on stdout, and its exit code
+    clean?: boolean; // the worktree is unchanged after the run
     agyJsons?: string[]; // one stdout per agy run, in order (a retry gets the second)
   } = {},
 ) {
@@ -101,7 +102,7 @@ export function world(
         stdout:
           e.argv[1] === "hash-object"
             ? "blob\n"
-            : gitCalls > 1
+            : gitCalls > 1 && !opts.clean
               ? " M src/a.ts\0"
               : "",
         stderr: "",

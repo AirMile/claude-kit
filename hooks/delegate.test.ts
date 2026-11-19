@@ -240,3 +240,22 @@ for (const thread of [undefined, "t-123"]) {
     );
   });
 }
+
+test("a read-only GPT run claims no changes; a tree that differs is listed apart", async ($, on) => {
+  const w = world(on, { events: EVENTS });
+  const out = await delegate($, {
+    role: "search",
+    brief: "Find where the form is submitted.",
+  });
+  expect(w.spawned[0]?.argv).toContain("read-only");
+  expect(out).toContain("Changed: nothing (read-only run)");
+  expect(out).toContain("Changed meanwhile, not by this run: src/a.ts");
+  expect(out).not.toContain("\nChanged: src/a.ts");
+});
+
+test("a read-only run with an unchanged tree prints only the nothing line", async ($, on) => {
+  world(on, { events: EVENTS, clean: true });
+  const out = await delegate($, { role: "search", brief: "Find it." });
+  expect(out).toContain("Changed: nothing (read-only run)");
+  expect(out).not.toContain("Changed meanwhile");
+});

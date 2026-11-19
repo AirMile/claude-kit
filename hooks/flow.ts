@@ -64,11 +64,21 @@ export async function flowCheckStart(
   await load($);
   if (!state.task) return undefined;
   await ensureRequired($);
+  state.task = { ...state.task, checkCalls: (state.task.checkCalls ?? 0) + 1 };
+  await save($);
   return {
     startedAt: await $.clock.now(),
     startPrint: await worktreePrint($),
     kinds,
   };
+}
+
+// A Bash command that is not a check: counted so the hold can say none was recognised.
+export async function flowShellSeen($: EngineInterface): Promise<void> {
+  await load($);
+  if (!state.task) return;
+  state.task = { ...state.task, shellCalls: (state.task.shellCalls ?? 0) + 1 };
+  await save($);
 }
 
 export async function flowCheckEnd(
@@ -297,6 +307,7 @@ export function flow(on: On) {
   on("tool.call", { tool: "Bash" }, async ($, e, next) => {
     const check = checkOf(e.command);
     const start = check ? await flowCheckStart($, check.kinds) : undefined;
+    if (!check) await flowShellSeen($);
     const ran = await next(e);
     if (!start || !check || ran.deny !== undefined) return ran;
     const passed = checkSettled(check, ran.isError === true, ran.text ?? "");

@@ -197,7 +197,8 @@ test("flow command shows the open task after a hold", async ($, on) => {
   await write($, "src/a.ts");
   expect((await stop($)).block).toContain("no review yet");
   const out = await $.command.run({ command: "flow", args: "" } as never);
-  expect(out.text).toContain('open: light task, src/a.ts: still needs a passing check on this code; a review: no review yet. "skip verify" waives it.');
+  expect(out.text).toContain('open: light task, src/a.ts: still needs a passing check on this code (no command this task was recognised as a check');
+  expect(out.text).toContain('; a review: no review yet. "skip verify" waives it.');
 });
 
 test("clear logs reset for an open task", async ($, on) => {

@@ -8,6 +8,7 @@ import {
   isOpen,
   missing,
   needsVerifier,
+  noCheckSeen,
   onCheck,
   onNoReviewer,
   openLine,
@@ -32,6 +33,8 @@ const work = (over: Partial<Task> = {}): Task => ({
   gateV: 2,
   ...over,
 });
+const ADVICE =
+  "Recognised: node --test, npm/pnpm/yarn test, vitest, jest, pytest, go test, cargo test, tsc, eslint, build scripts. Run the project's test command through the Bash tool (the flow does not see PowerShell calls), or ask the user to add `Test:` to AGENTS.md § Commands; that command must start with one of the recognised runners, or it is ignored.";
 const review = (over: Partial<ReviewRecord> = {}): ReviewRecord => ({
   outcome: "pass",
   family: "gpt",
@@ -118,7 +121,9 @@ test("heavy floors the gate at V2; V0/V1 need only the passing check", async () 
   expect(gateLevel(work({ track: "heavy", gateV: 3 }))).toBe(3);
   for (const gateV of [0, 1] as const) {
     const t = work({ gateV, levels: { d: 1, e: 0, v: 3, r: 0 } });
-    expect(missing(t, "p1")).toEqual(["a passing check on this code"]);
+    expect(missing(t, "p1")).toEqual([
+      `a passing check on this code (no command this task was recognised as a check. ${ADVICE})`,
+    ]);
     expect(verified(onCheck(t, true, 6, "p1", "test"), "p1")).toBe(true);
   }
   const t = onCheck(work(), true, 6, "p1", "test");
@@ -273,7 +278,7 @@ test("a hold names every missing item and preserves the check and verifier sente
   const t = work({ track: "heavy", spec: true });
   expect(needsVerifier(t)).toBe(true);
   expect(missing(t, "p1").length).toBe(3);
-  const hold = holdText(t, "p1");
+  const hold = holdText({ ...t, checks: 1, checkCalls: 1 }, "p1");
   expect(hold).toContain(
     "src/a.ts changed after the last passing check. Run the check",
   );
@@ -344,9 +349,9 @@ test("open line describes current evidence, waiver and closed work", async () =>
   const t = work({ files: ["a", "b", "c", "d"] });
   expect(openLine(undefined, "p1")).toBe("open: none");
   expect(openLine(t, "p0")).toBe("open: none");
-  const line =
-    'open: light task, a, b, c and 1 more: still needs a passing check on this code; a review: no review yet. "skip verify" waives it.';
-  expect(openLine(t, "p1")).toBe(line);
+  expect(openLine(t, "p1")).toBe(
+    `open: light task, a, b, c and 1 more: still needs a passing check on this code (no command this task was recognised as a check. ${ADVICE}); a review: no review yet. "skip verify" waives it.`,
+  );
   const refused = onNoReviewer(t, "GPT is off", "p1");
   expect(openLine(refused, "p1")).toContain("; no reviewer: GPT is off.");
   expect(openLine(refused, "p2")).not.toContain("GPT is off");
@@ -547,4 +552,50 @@ test("a check passes only on the code it ran on: an unchanged print stays, a cha
   // a changed print, e.g. from a log file written inside the repository, is not
   expect(missing(checked, "p1-with-f.log")).toEqual(["a passing check on this code"]);
   expect(isOpen(checked, "p1-with-f.log")).toBe(true);
+});
+
+const NONE = "no command this task was recognised as a check";
+const texts = (t: Task) => [
+  missing(t, "p1").join(" "),
+  holdText(t, "p1", false),
+  reminderText(t, "p1"),
+  openLine(t, "p1"),
+];
+
+test("no shell call at all: the hold says no command was recognised as a check", () => {
+  const t = work({ gateV: 0 });
+  expect(noCheckSeen(t)).toBe(true);
+  for (const text of texts(t)) expect(text).toContain(NONE);
+  const hold = holdText(t, "p1", false);
+  expect(hold).toContain("node --test");
+  expect(hold).toContain("`Test:`");
+  expect(hold).toContain("through the Bash tool");
+  expect(hold).toContain("must start with one of the recognised runners");
+  expect(hold).toContain("This project has no such check → say so and stop.");
+  expect(hold).toContain("AGENTS.md § Commands");
+});
+
+test("only unrecognised shell calls and no required kind: same wording, with the count", () => {
+  const t = work({ gateV: 0, shellCalls: 3 });
+  expect(noCheckSeen(t)).toBe(true);
+  for (const text of texts(t)) expect(text).toContain(NONE);
+  expect(holdText(t, "p1", false)).toContain("3 shell commands ran, none a check");
+});
+
+test("a recognised failing check keeps the old wording", () => {
+  const t = onCheck(work({ gateV: 0, shellCalls: 2 }), false, 6, "p1", "test");
+  expect(noCheckSeen(t)).toBe(false);
+  for (const text of texts(t)) expect(text).not.toContain(NONE);
+  expect(holdText(t, "p1", false)).toContain("tests failed earlier");
+});
+
+test("a stale pass (print changed) keeps the generic wording", () => {
+  const t = onCheck(work({ gateV: 0 }), true, 6, "p1", "test");
+  expect(noCheckSeen(t)).toBe(false);
+  expect(missing(t, "p2")).toEqual(["a passing check on this code"]);
+  expect(holdText(t, "p2", false)).toContain("changed after the last passing check");
+  for (const text of [holdText(t, "p2", false), reminderText(t, "p2"), openLine(t, "p2")])
+    expect(text).not.toContain(NONE);
+  // a recognised call whose status was masked still counts as a check seen
+  expect(noCheckSeen(work({ checkCalls: 1 }))).toBe(false);
 });

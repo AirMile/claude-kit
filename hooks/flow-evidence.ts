@@ -138,6 +138,20 @@ const checkNeeds = (t: Task, print?: string): string[] => [
         `a passing ${KIND_RUN[kind]} on this code (this project's AGENTS.md lists it)`,
     ),
 ];
+// No command this task was recognised as a check (a masked one counts as seen): the generic
+// "a passing check" would send the model hunting for something it cannot name.
+export const noCheckSeen = (t: Task): boolean =>
+  !t.checks &&
+  !t.failed &&
+  !t.checkCalls &&
+  !(t.openKinds ?? []).length &&
+  !Object.keys(t.passedAt ?? {}).length &&
+  !Object.keys(t.baseline ?? {}).length;
+const RECOGNISED =
+  "node --test, npm/pnpm/yarn test, vitest, jest, pytest, go test, cargo test, tsc, eslint, build scripts";
+const noCheckNote = (t: Task): string =>
+  `no command this task was recognised as a check${t.shellCalls ? ` (${t.shellCalls} shell command${t.shellCalls === 1 ? "" : "s"} ran, none a check)` : ""}`;
+const noCheckAdvice = `Recognised: ${RECOGNISED}. Run the project's test command through the Bash tool (the flow does not see PowerShell calls), or ask the user to add \`Test:\` to AGENTS.md § Commands; that command must start with one of the recognised runners, or it is ignored.`;
 const baselineNote = (t: Task): string => {
   const kinds = Object.keys(t.baseline ?? {}).filter(
     (k) => !(t.openKinds ?? []).includes(k as CheckKind),
@@ -153,7 +167,11 @@ export function missing(t: Task, print: string | undefined): string[] {
     wants.push(
       ...(checkNeeds(t, print).length
         ? checkNeeds(t, print)
-        : ["a passing check on this code"]),
+        : [
+            noCheckSeen(t)
+              ? `a passing check on this code (${noCheckNote(t)}. ${noCheckAdvice})`
+              : "a passing check on this code",
+          ]),
     );
   if (needsVerifier(t) && !verifierCurrent(t, print))
     wants.push("the kit:verifier on the task criteria");
@@ -216,15 +234,19 @@ export function holdText(
   review = true,
 ): string {
   const sentences: string[] = [];
-  if (!checked(t, print))
+  if (!checked(t, print)) {
+    const needs = checkNeeds(t, print);
+    const run =
+      "that covers the change (test, typecheck or lint, without a pipe that hides its exit " +
+      "code) and fix what fails. This project has no such check → say so and stop.";
     sentences.push(
-      (checkNeeds(t, print).length
-        ? `kit flow: ${short(t.files)} still needs ${checkNeeds(t, print).join("; ")}. Run each missing check `
-        : `kit flow: ${short(t.files)} changed after the last passing check. Run the check `) +
-        "that covers the change (test, typecheck or lint, without a pipe that hides its exit " +
-        "code) and fix what fails. This project has no such check → say so and stop." +
-        baselineNote(t),
+      needs.length
+        ? `kit flow: ${short(t.files)} still needs ${needs.join("; ")}. Run each missing check ${run}${baselineNote(t)}`
+        : noCheckSeen(t)
+          ? `kit flow: ${short(t.files)} changed and ${noCheckNote(t)}. ${noCheckAdvice} Run it without a pipe that hides its exit code and fix what fails. This project has no such check → say so and stop.${baselineNote(t)}`
+          : `kit flow: ${short(t.files)} changed after the last passing check. Run the check ${run}${baselineNote(t)}`,
     );
+  }
   if (needsVerifier(t) && !verifierCurrent(t, print))
     sentences.push(
       t.verifier === "fail"

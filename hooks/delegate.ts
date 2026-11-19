@@ -2,6 +2,7 @@ import type { EngineInterface, On, ToolSpec } from "claude-code";
 
 import {
   type Author,
+  changedLines,
   type Family,
   FAMILIES,
   GEMINI_FAMILIES,
@@ -194,7 +195,7 @@ async function delegate(
     return [
       `${head}${run.error ? ` ended with: ${run.error}` : " finished"} · ${run.commands} commands` +
         (run.thread ? ` · thread ${run.thread}` : ""),
-      files.length ? `Changed: ${files.join(", ")}` : "Changed: nothing",
+      changedLines(writes, files),
       "--- final message ---",
       answer.length > MAX_ANSWER
         ? `${answer.slice(0, MAX_ANSWER)}\n[incomplete: cut at ${MAX_ANSWER} characters${run.thread ? `, ask for the rest with thread "${run.thread}"` : ""}]`
@@ -318,7 +319,7 @@ async function delegateGemini(
             ? ` · denied: ${run.denied.join(", ")}`
             : "") +
         (run.conversation ? ` · thread ${run.conversation}` : ""),
-      files.length ? `Changed: ${files.join(", ")}` : "Changed: nothing",
+      changedLines(r.writes, files),
       "--- final message ---",
       answer.length > MAX_ANSWER_GEMINI
         ? `${answer.slice(0, MAX_ANSWER_GEMINI)}\n[incomplete: cut at ${MAX_ANSWER_GEMINI} characters${run.conversation ? `, ask for the rest with thread "${run.conversation}"` : ""}]`

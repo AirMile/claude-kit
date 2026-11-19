@@ -66,6 +66,8 @@ export type Task = {
   lastCheckAt: number; // without git: when the last passing check started
   lastVerifierAt: number;
   checks: number;
+  checkCalls?: number; // Bash commands seen that were recognised as a check, settled or not
+  shellCalls?: number; // Bash commands seen that were not
   failed: number;
   openKinds?: CheckKind[]; // failed kinds still awaiting a pass; absent in older tasks
   closedKinds?: CheckKind[]; // failed kinds closed by a later pass; an edit reopens them
