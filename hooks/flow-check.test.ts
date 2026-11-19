@@ -370,15 +370,49 @@ test("info options in either order, background runs, redirects and node.exe", as
     "node --test -c",
   ])
     expect(checkOf(command), command).toBe(undefined);
-  for (const command of ["node --test & wait", "node --test &", "node --test x & echo $!"])
+  for (const command of [
+    "node --test & wait",
+    "node --test &",
+    "node --test x & echo $!",
+  ])
     expect(checkOf(command)?.masked, command).toBe(true);
   expect(checkOf("node --test > f.log 2>&1")?.masked).toBe(undefined);
   expect(checkOf("node --test &> f.log")?.masked).toBe(undefined);
-  expect(checkOf("node --test x 2>&1 && node --test y")?.masked).toBe(undefined);
+  expect(checkOf("node --test x 2>&1 && node --test y")?.masked).toBe(
+    undefined,
+  );
   // `||` controls only its own list: a `;` ends it
   expect(checkOf("setup || fallback; npm test")?.masked).toBe(undefined);
   expect(checkOf("setup || npm test")?.masked).toBe(true);
   expect(checkOf("node --test>f.log")?.kind).toBe("test");
   expect(checkOf("node.exe --test")?.kind).toBe("test");
   expect(checkOf("node --test; echo exit=$?")?.status).toBe("exit");
+});
+
+test("shell edge cases the review found: pipefail, hidden pipes, continued lists, escapes, redirects", async () => {
+  expect(checkOf("set +o pipefail; node --test | tail")?.piped).toBe(true);
+  expect(checkOf("node --test | tail; echo pipefail=$?")?.masked).toBe(true);
+  expect(checkOf("set -eo pipefail; node --test | tail")?.piped).toBe(false);
+  expect(checkOf("node --test >/dev/null 2>&1 3>&1|:")?.piped).toBe(true);
+  for (const command of [
+    "true ||\nnode --test",
+    "true || # note\nnode --test",
+    "echo \\; node --test",
+    "echo \\\nnode --test",
+    "node --test &2>/dev/null",
+    "node --test <&- &",
+  ])
+    expect(checkOf(command)?.masked, command).toBe(true);
+  expect(checkOf("node --test <&-")?.masked).toBe(undefined);
+  expect(checkOf("node --test&>f.log")?.kind).toBe("test");
+  expect(checkOf("node --test&>f.log")?.masked).toBe(undefined);
+  expect(
+    checkSettled(checkOf("node --test | tail")!, false, "# fail 1\n# pass 3"),
+  ).toBe(false);
+  expect(
+    checkSettled(checkOf("node --test | tail; echo $?")!, false, "FAIL x\n0"),
+  ).toBe(false);
+  expect(checkSettled(checkOf("node --test | tail")!, false, "# fail 0")).toBe(
+    undefined,
+  );
 });

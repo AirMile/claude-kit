@@ -70,9 +70,11 @@ const blank = (command: string): string =>
 const split = (command: string): string[] => command.split(/(&&|\|\||;|\n)/);
 
 // A standalone `&` backgrounds a command, its status gone (`2>&1`, `&>f` and `&&` are not one).
-const BACKGROUND = /(?<![&>|])&(?![&>\d])/;
+const BACKGROUND = /(?<![&>|<])&(?![&>])/;
+// An escaped separator is text, and a backslash-newline continues a line: neither is read here.
+const ESCAPED = /\\[;&|\n]/;
 // `set -o pipefail` makes a pipeline's status the failing stage's: the pipe hides nothing.
-const PIPEFAIL = /\bpipefail\b/;
+const PIPEFAIL = /(?:^|[;&\n]\s*)set\s+(?:-\w+\s+)*-\w*o\s+pipefail\b/;
 
 // `; echo <word>=$?` or `; echo $?` at the end: the status of the command before it, printed.
 const STATUS_ECHO = /;\s*echo\s+(?:(\w+)=)?\$\?\s*$/;
@@ -100,19 +102,24 @@ export function checkOf(raw: string): Check | undefined {
   let masked = false;
   for (let i = 0; i < parts.length; i += 2) {
     const seg = (parts[i] ?? "").trim();
-    const head = (seg.split(/(?<!\|)\|(?!\|)/)[0] ?? "").replace(
-      /(\S)([<>])/g,
-      "$1 $2",
-    );
+    const first = seg.split(/(?<!\|)\|(?!\|)/)[0] ?? "";
+    const head = first.replace(/(\S)(&?[<>])/g, "$1 $2");
     const kind = kindOf(head.replace(PREFIX, ""));
     if (!kind) continue;
     found.push(kind);
-    piped ||= head.length < seg.length && !PIPEFAIL.test(command);
+    piped ||= first.length < seg.length && !PIPEFAIL.test(command);
     masked ||= parts.some(
       (p, j) =>
         (j < i &&
           p === "||" &&
-          parts.slice(j + 1, i).every((q) => q !== ";" && q !== "\n")) ||
+          // a ";" or newline ends the list, unless it only continues an operator
+          !parts
+            .slice(j + 1, i)
+            .some(
+              (q, k) =>
+                (q === ";" || q === "\n") &&
+                parts.slice(j + 1, j + 1 + k).some((r) => r.trim()),
+            )) ||
         (j > i &&
           j % 2 === 1 &&
           p !== "&&" &&
@@ -120,7 +127,7 @@ export function checkOf(raw: string): Check | undefined {
     );
     if (!all) break;
   }
-  masked ||= BACKGROUND.test(command);
+  masked ||= BACKGROUND.test(command) || ESCAPED.test(command);
   const [kind] = found;
   if (!kind) return undefined;
   const check: Check = { piped, kind, kinds: [...new Set(found)] };
@@ -145,7 +152,7 @@ export const isCheckArgv = (argv: readonly string[]): boolean =>
 
 // Words a failing run prints; a count of zero ("0 failed") is not a failure.
 const FAILED =
-  /\b[1-9]\d* (?:failed|failing|errors?)\b|^\s*FAIL\b|\bFAILED\b|\bTests?:\s+\d+ failed|✗|✖|\berror TS\d+|\bError:/m;
+  /\b[1-9]\d* (?:failed|failing|errors?)\b|^\s*FAIL\b|\bFAILED\b|\bTests?:\s+\d+ failed|✗|✖|\berror TS\d+|\bError:|^#\s*fail\s+[1-9]/m;
 
 // true: passed, false: failed, undefined: no evidence (a masked status, or an echo that shows
 // none): the check is neither credited nor opened.
@@ -154,7 +161,9 @@ export function checkSettled(
   isError: boolean,
   output: string,
 ): boolean | undefined {
-  if (check.masked) return undefined;
+  // A masked status proves no pass, but a pipe's own output can still show a failure.
+  if (check.masked)
+    return check.piped && FAILED.test(output) ? false : undefined;
   if (isError) return false;
   if (check.status !== undefined) {
     const last = output.trim().split(/\r?\n/).at(-1)?.trim() ?? "";
