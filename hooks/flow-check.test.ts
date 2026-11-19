@@ -417,6 +417,49 @@ test("shell edge cases the review found: pipefail, hidden pipes, continued lists
   );
 });
 
+test("quoted text is text: realistic commands with quoted brackets still count", async () => {
+  for (const command of [
+    'cd "C:/Program Files (x86)/x" && npm test',
+    'npm test -- --grep "foo (bar)"',
+    "npx vitest run -t 'works (ok)'",
+    'pytest -k "not (slow)"',
+    'npx jest --testPathPattern="src/(a|b)"',
+    "npm test -- --grep='(x)'",
+    "npx vitest run -t 'a{b}'",
+    'npm test -- -t "-x"',
+    "npm test -- -t '$(ls)'",
+    "npm test -- -t '`ls`'",
+  ]) {
+    expect(checkOf(command), command).toBeTruthy();
+    expect(checkOf(command)?.masked, command).toBe(undefined);
+  }
+  // unquoted syntax, and substitution inside double quotes, still gives no evidence
+  for (const command of [
+    "npm test $(ls)",
+    "npm test `ls`",
+    'npm test "$(ls)"',
+    'npm test "`ls`"',
+    'npm test "a $(ls) b"',
+    "npm test &",
+    "npm test (x)",
+    "npm test {a,b}",
+    "npm test <<E\nx\nE",
+    'cd "a (b)" && npm test (x)',
+    'node --test "--help"',
+    'node --test --he"lp"',
+  ])
+    expect(
+      checkOf(command)?.masked ?? checkOf(command)?.piped ?? "none",
+      command,
+    ).not.toBe(false);
+});
+
+test("the status line wins: the last line decides, whatever the log said before", async () => {
+  const check = checkOf("node --test > f.log 2>&1; echo exit=$?")!;
+  expect(checkSettled(check, false, "# fail 0\nexit=1\n")).toBe(false);
+  expect(checkSettled(check, false, "# fail 3\nexit=0\n")).toBe(true);
+});
+
 test("unfollowed shell syntax gives no evidence; pipefail only when it is the one leading set", async () => {
   for (const command of [
     'node --test "--help"',
