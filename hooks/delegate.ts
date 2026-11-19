@@ -268,7 +268,7 @@ async function delegateGemini(
   if (long) return `Not run: ${long}`;
   const st = await agyStatus($);
   if (!st.path)
-    return "Not delegated: agy (the Antigravity CLI) is not installed or not on this device's usual paths. Tell the user, then do it here.";
+    return "Not delegated: agy (the Antigravity CLI) was not found on the PATH or in the usual install places (WinGet Links, ~/.local/bin, Homebrew). Before telling the user it is missing, run `where.exe agy` (Windows) or `which agy` yourself; then do it here.";
   const resumed = input.thread && agyThreads.has(input.thread);
   if (input.thread && !resumed)
     return "Not run: that thread is not a Gemini run of this session (a GPT thread cannot continue on Gemini).";

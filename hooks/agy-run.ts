@@ -9,8 +9,6 @@ import { AGY_MAX_BRIEF, type GeminiRoute, parseAgyModels } from "./delegate-poli
 // denied and the run ends without an answer, which shows as an empty response.
 
 const MAX_RUN_MS = 20 * 60_000;
-const FIND =
-  'command -v agy || for p in "$HOME/.local/bin/agy" /opt/homebrew/bin/agy /usr/local/bin/agy; do [ -x "$p" ] && echo "$p" && break; done';
 
 export type AgyRun = {
   answer: string;
@@ -33,7 +31,10 @@ export async function agyStatus(
   let path: string | null = null;
   let models: string[] = [];
   try {
-    const found = await $.process.run(["sh", "-c", FIND]);
+    // skills/agy/scripts/agy-find.js knows the PATH and the usual install places per platform
+    // (WinGet on Windows, Homebrew on a Mac); a POSIX `sh` lookup missed agy on Windows.
+    const script = `${$.plugin.root}/skills/agy/scripts/agy-find.js`;
+    const found = await $.process.run(["node", script], { timeoutMs: 10_000 });
     path = found.stdout.trim().split("\n")[0] || null;
     if (path) {
       const m = await $.process.run([path, "models"]);

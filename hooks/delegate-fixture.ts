@@ -51,7 +51,7 @@ export function world(
     },
   }));
   on("process.run", async (_$, e) => {
-    if (e.argv[0] === "node") {
+    if (e.argv[0] === "node" && !String(e.argv[1]).endsWith("agy-find.js")) {
       statusReads++;
       const status = opts.status ?? {
         argv: ["/bin/codex"],
@@ -71,7 +71,8 @@ export function world(
         },
       };
     }
-    if (e.argv[0] === "sh")
+    if (e.argv[0] === "node")
+      // skills/agy/scripts/agy-find.js: where agy is
       return {
         value: {
           exitCode: 0,
