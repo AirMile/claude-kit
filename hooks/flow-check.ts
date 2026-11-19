@@ -81,10 +81,12 @@ const ESCAPED = /\\[\s;&|#<>"'()$`]/;
 const EXOTIC = /`|\$\(|<<|[(){}]/;
 const DQUOTED = /"(?:[^"\\]|\\.)*"|'[^']*'/g;
 const substitutes = (raw: string): boolean =>
-  (raw.match(DQUOTED) ?? []).some((q) => q[0] === '"' && /`|\$\(/.test(q));
+  (raw.match(DQUOTED) ?? []).some((q) => q[0] === '"' && /`|\$[({]/.test(q));
 // A flag glued to a quote (`"--help"`, `--he"lp"`) hides node's own info flags from the whitelist.
-const QUOTED_FLAG = /["']-|-[\w-]*["']/;
-const NODE_HEAD = /^node(?:\s|$)/;
+// After a bare `--` the words belong to the script (`npm test -- -t "-x"`): not read.
+const QUOTED_FLAG = /["']-|(?:^|\s)-[\w-]*["']/;
+const flagsQuoted = (raw: string): boolean =>
+  QUOTED_FLAG.test(raw.split(/\s--(?=\s|$)/)[0] ?? "");
 // `set -o pipefail` makes a pipeline's status the failing stage's: the pipe hides nothing.
 const PIPEFAIL = /^\s*set\s+(?:-\w+\s+)*-\w*o\s+pipefail\s*(?:;|&&|\n)/;
 const SETS = /\b(?:set|shopt)\b/g;
@@ -113,16 +115,13 @@ export function checkOf(raw: string): Check | undefined {
   const found: CheckKind[] = [];
   let piped = false;
   let masked = false;
-  let nodeRun = false;
   for (let i = 0; i < parts.length; i += 2) {
     const seg = (parts[i] ?? "").trim();
     const first = seg.split(/(?<!\|)\|(?!\|)/)[0] ?? "";
     const head = first.replace(/(\S)(&?[<>])/g, "$1 $2");
-    const own = head.replace(PREFIX, "");
-    const kind = kindOf(own);
+    const kind = kindOf(head.replace(PREFIX, ""));
     if (!kind) continue;
     found.push(kind);
-    nodeRun ||= NODE_HEAD.test(own.replace(/^node\.exe(?=\s)/i, "node"));
     piped ||=
       first.length < seg.length &&
       !(PIPEFAIL.test(command) && (command.match(SETS)?.length ?? 0) === 1);
@@ -150,7 +149,7 @@ export function checkOf(raw: string): Check | undefined {
     ESCAPED.test(raw) ||
     EXOTIC.test(command) ||
     substitutes(raw) ||
-    (nodeRun && QUOTED_FLAG.test(raw));
+    flagsQuoted(raw);
   const [kind] = found;
   if (!kind) return undefined;
   const check: Check = { piped, kind, kinds: [...new Set(found)] };
