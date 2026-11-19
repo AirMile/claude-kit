@@ -416,3 +416,25 @@ test("shell edge cases the review found: pipefail, hidden pipes, continued lists
     undefined,
   );
 });
+
+test("unfollowed shell syntax gives no evidence; pipefail only when it is the one leading set", async () => {
+  for (const command of [
+    'node --test "--help"',
+    'node --test --he"lp"',
+    "echo $(printf x; node --test x)",
+    "echo `node --test x`",
+    "cat <<'E'\nnode --test\nE",
+    "true || (\nnode --test x )",
+    "node --test x \\ #; true",
+    "false && set -o pipefail; node --test | :",
+    "set -o pipefail; set +o pipefail; node --test | :",
+    "set -o pipefail; node --test | tail; set +o pipefail",
+  ])
+    expect(
+      checkOf(command)?.masked ?? checkOf(command)?.piped ?? "none",
+      command,
+    ).not.toBe(false);
+  expect(checkOf("node --test >| f.log")?.piped).toBe(false);
+  expect(checkOf("set -o pipefail; node --test | tail")?.piped).toBe(false);
+  expect(checkOf("node --test C:\\x\\y.mjs")?.masked).toBe(undefined);
+});

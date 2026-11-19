@@ -62,6 +62,7 @@ const kindOf = (command: string): CheckKind | undefined =>
 // Quoted strings and comments are text, not shell structure: `echo 'a && node --test'` runs no suite.
 const blank = (command: string): string =>
   command
+    .replace(/>\|/g, ">")
     .replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""')
     .replace(/(^|\s)#.*$/gm, "$1");
 
@@ -72,9 +73,13 @@ const split = (command: string): string[] => command.split(/(&&|\|\||;|\n)/);
 // A standalone `&` backgrounds a command, its status gone (`2>&1`, `&>f` and `&&` are not one).
 const BACKGROUND = /(?<![&>|<])&(?![&>])/;
 // An escaped separator is text, and a backslash-newline continues a line: neither is read here.
-const ESCAPED = /\\[;&|\n]/;
+const ESCAPED = /\\[\s;&|#<>"'()$`]/;
+// Syntax this reader does not follow (substitution, subshell, group, heredoc, a flag with a quote
+// inside it): such a command gives no evidence, whatever it prints.
+const EXOTIC = /`|\$\(|<<|[(){}]|["']-|-[\w-]*["']/;
 // `set -o pipefail` makes a pipeline's status the failing stage's: the pipe hides nothing.
-const PIPEFAIL = /(?:^|[;&\n]\s*)set\s+(?:-\w+\s+)*-\w*o\s+pipefail\b/;
+const PIPEFAIL = /^\s*set\s+(?:-\w+\s+)*-\w*o\s+pipefail\s*(?:;|&&|\n)/;
+const SETS = /\b(?:set|shopt)\b/g;
 
 // `; echo <word>=$?` or `; echo $?` at the end: the status of the command before it, printed.
 const STATUS_ECHO = /;\s*echo\s+(?:(\w+)=)?\$\?\s*$/;
@@ -107,7 +112,9 @@ export function checkOf(raw: string): Check | undefined {
     const kind = kindOf(head.replace(PREFIX, ""));
     if (!kind) continue;
     found.push(kind);
-    piped ||= first.length < seg.length && !PIPEFAIL.test(command);
+    piped ||=
+      first.length < seg.length &&
+      !(PIPEFAIL.test(command) && (command.match(SETS)?.length ?? 0) === 1);
     masked ||= parts.some(
       (p, j) =>
         (j < i &&
@@ -127,7 +134,7 @@ export function checkOf(raw: string): Check | undefined {
     );
     if (!all) break;
   }
-  masked ||= BACKGROUND.test(command) || ESCAPED.test(command);
+  masked ||= BACKGROUND.test(command) || ESCAPED.test(raw) || EXOTIC.test(raw);
   const [kind] = found;
   if (!kind) return undefined;
   const check: Check = { piped, kind, kinds: [...new Set(found)] };
