@@ -63,7 +63,8 @@ const kindOf = (command: string): CheckKind | undefined =>
 const blank = (command: string): string =>
   command
     .replace(/>\|/g, ">")
-    .replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""')
+    // a string that starts with `-` keeps a marker: it may be a flag (`"--help"`)
+    .replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, (q) => (q[1] === "-" ? '"-"' : '""'))
     .replace(/(^|\s)#.*$/gm, "$1");
 
 // The commands joined by &&, || or ; one of which may be a check, each with its own pipe.
@@ -85,8 +86,9 @@ const substitutes = (raw: string): boolean =>
 // A flag led or glued by a quote (`"--help"`, `--he"lp"`) hides an info flag from the whitelist.
 // Node reads flags anywhere, so its whole command is guarded; any other runner's words after its
 // own bare `--` belong to the script (`npm test -- -t "-x"`) and are not.
-const QUOTE_LED = /["']-/;
-const NODE_QUOTED = /["']-|(?:^|[\s\\])-[\w-]*["']/;
+// Read on the check's own blanked segment, where a quoted flag shows as `"-"` and a glued one
+// as `--he""`.
+const QUOTED_FLAG = /["']-|(?:^|[\s\\])-[\w-]*["']/;
 const NODE_OWN = /^(?:yarn\s+)?node(?:\.exe)?(?:\s|$)/i;
 const BARE_DASHES = /\s--(?:\s|$)/;
 // `set -o pipefail` makes a pipeline's status the failing stage's: the pipe hides nothing.
@@ -127,8 +129,8 @@ export function checkOf(raw: string): Check | undefined {
     if (!kind) continue;
     found.push(kind);
     quotedFlag ||= NODE_OWN.test(own)
-      ? NODE_QUOTED.test(raw)
-      : !BARE_DASHES.test(own) && QUOTE_LED.test(raw);
+      ? QUOTED_FLAG.test(own)
+      : QUOTED_FLAG.test(own.split(BARE_DASHES)[0] ?? "");
     piped ||=
       first.length < seg.length &&
       !(PIPEFAIL.test(command) && (command.match(SETS)?.length ?? 0) === 1);

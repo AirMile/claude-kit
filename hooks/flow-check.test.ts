@@ -455,6 +455,8 @@ test("quoted text is text: realistic commands with quoted brackets still count",
     'node --title="a -- b" --test "--version"',
     'node --test \\--ver"sion"',
     'cd -- . && npm test "--help"',
+    'npm test "--help" --',
+    'npm test --he"lp"',
   ])
     expect(
       checkOf(command)?.masked ?? checkOf(command)?.piped ?? "none",
@@ -462,6 +464,12 @@ test("quoted text is text: realistic commands with quoted brackets still count",
     ).not.toBe(false);
   // a hyphen inside a quoted path is no flag
   expect(checkOf('cd "C:/my-app" && npm test')?.masked).toBe(undefined);
+  expect(checkOf('npm test -- -t "-x" && npm run lint')).toMatchObject({
+    kinds: ["test", "static"],
+  });
+  expect(checkOf('npm test -- -t "-x" && npm run lint')?.masked).toBe(
+    undefined,
+  );
   expect(checkOf('npx vitest run -t "parses --help"')?.masked).toBe(undefined);
   expect(checkOf('cd "C:/Program Files -x86" && npm test')?.masked).toBe(
     undefined,
