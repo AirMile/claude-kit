@@ -8,7 +8,21 @@ import { runTaskTool, taskRunner } from "./task-runner";
 import { noteClaudeLimits } from "./delegate-balance";
 import { commitGate, commitGateCommand } from "./commit-gate";
 import { guard, guardCommand } from "./guard";
-import { flow, flowCommand, flowEdit, flowStop, resetFlow } from "./flow";
+import {
+  flow,
+  flowAtBoundary,
+  flowCommand,
+  flowEdit,
+  flowStop,
+  resetFlow,
+} from "./flow";
+import {
+  autoCompact,
+  autoCompactCommand,
+  noteBoundary,
+  resetAutoCompact,
+} from "./auto-compact";
+import { endsOnQuestion } from "./context-policy";
 import { noteFile, resetChat } from "./chat-facts";
 import { compaction } from "./compaction";
 import { bandCommand, bandUsage, kitBand } from "./kit-band";
@@ -118,6 +132,7 @@ export const register: Register = (on) => {
   autoModel(on);
   kitBand(on);
   compaction(on);
+  autoCompact(on);
 
   on("session.start", async ($, e, next) => {
     const started = await next(e);
@@ -134,6 +149,7 @@ export const register: Register = (on) => {
     await $.command.register(flowCommand);
     await $.command.register(guardCommand);
     await $.command.register(commitGateCommand);
+    await $.command.register(autoCompactCommand);
     await refresh($);
     if (await gptOn($))
       void gptStatus($).then((st) => {
@@ -149,6 +165,7 @@ export const register: Register = (on) => {
   on("session.end", async ($, e, next) => {
     if (e.reason === "clear") {
       resetChat();
+      resetAutoCompact();
       await resetFlow($);
       meters = meters.filter((m) => m.label !== "ctx");
       bandUsage(meters);
@@ -175,6 +192,13 @@ export const register: Register = (on) => {
       open || ran.block
         ? undefined
         : await flowStop($, e.last_assistant_message);
+    noteBoundary(
+      !hold &&
+        !open &&
+        !ran.block &&
+        flowAtBoundary() &&
+        !endsOnQuestion(e.last_assistant_message),
+    );
     if (hold) return { ...ran, block: hold };
     await noteStop($, open);
     return ran;

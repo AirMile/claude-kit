@@ -1,5 +1,6 @@
 import type { EngineInterface, On, SessionMessage } from "claude-code";
 
+import { recordCompaction } from "./auto-compact";
 import { noteCompact } from "./chat-facts";
 import { flowRecovery } from "./flow";
 import { branchSlug, inRoot, parseSpec } from "./spec";
@@ -107,6 +108,12 @@ export function compaction(on: On) {
     } catch {
       // Diagnostic failures cannot discard a completed native summary.
     }
+    // After the log, so its duration is the summary's alone (auto-compact.ts's ledger).
+    await recordCompaction($, {
+      trigger: e.trigger,
+      before: compacted.tokensBefore,
+      after: compacted.tokensAfter,
+    }).catch(() => {}); // the ledger can never discard a completed summary
 
     const notes: SessionMessage[] = [];
     const now = spec ? await activeSpec($, e.messages) : null;

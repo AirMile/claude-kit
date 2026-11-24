@@ -21,11 +21,11 @@
 
 ## v0.16 · smart context
 
-- [ ] **context-ledger** · measure tool-result characters per tool via session.append and persist each compaction's tokensBefore/After, so thresholds come from data
+- [ ] **context-ledger** · measure tool-result characters per tool via session.append (each compaction's tokensBefore/After is persisted by context-policy), so thresholds come from data
 - [ ] **context-spike** · two experiments, go/no-go for the next two items: a session.append rewrite reaches the model; a session.compact hook returning its own messages with one stubbed Read keeps tool pairs intact
 - [ ] **check-collapse** · shrink successful check output (build, test, install) at write time, failures stay whole; after a spike go
 - [ ] **context-prune** · age re-readable tool results into one-line stubs inside the session.compact hook, own file ≤300 lines, no LLM summary; after a spike go
-- [ ] **context-policy** · auto compact trigger on the Messages category with absolute token thresholds and a cooldown; hard threshold automatic, soft as toast or band button; thresholds from ledger data
+- [ ] **context-policy** · auto compact at a task boundary (no open flow task, no question, no queued prompt) at ≥ min(50% window, 160k), 3-turn cooldown, ledger of every compaction, `/autocompact` · spec: docs/specs/context-policy.md
 - [ ] **fresh-anywhere** · clear and resume at any task boundary, always the user's choice, needs a current spec Handoff
 - [ ] **agent-brief-cap** · fixed return format and answer cap for Claude subagents, plus a cumulative read budget per task
 
@@ -59,4 +59,5 @@
 - **run-task-no-changes** · `run_task` reports `pass` while GPT changed nothing: say "pass, no changes" or stop
 - **run-task-timeout** · a timed-out check may keep running (`$.process.run`'s contract doesn't say it kills the child); timeout vs "could not start" is guessed from elapsed time and the message
 - **run-task-log** · read-watch counts a `stopped` run where Codex never started as a GPT run (and resets the read budget); the tail is stdout+stderr concatenated, so stderr-biased
+- **flow-question-detect** · `hooks/flow.ts` `endedOnQuestion` is `endsWith("?")`: "**Zal ik?**" or "Akkoord? (ja/nee)" count as no question for flow's answering; `endsOnQuestion` in `hooks/context-policy.ts` already handles them
 - **build-run-task** · `skills/build/SKILL.md` 4b.2 still names delegate `build` for criteria, while the E1/E2 notes say `run_task`

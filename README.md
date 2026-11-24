@@ -817,6 +817,14 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
 - **Diagnostics**: the debug log records `kit compact:` with native token counts before/after,
   summarizer usage and duration when available. A reused precomputed summary may have no usage.
   These figures measure the integration, not summary quality or guaranteed dollar savings.
+- **Auto-compact at a task boundary**: when a turn ends with no open flow task, not on a
+  question and with no prompt queued behind it, and the context is at or above half the window
+  (capped at 160k tokens), kit runs `/compact` once the chat is idle, with a toast saying why.
+  Not within 3 turns of the last compaction, not while the plan-limit pause holds, never when a
+  fresh start is armed; a prompt you send first cancels it. Every completed compaction (native,
+  yours or kit's) goes into a per-project ledger of the last 50 (tokens before/after, who
+  started it). `/autocompact status` shows the state, the threshold and the latest rows;
+  `/autocompact off|on` per project. A compact that fails turns it off until `/clear`.
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt, one line: usage at the left

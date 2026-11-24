@@ -40,6 +40,8 @@ type Pause = { until: number; percent: number; cut: boolean };
 const last = new Map<string, Reading>();
 let rises: number[] = []; // recent rises per reading, all windows
 let paused: Pause | null = null;
+// While paused near the plan limit nothing should spend tokens (auto-compact.ts).
+export const limitPaused = (): boolean => paused !== null;
 let queued: string[] = [];
 type Timer = ReturnType<EngineInterface["clock"]["after"]>;
 

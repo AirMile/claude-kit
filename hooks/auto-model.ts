@@ -33,6 +33,7 @@ import {
   running,
   switchTo,
 } from "./model-switch";
+import { notePrompt } from "./auto-compact";
 import { noteAgent } from "./chat-facts";
 import { flowPrompt, flowSpawned } from "./flow";
 
@@ -248,6 +249,7 @@ export function autoModel(on: On) {
   );
 
   on("prompt.submit", async ($, e, next) => {
+    notePrompt(); // a new turn: a planned auto-compact is stale (auto-compact.ts)
     const held = await limitPrompt($, e.text);
     if (held) {
       $.ui.toast(held, { timeoutMs: 10_000 });

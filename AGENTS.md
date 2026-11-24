@@ -11,7 +11,8 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
 - `hooks/hooks.json`: push-guard (PreToolUse) + format-on-save (PostToolUse);
   `hooks/push-guard.test.cjs` is its regression test. Its `modules` names `hooks/register.tsx`,
   the kit mod (Claude Code 2.1.287+): native compaction priorities and recovery note
-  (`hooks/compaction.ts`), usage figures, and the tools
+  (`hooks/compaction.ts`), auto-compact at a task boundary with a compaction ledger and
+  `/autocompact` (`hooks/auto-compact.ts` on the pure `hooks/context-policy.ts`), usage figures, and the tools
   `mcp__kit__roadmap_view` / `mcp__kit__theme_view` (`hooks/roadmap-open.ts`,
   `hooks/theme-view.tsx`) that `/product` and `/theme` call to open their panes (plus the `/panel` command), the band
   above the prompt (`hooks/kit-band.tsx`: one line of usage, switches a press

@@ -280,6 +280,9 @@ export async function flowStop(
   return v.block;
 }
 
+// After flowStop: the turn closed every task and did not end on a question (auto-compact.ts).
+export const flowAtBoundary = (): boolean => !state.task && !endedOnQuestion;
+
 // After a compaction: what the open task still needs, for the recovery note.
 export function flowRecovery(): string | undefined {
   if (!state.task || state.task.lastEditAt === 0) return undefined;

@@ -1,5 +1,6 @@
 import type { On, ToolSpec } from "claude-code";
 
+import { afterTurn } from "./auto-compact";
 import { flowAnswer } from "./flow";
 
 // /task-readiness's safe point, automated: the model calls fresh_start after the user picked
@@ -40,7 +41,12 @@ export function freshStart(on: On) {
     const done = await next(e);
     // A subagent's answer: flow reads the verifier's PASS or FAIL (flow.ts).
     if (e.agentId) await flowAnswer($, e.agentId, e.answer);
-    if (!armed || e.agentId) return done;
+    if (e.agentId) return done;
+    if (!armed) {
+      // A fresh start wins: it clears anyway. Otherwise the chat may compact itself.
+      if (e.reason === "answer") await afterTurn($);
+      return done;
+    }
     const slug = armed;
     armed = null;
     if (e.reason !== "answer") {
