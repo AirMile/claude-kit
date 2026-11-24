@@ -67,8 +67,7 @@ export function onCheck(
           ? { lastCheckAt: startedAt, checkedPrint: startPrint }
           : {}),
       };
-    for (const k of isNew)
-      failedAt[k] = Math.max(failedAt[k] ?? 0, startedAt);
+    for (const k of isNew) failedAt[k] = Math.max(failedAt[k] ?? 0, startedAt);
     return {
       ...task,
       baseline,
@@ -94,7 +93,9 @@ export function onCheck(
   const passedAt = { ...task.passedAt };
   const baseline = { ...task.baseline };
   for (const k of kinds) {
+    // a pass git could not fingerprint must not inherit an older print (e.g. a baseline run's)
     if (startPrint !== undefined) passedPrints[k] = startPrint;
+    else delete passedPrints[k];
     passedAt[k] = startedAt;
     delete baseline[k];
   }

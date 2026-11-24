@@ -67,18 +67,18 @@ test("a verified, light, waived or absent task does not block", () => {
 });
 
 test("a failed check keeps the commit blocked; code edited after the check too", () => {
-  expect(commitBlock(onCheck(medium(), false, 6, "p1", "test"), "p1")).toContain(
-    "tests failed earlier",
-  );
+  expect(
+    commitBlock(onCheck(medium(), false, 6, "p1", "test"), "p1"),
+  ).toContain("tests failed earlier");
   const checked = onCheck(medium(), true, 6, "p1", "test");
   expect(commitBlock(checked, "p2")).toContain("a passing check");
 });
 
-test("a heavy task also needs the verifier and a review, unless no reviewer exists", () => {
+test("a heavy task with a test pass needs a review; without a reviewer the verifier instead", () => {
   const heavy: Task = { ...medium(), track: "heavy" };
   const checked = onCheck(heavy, true, 6, "p1", "test");
   const block = commitBlock(checked, "p1");
-  expect(block).toContain("kit:verifier");
+  expect(block).not.toContain("kit:verifier");
   expect(block).toContain("a review");
   const noReviewer: Task = {
     ...checked,
@@ -90,11 +90,17 @@ test("a heavy task also needs the verifier and a review, unless no reviewer exis
 });
 
 test("a failing suite held open blocks the commit; a passing one on the same print does not", () => {
-  expect(commitBlock(onCheck(medium(), false, 6, "p1", "test"), "p1")).toContain("tests failed earlier");
-  expect(commitBlock(onCheck(medium(), true, 6, "p1", "test"), "p1")).toBeUndefined();
+  expect(
+    commitBlock(onCheck(medium(), false, 6, "p1", "test"), "p1"),
+  ).toContain("tests failed earlier");
+  expect(
+    commitBlock(onCheck(medium(), true, 6, "p1", "test"), "p1"),
+  ).toBeUndefined();
   // a failure on this code, then a pass on the same code, clears it
   const failed = onCheck(medium(), false, 6, "p1", "test");
-  expect(commitBlock(onCheck(failed, true, 7, "p1", "test"), "p1")).toBeUndefined();
+  expect(
+    commitBlock(onCheck(failed, true, 7, "p1", "test"), "p1"),
+  ).toBeUndefined();
 });
 
 const NONE = "no command this task was recognised as a check";

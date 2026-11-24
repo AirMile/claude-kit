@@ -56,15 +56,43 @@ export const byPrint = (t: Task, print: string | undefined): print is string =>
 // Whether code changed since the task began: by git when it can tell, else by the edits seen.
 export const changed = (t: Task, print: string | undefined): boolean =>
   byPrint(t, print) ? print !== t.basePrint : t.lastEditAt > 0;
-export const needsVerifier = (t: Task): boolean => t.track === "heavy";
 export const gateLevel = (t: Task): number =>
   Math.max(t.gateV ?? 0, t.track === "heavy" ? 2 : 0);
 export const roundOf = (t: Task, print: string | undefined): string =>
   byPrint(t, print) ? print : String(t.lastEditAt);
 
+// A real test pass on this code: a failure equal to the baseline also marks the kind as run
+// (flow-kinds.ts) but proves nothing about the change.
+const testPassed = (t: Task, print: string | undefined): boolean =>
+  !(t.openKinds ?? []).includes("test") &&
+  t.baseline?.test === undefined &&
+  (byPrint(t, print)
+    ? t.passedPrints?.test === print
+    : (t.passedAt?.test ?? 0) > t.lastEditAt);
+
+// Verify tiers: when the kit:verifier is wanted, and why. V3 always; a heavy task (V2) only when
+// its other evidence is thin: no real test pass on this code, or no reviewer could run this
+// round. A verifier that failed stays wanted until it passes. Below that: checks and review only.
+export function verifierReason(
+  t: Task,
+  print: string | undefined,
+): string | undefined {
+  if (t.verifier === "fail") return "it reported failures";
+  if (gateLevel(t) >= 3) return "a V3 task";
+  if (t.track !== "heavy") return undefined;
+  if (!testPassed(t, print)) return "no passing test run on this code";
+  if (t.noReviewer?.round === roundOf(t, print))
+    return "no reviewer this round";
+  return undefined;
+}
+export const needsVerifier = (t: Task, print: string | undefined): boolean =>
+  verifierReason(t, print) !== undefined;
+
 const checked = (t: Task, print: string | undefined) =>
   !(t.openKinds ?? []).length &&
-  (byPrint(t, print) ? t.checkedPrint === print : t.lastCheckAt > t.lastEditAt) &&
+  (byPrint(t, print)
+    ? t.checkedPrint === print
+    : t.lastCheckAt > t.lastEditAt) &&
   !requiredMissing(t, print).length;
 const verifierCurrent = (t: Task, print: string | undefined) =>
   byPrint(t, print)
@@ -173,8 +201,9 @@ export function missing(t: Task, print: string | undefined): string[] {
               : "a passing check on this code",
           ]),
     );
-  if (needsVerifier(t) && !verifierCurrent(t, print))
-    wants.push("the kit:verifier on the task criteria");
+  const why = verifierReason(t, print);
+  if (why && !verifierCurrent(t, print))
+    wants.push(`the kit:verifier on the task criteria (${why})`);
   const problem = gateLevel(t) >= 2 ? reviewProblem(t, print) : undefined;
   if (problem) wants.push(`a review: ${problem}`);
   return wants;
@@ -247,13 +276,17 @@ export function holdText(
           : `kit flow: ${short(t.files)} changed after the last passing check. Run the check ${run}${baselineNote(t)}`,
     );
   }
-  if (needsVerifier(t) && !verifierCurrent(t, print))
+  const why = verifierReason(t, print);
+  if (why && !verifierCurrent(t, print))
     sentences.push(
       t.verifier === "fail"
-        ? "kit flow: the kit:verifier reported failures on this heavy task: fix them, then run " +
+        ? `kit flow: the kit:verifier reported failures on this ${t.track} task: fix them, then run ` +
             "it again."
-        : "kit flow: this heavy task has no current verification yet: run " +
-            "the kit:verifier agent on its criteria before you finish.",
+        : `kit flow: this ${t.track} task has no current verification yet (${why}): run ` +
+            "the kit:verifier agent on its criteria before you finish" +
+            (why === "no passing test run on this code"
+              ? ", or a test run that covers the change."
+              : "."),
     );
   const problem =
     review && gateLevel(t) >= 2 ? reviewProblem(t, print) : undefined;
@@ -291,11 +324,20 @@ export function onVerifier(
   now: number,
   print: string | undefined,
 ): Task {
+  // An answer that started before the one on record is stale: an old PASS must not clear a newer FAIL.
+  if (now < (task.verifierStartedAt ?? 0)) return task;
   return passed
-    ? { ...task, verifier: "pass", lastVerifierAt: now, verifiedPrint: print }
+    ? {
+        ...task,
+        verifier: "pass",
+        verifierStartedAt: now,
+        lastVerifierAt: now,
+        verifiedPrint: print,
+      }
     : {
         ...task,
         verifier: "fail",
+        verifierStartedAt: now,
         lastVerifierAt: 0,
         verifiedPrint: undefined,
       };

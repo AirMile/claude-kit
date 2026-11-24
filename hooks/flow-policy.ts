@@ -25,8 +25,8 @@ export {
   onNoReviewer,
 } from "./flow-evidence";
 
-// Flow, pure: change tasks get a track that only grows. Current checks, the heavy task's verifier
-// and the gate level's other-family review supply the evidence (flow-evidence.ts). Unverified
+// Flow, pure: change tasks get a track that only grows. Current checks, the gate level's
+// other-family review and, by tier, the verifier supply the evidence (flow-evidence.ts). Unverified
 // work stays open across prompts; new changes fold into it. Holds are bounded per round and
 // request, and the user can waive them. flow.ts keeps the state and task-policy.ts the levels.
 
@@ -65,6 +65,7 @@ export type Task = {
   lastEditAt: number; // without git: when code last changed (0: not yet)
   lastCheckAt: number; // without git: when the last passing check started
   lastVerifierAt: number;
+  verifierStartedAt?: number; // when the verifier answer on record started
   checks: number;
   checkCalls?: number; // Bash commands seen that were recognised as a check, settled or not
   shellCalls?: number; // Bash commands seen that were not
@@ -124,7 +125,7 @@ const NOTE: Record<Track, string> = {
     "where it can be tested; then run the checks that cover the change (the full suite when " +
     "shared code changed).",
   heavy:
-    "kit flow (heavy): load the kit:task-readiness skill first (goal, tools, one exact check per criterion); work freely; the kit:verifier agent checks it at the end. Commit or push nothing unless the user asks.",
+    "kit flow (heavy): load the kit:task-readiness skill first (goal, tools, one exact check per criterion); work freely; a passing test run and an other-family review close it (the kit:verifier agent instead when no test run passed or no reviewer could run, and always at V3). Commit or push nothing unless the user asks.",
 };
 
 export const trackNote = (track: Track, from?: Track): string =>

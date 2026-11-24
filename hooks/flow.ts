@@ -1,7 +1,12 @@
 import type { EngineInterface, On } from "claude-code";
 
 import { gateLevel } from "./flow-evidence";
-import { checkOf, checkSettled, withoutStatus, type CheckKind } from "./flow-check";
+import {
+  checkOf,
+  checkSettled,
+  withoutStatus,
+  type CheckKind,
+} from "./flow-check";
 import { flowCommandRun } from "./flow-command";
 import { ensureRequired } from "./flow-required";
 import { promptLevels, raiseLevels } from "./flow-levels";
@@ -287,9 +292,13 @@ export const flowAtBoundary = (): boolean => !state.task && !endedOnQuestion;
 export function flowRecovery(): string | undefined {
   if (!state.task || state.task.lastEditAt === 0) return undefined;
   const files = state.task.files.slice(0, 5).join(", ") || "code";
-  const verifier = policy.needsVerifier(state.task)
-    ? " and the kit:verifier on its criteria"
-    : "";
+  // no print: promptPrint may predate this turn's edits, so judge test currency by time; a
+  // no-reviewer excuse is keyed by print, so it counts here whatever its round
+  const verifier =
+    policy.needsVerifier(state.task, undefined) ||
+    (state.task.track === "heavy" && state.task.noReviewer !== undefined)
+      ? " and the kit:verifier on its criteria"
+      : "";
   const review =
     gateLevel(state.task) >= 2 ? " and an other-family review" : "";
   return `kit flow: an open ${state.task.track} task changed ${files}; before you finish, run the check that covers it${verifier}${review}.`;
@@ -316,7 +325,12 @@ export function flow(on: On) {
     const passed = checkSettled(check, ran.isError === true, ran.text ?? "");
     if (passed === undefined) return ran; // a masked status: no evidence either way
     const text = ran.text ?? "";
-    const note = await flowCheckEnd($, start, passed, withoutStatus(check, text));
+    const note = await flowCheckEnd(
+      $,
+      start,
+      passed,
+      withoutStatus(check, text),
+    );
     return note ? { ...ran, context: [...(ran.context ?? []), note] } : ran;
   });
 

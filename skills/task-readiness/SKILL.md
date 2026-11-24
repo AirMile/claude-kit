@@ -89,10 +89,11 @@ reason. Check as you go, not only at the end. Library API you are unsure of → 
   cause. A failed fix needs new evidence before the next; never the same fix reworded. A
   regression with a known good commit → `git bisect run`. Done = the repro is green and every
   `DBG` line is gone.
-- **Verify before you finish:** the `kit:verifier` agent checks the criteria in a fresh context
-  (it did not build this), given the criteria, changed files and the baseline. A heavy task
-  also gets an other-family review (`mcp__kit__delegate` role `review`): its P0/P1 findings are
-  fails. Fix, re-run the failing checks and the full suite.
+- **Verify before you finish:** a heavy task gets an other-family review (`mcp__kit__delegate`
+  role `review`): its P0/P1 findings are fails. The `kit:verifier` agent (fresh context; give it
+  the criteria, changed files and baseline) is needed only at V3, when no test run passed on
+  the final code, or when no reviewer could run; the flow's hold says which. Fix, re-run the
+  failing checks and the full suite.
 - A criterion or an out-of-scope line must change → stop, show the delta, ask once.
 
 ## Spec file (only for work that outlives this chat)

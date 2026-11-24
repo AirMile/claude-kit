@@ -24,10 +24,12 @@ const ask = ($: Parameters<TestBody>[0], text: string) =>
 test("a red V1 check raises only the note, including after another prompt; growth raises the gate even at the note cap", async ($, on) => {
   const w = world(on, stored({ gateV: 1, levels: { d: 1, e: 0, v: 1, r: 0 } }));
   on("model.classify", async () => ({ value: LABELS.routine }));
-  on("model.complete", async (_$, e) => labelAnswer(e.prompt, {
-    change: CHANGE_LABELS.light,
-    verify: VERIFY_LABELS.behaviour,
-  }));
+  on("model.complete", async (_$, e) =>
+    labelAnswer(e.prompt, {
+      change: CHANGE_LABELS.light,
+      verify: VERIFY_LABELS.behaviour,
+    }),
+  );
   on("prompt.submit", async (_$, e) => ({ text: e.text }));
   await write($, "src/a.ts");
   await bash($, "npm test fail");
@@ -68,7 +70,9 @@ for (const gpt of [false, true]) {
       outcome: "pass",
       depth: true,
     });
-    expect("kind" in (w.store.flowTasks as { s1: Task }).s1.review!).toBe(false);
+    expect("kind" in (w.store.flowTasks as { s1: Task }).s1.review!).toBe(
+      false,
+    );
     expect((await stop($)).block === undefined).toBe(gpt);
   });
 }
@@ -103,13 +107,17 @@ test("a verifier binds to its spawn print and an untracked answer is ignored", a
     reason: "answer",
   } as never);
   await bash($, "npm test");
-  expect((await stop($)).block).toContain("this heavy task has no current verification yet");
+  expect((await stop($)).block).toContain(
+    "this heavy task has no current verification yet",
+  );
 });
 
 test("skip ends as waived on the next request", async ($, on) => {
   const w = world(on, stored());
   on("model.classify", async () => ({ value: LABELS.routine }));
-  on("model.complete", async (_$, e) => labelAnswer(e.prompt, { change: CHANGE_LABELS.light }));
+  on("model.complete", async (_$, e) =>
+    labelAnswer(e.prompt, { change: CHANGE_LABELS.light }),
+  );
   on("prompt.submit", async (_$, e) => ({ text: e.text }));
   await write($, "src/a.ts");
   await ask($, "skip verify");
@@ -180,10 +188,12 @@ test("edit growth raises gateV even when note levels are capped", async ($, on) 
 test("a shared-code prompt stores V2 as the gate and a thin reply keeps it", async ($, on) => {
   const w = world(on, { mode: "off" });
   on("model.classify", async () => ({ value: LABELS.routine }));
-  on("model.complete", async (_$, e) => labelAnswer(e.prompt, {
-    change: CHANGE_LABELS.light,
-    verify: VERIFY_LABELS.shared,
-  }));
+  on("model.complete", async (_$, e) =>
+    labelAnswer(e.prompt, {
+      change: CHANGE_LABELS.light,
+      verify: VERIFY_LABELS.shared,
+    }),
+  );
   on("prompt.submit", async (_$, e) => ({ text: e.text }));
   await ask($, "Change the shared retry contract in src/a.ts");
   expect((w.store.flowTasks as { s1: Task }).s1.gateV).toBe(2);
@@ -191,14 +201,17 @@ test("a shared-code prompt stores V2 as the gate and a thin reply keeps it", asy
   expect((w.store.flowTasks as { s1: Task }).s1.gateV).toBe(2);
 });
 
-
 test("flow command shows the open task after a hold", async ($, on) => {
   world(on, stored());
   await write($, "src/a.ts");
   expect((await stop($)).block).toContain("no review yet");
   const out = await $.command.run({ command: "flow", args: "" } as never);
-  expect(out.text).toContain('open: light task, src/a.ts: still needs a passing check on this code (no command this task was recognised as a check');
-  expect(out.text).toContain('; a review: no review yet. "skip verify" waives it.');
+  expect(out.text).toContain(
+    "open: light task, src/a.ts: still needs a passing check on this code (no command this task was recognised as a check",
+  );
+  expect(out.text).toContain(
+    '; a review: no review yet. "skip verify" waives it.',
+  );
 });
 
 test("clear logs reset for an open task", async ($, on) => {
@@ -206,8 +219,38 @@ test("clear logs reset for an open task", async ($, on) => {
   on("session.end", async () => ({ sessionId: "s1" }));
   await write($, "src/a.ts");
   await $.session.end({ reason: "clear" } as never);
-  expect((w.store.flowLog as { event?: string; outcome?: string }[]).at(-1)).toMatchObject({ event: "end", outcome: "reset" });
+  expect(
+    (w.store.flowLog as { event?: string; outcome?: string }[]).at(-1),
+  ).toMatchObject({ event: "end", outcome: "reset" });
 });
+
+for (const [name, over, wants] of [
+  ["a test pass and no excuse: no verifier", {}, false],
+  [
+    "a test pass and a no-reviewer excuse: verifier",
+    { noReviewer: { round: "p1", reason: "GPT has no room" } },
+    true,
+  ],
+] as const)
+  test(`heavy recovery tiers: ${name}`, async ($, on) => {
+    world(
+      on,
+      stored({ track: "heavy", lastEditAt: 1, passedAt: { test: 2 }, ...over }),
+    );
+    on("session.compact", async () => ({
+      messages: [{ role: "user", text: "Summary", toolUses: [] }],
+      tokensBefore: 10,
+      tokensAfter: 1,
+    }));
+    await stop($);
+    const result = await $.session.compact({
+      trigger: "manual",
+      messages: [{ role: "user", text: "Continue", toolUses: [] }],
+    });
+    const text = JSON.stringify(result);
+    expect(text).toContain("other-family review");
+    expect(text.includes("kit:verifier on its criteria")).toBe(wants);
+  });
 
 test("heavy recovery requires the verifier without a spec", async ($, on) => {
   world(on, stored({ track: "heavy", lastEditAt: 1 }));

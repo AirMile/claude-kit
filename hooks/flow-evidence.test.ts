@@ -276,15 +276,13 @@ test("review evidence is tied to its start print or strictly later start time wi
 
 test("a hold names every missing item and preserves the check and verifier sentences", async () => {
   const t = work({ track: "heavy", spec: true });
-  expect(needsVerifier(t)).toBe(true);
+  expect(needsVerifier(t, "p1")).toBe(true);
   expect(missing(t, "p1").length).toBe(3);
   const hold = holdText({ ...t, checks: 1, checkCalls: 1 }, "p1");
   expect(hold).toContain(
     "src/a.ts changed after the last passing check. Run the check",
   );
-  expect(hold).toContain(
-    "this heavy task has no current verification yet",
-  );
+  expect(hold).toContain("this heavy task has no current verification yet");
   expect(hold).toContain("mcp__kit__delegate role review");
   expect(hold).toContain("no review yet");
   expect(hold).toContain("verdict: pass|fail");
@@ -543,14 +541,20 @@ test("a pass on other code reopens kinds that were closed on older code (a Bash 
 });
 
 test("a check passes only on the code it ran on: an unchanged print stays, a changed one (a log file too) does not", async () => {
-  const base = { ...newTask(1, "medium", "p0"), files: ["src/a.ts"], lastEditAt: 5 };
+  const base = {
+    ...newTask(1, "medium", "p0"),
+    files: ["src/a.ts"],
+    lastEditAt: 5,
+  };
   const checked = onCheck(base, true, 6, "p1", "test");
   expect(missing(checked, "p1")).toEqual([]);
   expect(verified(checked, "p1")).toBe(true);
   // the same print, however often it is read, is still passing
   expect(missing(checked, "p1")).toEqual([]);
   // a changed print, e.g. from a log file written inside the repository, is not
-  expect(missing(checked, "p1-with-f.log")).toEqual(["a passing check on this code"]);
+  expect(missing(checked, "p1-with-f.log")).toEqual([
+    "a passing check on this code",
+  ]);
   expect(isOpen(checked, "p1-with-f.log")).toBe(true);
 });
 
@@ -579,7 +583,9 @@ test("only unrecognised shell calls and no required kind: same wording, with the
   const t = work({ gateV: 0, shellCalls: 3 });
   expect(noCheckSeen(t)).toBe(true);
   for (const text of texts(t)) expect(text).toContain(NONE);
-  expect(holdText(t, "p1", false)).toContain("3 shell commands ran, none a check");
+  expect(holdText(t, "p1", false)).toContain(
+    "3 shell commands ran, none a check",
+  );
 });
 
 test("a recognised failing check keeps the old wording", () => {
@@ -593,8 +599,14 @@ test("a stale pass (print changed) keeps the generic wording", () => {
   const t = onCheck(work({ gateV: 0 }), true, 6, "p1", "test");
   expect(noCheckSeen(t)).toBe(false);
   expect(missing(t, "p2")).toEqual(["a passing check on this code"]);
-  expect(holdText(t, "p2", false)).toContain("changed after the last passing check");
-  for (const text of [holdText(t, "p2", false), reminderText(t, "p2"), openLine(t, "p2")])
+  expect(holdText(t, "p2", false)).toContain(
+    "changed after the last passing check",
+  );
+  for (const text of [
+    holdText(t, "p2", false),
+    reminderText(t, "p2"),
+    openLine(t, "p2"),
+  ])
     expect(text).not.toContain(NONE);
   // a recognised call whose status was masked still counts as a check seen
   expect(noCheckSeen(work({ checkCalls: 1 }))).toBe(false);
