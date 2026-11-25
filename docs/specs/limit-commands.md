@@ -57,10 +57,9 @@ Known limits (accepted, not criteria):
 
 ## Handoff
 
-Branch `fix/limit-commands` from `eac4ab1`, in the main checkout (the local kit reads this folder;
-other sessions share it, so check `git status` first). All built, reviewed and verified;
-version 0.16.6; committed, not pushed.
-Next: push (needs Miles's explicit OK), then the manual check below, then merge. Cloud sessions get kit from GitHub: changes arrive there only after a push.
+Merged into `main` and pushed (0.16.6); built, reviewed and verified.
+Open: only criterion 6, the manual check below on a phone cloud session. It passes → check the
+box and set `Status: done`.
 
 ## Verify
 
@@ -74,6 +73,6 @@ Next: push (needs Miles's explicit OK), then the manual check below, then merge.
   `/clear` drops them.
 - Review: Claude reviews (first failed, fixed; later ones pass) and a GPT review of the final
   code: pass, its two P2s are under Known limits. `kit:verifier` passes criteria 1-5.
-- Manual pending (criterion 6): on a phone cloud session after a push, `/limit`, `/limit warm`,
+- Manual pending (criterion 6): on a new phone cloud session, `/limit`, `/limit warm`,
   `off`, `resume`, a bad argument, and `/limit status` while a long turn runs; each answers in text,
   the last before the turn ends.
