@@ -88,7 +88,9 @@ async function readStatus($: EngineInterface): Promise<GptStatus> {
   await refreshBalance($);
   // Fixed while the session runs (installed, logged in): say so once, without a restart.
   if (before && before !== "ready" && state === "ready")
-    $.ui.toast("kit: Codex is ready, GPT can be used now", { timeoutMs: 10_000 });
+    $.ui.toast("kit: Codex is ready, GPT can be used now", {
+      timeoutMs: 10_000,
+    });
   return status;
 }
 
@@ -179,6 +181,18 @@ export async function changed(
   $: EngineInterface,
   root: string,
 ): Promise<Map<string, string>> {
+  // Porcelain paths are relative to the repository's top, also when root is a subdirectory:
+  // hash from the top, and key paths under root relative to root (others absolute).
+  const top = await $.process
+    .run(["git", "rev-parse", "--show-toplevel", "--show-prefix"], {
+      cwd: root,
+    })
+    .catch(() => null);
+  const [shown, prefix = ""] =
+    top?.exitCode === 0 ? top.stdout.split(/\r?\n/) : [];
+  const topDir = shown || root; // no answer: hash from root as before
+  const key = (path: string) =>
+    path.startsWith(prefix) ? path.slice(prefix.length) : `${topDir}/${path}`;
   const ran = await $.process
     .run(["git", "status", "--porcelain", "-z", "--untracked-files=all"], {
       cwd: root,
@@ -192,15 +206,15 @@ export async function changed(
     const state = entry.slice(0, 2);
     const path = entry.slice(3); // -z puts a rename's destination before its source
     if (/[RC]/.test(state)) i++;
-    if (state.includes("D")) blobs.set(path, "deleted");
+    if (state.includes("D")) blobs.set(key(path), "deleted");
     else paths.push(path);
   }
   if (paths.length) {
     const hashed = await $.process
-      .run(["git", "hash-object", "--", ...paths], { cwd: root })
+      .run(["git", "hash-object", "--", ...paths], { cwd: topDir })
       .catch(() => null);
     const ids = hashed?.exitCode === 0 ? hashed.stdout.trim().split("\n") : [];
-    paths.forEach((path, i) => blobs.set(path, ids[i] ?? "unavailable"));
+    paths.forEach((path, i) => blobs.set(key(path), ids[i] ?? "unavailable"));
   }
   return blobs;
 }
@@ -239,7 +253,9 @@ export async function runCodex(
   let stop: (v: "stop") => void = () => {};
   const stopped = new Promise<"stop">((r) => (stop = r));
   const timer =
-    deadline === undefined ? undefined : $.clock.after(deadline, () => stop("stop"));
+    deadline === undefined
+      ? undefined
+      : $.clock.after(deadline, () => stop("stop"));
   let timedOut = false;
   for (;;) {
     const got = await Promise.race([stream.next(), stopped]);
@@ -298,8 +314,7 @@ export async function runCodex(
   run.code = end?.code ?? undefined;
   if (run.code && !run.error)
     run.error =
-      stderr.trim().split("\n").slice(-6).join("\n") ||
-      `exit code ${run.code}`;
+      stderr.trim().split("\n").slice(-6).join("\n") || `exit code ${run.code}`;
   if (end?.signal && !run.error) run.error = `ended by ${end.signal}`;
   return run;
 }

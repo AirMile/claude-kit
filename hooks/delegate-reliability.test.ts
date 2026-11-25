@@ -3,7 +3,12 @@ import { expect, test } from "claude-code/testing";
 
 function world(
   on: On,
-  opts: { dirty?: boolean; failRoot?: boolean; entries?: string } = {},
+  opts: {
+    dirty?: boolean;
+    failRoot?: boolean;
+    entries?: string;
+    top?: string;
+  } = {},
 ) {
   const store: Record<string, unknown> = {};
   let content = "before";
@@ -47,15 +52,17 @@ function world(
             models: [{ id: "gpt-6.1-terra" }],
             limits: { five_hour: { pct: 1 }, seven_day: { pct: 1 } },
           })
-        : e.argv[1] === "status"
-          ? (opts.entries ??
-            (opts.dirty || content === "after" ? " M src/a.ts\0" : ""))
-          : e.argv[1] === "hash-object"
-            ? e.argv
-                .slice(3)
-                .map(() => content)
-                .join("\n") + "\n"
-            : "";
+        : e.argv[1] === "rev-parse"
+          ? (opts.top ?? "")
+          : e.argv[1] === "status"
+            ? (opts.entries ??
+              (opts.dirty || content === "after" ? " M src/a.ts\0" : ""))
+            : e.argv[1] === "hash-object"
+              ? e.argv
+                  .slice(3)
+                  .map(() => content)
+                  .join("\n") + "\n"
+              : "";
     return { value: { exitCode: 0, stdout, stderr: "" } };
   });
   on("process.spawn", async function* () {
@@ -117,6 +124,28 @@ test("an already dirty file edited by Codex is listed and counted by flow", asyn
   expect(w.store.flowTasks).toMatchObject({ s1: { files: ["src/a.ts"] } });
   expect(w.calls.filter((argv) => argv[1] === "hash-object").length).toBe(2);
   expect(w.calls.every((argv) => !argv.includes("-w"))).toBe(true);
+});
+
+test("a session root in a repo subdirectory lists root-relative paths, hashed from the top", async ($, on) => {
+  const w = world(on, {
+    top: "/p\napp/\n",
+    entries: " M app/src/a.ts\0 M other/b.ts\0",
+  });
+  w.releaseRoot();
+  const out = String((await build($)).result);
+  // porcelain's repo-top paths: under root → root-relative, elsewhere → absolute
+  expect(out).toContain("Changed: src/a.ts, /p/other/b.ts");
+  expect(w.store.flowTasks).toMatchObject({
+    s1: { files: ["src/a.ts", "/p/other/b.ts"] },
+  });
+  const hashes = w.calls.filter((argv) => argv[1] === "hash-object");
+  expect(hashes[0]).toEqual([
+    "git",
+    "hash-object",
+    "--",
+    "app/src/a.ts",
+    "other/b.ts",
+  ]);
 });
 
 test("snapshots hash renamed destinations and untracked files, and mark deletions", async ($, on) => {

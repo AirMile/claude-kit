@@ -233,15 +233,15 @@ your-project/
         └── <slug>.md      one per feature: criteria, status, verify result, later fixes
 ```
 
-| File                   | Written by                 | Read by                               | Loaded into context                          |
-| ---------------------- | -------------------------- | ------------------------------------- | -------------------------------------------- |
-| `AGENTS.md` (root)     | `/setup`, `lessons`        | every session                         | always, at session start                     |
-| `<dir>/AGENTS.md`      | `lessons`                  | every session                         | lazily, when Claude reads a file in that dir |
-| `docs/product.md`      | `/product`                 | `/task-readiness`, `/convert`, `/setup`        | on demand                                    |
-| `docs/roadmap.md`      | `/product`, `/task-readiness`       | `/task-readiness`                              | on demand                                    |
-| `docs/specs/<slug>.md` | `/task-readiness`                   | `/task-readiness`, verifier                    | on demand                                    |
-| `docs/decisions.md`    | `/task-readiness`, `/setup`         | `/task-readiness`                              | on demand                                    |
-| `docs/seo.md`          | `/scan`, `/intake`, `/seo` | `/seo`, `/task-readiness`, `/audit`, `/launch` | on demand                                    |
+| File                   | Written by                    | Read by                                        | Loaded into context                          |
+| ---------------------- | ----------------------------- | ---------------------------------------------- | -------------------------------------------- |
+| `AGENTS.md` (root)     | `/setup`, `lessons`           | every session                                  | always, at session start                     |
+| `<dir>/AGENTS.md`      | `lessons`                     | every session                                  | lazily, when Claude reads a file in that dir |
+| `docs/product.md`      | `/product`                    | `/task-readiness`, `/convert`, `/setup`        | on demand                                    |
+| `docs/roadmap.md`      | `/product`, `/task-readiness` | `/task-readiness`                              | on demand                                    |
+| `docs/specs/<slug>.md` | `/task-readiness`             | `/task-readiness`, verifier                    | on demand                                    |
+| `docs/decisions.md`    | `/task-readiness`, `/setup`   | `/task-readiness`                              | on demand                                    |
+| `docs/seo.md`          | `/scan`, `/intake`, `/seo`    | `/seo`, `/task-readiness`, `/audit`, `/launch` | on demand                                    |
 
 ### AGENTS.md
 
@@ -723,8 +723,6 @@ order (with `path:line` and _why_ it's written that way), names 1-2 ways it coul
 asks 2-3 multiple-choice questions to check understanding, re-explaining a part when an answer
 is wrong.
 
-
-
 ### /distill-skill
 
 Turn a task you just finished and verified into a lean skill a cheaper model can follow. It
@@ -893,7 +891,7 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   medium  a bounded behaviour change: 2-4 criteria in the chat, test first, the checks
           that cover it (the full suite when shared code changed)
   heavy   a new capability, a shared interface, a migration or unclear scope:
-          task-readiness, checks and a verifier; commit or push only when authorized
+          task-readiness, checks, a review and, by tier, a verifier; commit or push only when authorized
   ```
 
   One note goes out at the start and when the task grows, never on every prompt. It grows by
@@ -911,9 +909,11 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   one the last passing check started on; without git, the order of the edits and checks.
   Only real runs count (a test, typecheck, lint or build command, not `echo test`); a failing
   check wipes earlier evidence; a piped check (`npm test | tail`) passes only when its output
-  names no failure. Heavy work with a spec also needs the `kit:verifier`'s PASS on that code,
-  read from its own answer; V2 and V3 work also needs a review from the other model family
-  (V3 names failure paths). It holds at most once per round of changes and twice per request, never when the turn ends on a question to you or you said to
+  names no failure. V2 and V3 work also needs a review from the other model family (V3 names
+  failure paths). The `kit:verifier`'s PASS on that code, read from its own answer, is needed
+  by tier: always at V3; on heavy work only when no real test run passed on the code (lint or
+  build alone, or a failure that was already there) or no reviewer could run; and after a
+  verifier reported failures, until it passes. It holds at most once per round of changes and twice per request, never when the turn ends on a question to you or you said to
   skip verifying ("skip the checks", "zonder te testen"; "stop" alone is a request); after
   that the task stays open until verified or you say "skip verify" to waive it. The open task
   is kept per session (a reload or restart keeps it), and after a compaction a note says what it still needs.
@@ -1083,27 +1083,27 @@ small changes; use `/task-readiness` once it's a feature.
 
 ## Common flows, step by step
 
-| Situation                 | Flow                                                                              |
-| ------------------------- | --------------------------------------------------------------------------------- |
-| New idea                  | `/setup <idea>` (folder, interview, scaffold) → `/task-readiness <task>`             |
-| Existing repo, no kit yet | `/setup` → `/product` → `/task-readiness <slug>`                                                  |
-| v1 project                | `/setup` (migrate) → check the roadmap → `/task-readiness <slug>`                                 |
-| Interrupted work          | new chat → `/task-readiness <slug>`                                          |
-| Bug in a finished feature | `/task-readiness "fix: …"` → reproduce, fix and verify                              |
-| Small tweak               | just ask in chat, then `/commit`                                                  |
+| Situation                 | Flow                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------ |
+| New idea                  | `/setup <idea>` (folder, interview, scaffold) → `/task-readiness <task>`                   |
+| Existing repo, no kit yet | `/setup` → `/product` → `/task-readiness <slug>`                                           |
+| v1 project                | `/setup` (migrate) → check the roadmap → `/task-readiness <slug>`                          |
+| Interrupted work          | new chat → `/task-readiness <slug>`                                                        |
+| Bug in a finished feature | `/task-readiness "fix: …"` → reproduce, fix and verify                                     |
+| Small tweak               | just ask in chat, then `/commit`                                                           |
 | Several things at once    | one desktop session per task, each with the **worktree** option; `/task-readiness` in each |
-| Go live / release         | `/launch` (checks, notes, merge or version tag)                                   |
-| Before delivering a site  | `/audit` → fix the small things → `/launch`                                       |
-| Free check for a prospect | `/scan <url>` outside a project → send the one-page report                        |
+| Go live / release         | `/launch` (checks, notes, merge or version tag)                                            |
+| Before delivering a site  | `/audit` → fix the small things → `/launch`                                                |
+| Free check for a prospect | `/scan <url>` outside a project → send the one-page report                                 |
 | SEO for a client          | `/scan` → `/intake` (once) → `/seo` → `/task-readiness` per page → `/audit` → `/launch`    |
 | Monthly SEO               | `/scan` → `/task-readiness` the points it adds; `/seo` again each quarter                  |
-| Understand what was built | `/explain` (last change), `/explain <slug>` or `/explain <file>`                  |
-| New idea mid-project      | `/product add <idea>`; verifier notes are also offered as roadmap items           |
-| Rethink the plan          | `/product critique`                                                               |
+| Understand what was built | `/explain` (last change), `/explain <slug>` or `/explain <file>`                           |
+| New idea mid-project      | `/product add <idea>`; verifier notes are also offered as roadmap items                    |
+| Rethink the plan          | `/product critique`                                                                        |
 | Design → code             | `/convert <source>`, or put the source in a spec's `Design:` and `/task-readiness`         |
-| Visual foundation         | `/theme` before the first UI work, or `/theme from-code` to clean up              |
-| A kit skill annoyed you   | `/improve <skill> "what happened"`                                                |
-| Commit stray work         | `/commit`                                                                         |
+| Visual foundation         | `/theme` before the first UI work, or `/theme from-code` to clean up                       |
+| A kit skill annoyed you   | `/improve <skill> "what happened"`                                                         |
+| Commit stray work         | `/commit`                                                                                  |
 
 **Example:** `/task-readiness habit-crud` resumes the spec, checks the goal and
 baseline, then works toward the criteria and reports verification evidence.
@@ -1112,15 +1112,15 @@ baseline, then works toward the criteria and reports verification evidence.
 
 ## What Claude loads, and when
 
-| When                            | What                                                     | Cost              |
-| ------------------------------- | -------------------------------------------------------- | ----------------- |
-| Every session                   | kit's skill/agent descriptions                           | ~200 tokens       |
-| Every session                   | `~/.claude/CLAUDE.md` and the project's root `AGENTS.md` | your files        |
-| Claude reads a file in `src/x/` | `src/x/AGENTS.md`                                        | only then         |
-| You run a skill                 | that skill's `SKILL.md` (~0.4k–1.6k tokens)              | only then         |
-| `/task-readiness` spec          | `references/spec-template.md`                            | only when needed  |
-| `/task-readiness` verify                 | the verifier runs in its own context                     | not in your chat  |
-| A skill needs project state     | the relevant `docs/` file                                | on demand         |
+| When                            | What                                                     | Cost             |
+| ------------------------------- | -------------------------------------------------------- | ---------------- |
+| Every session                   | kit's skill/agent descriptions                           | ~200 tokens      |
+| Every session                   | `~/.claude/CLAUDE.md` and the project's root `AGENTS.md` | your files       |
+| Claude reads a file in `src/x/` | `src/x/AGENTS.md`                                        | only then        |
+| You run a skill                 | that skill's `SKILL.md` (~0.4k–1.6k tokens)              | only then        |
+| `/task-readiness` spec          | `references/spec-template.md`                            | only when needed |
+| `/task-readiness` verify        | the verifier runs in its own context                     | not in your chat |
+| A skill needs project state     | the relevant `docs/` file                                | on demand        |
 
 Hooks run outside the model and add no tokens.
 
@@ -1169,18 +1169,18 @@ kit ships an eval suite (`evals/`) for `claude plugin eval`. Each case builds a 
 a fixture script, sends one prompt to a fresh, isolated `claude -p` session with only kit loaded,
 and grades what happened: files written, tools called, the order of calls, text in the reply.
 
-| Case                      | What it guards                                                                                                      |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `task-readiness-ready-block` | readiness fields or the all-clear line appear |
-| `task-readiness-preexisting-failure` | an existing failure is reported and left untouched |
-| `commit-blocks-env`       | `staging-check.js` runs and a `.env` file never ends up in the commit                                               |
-| `commit-no-push`          | `/commit` commits but never pushes on its own                                                                       |
-| `setup-migrates-v1`       | the v1 migration keeps real items/lessons and drops v1-only ones (judged by a model)                                |
-| `setup-empty-folder`      | an empty folder runs the `/product` interview instead of stopping; nothing is written or scaffolded before approval |
-| `setup-new-folder`        | in a folder of projects, setup makes a new project folder and hands off, writes no docs there                       |
-| `lessons-nested`          | a module-specific lesson lands in that module's `AGENTS.md`                                                         |
-| `seo-no-invented-volumes` | without a tool or CSV every volume stays `unknown`; no number is made up                                            |
-| `intake-already-done`     | an answered intake is never asked again; it points to `/seo`                                                        |
+| Case                                 | What it guards                                                                                                      |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `task-readiness-ready-block`         | readiness fields or the all-clear line appear                                                                       |
+| `task-readiness-preexisting-failure` | an existing failure is reported and left untouched                                                                  |
+| `commit-blocks-env`                  | `staging-check.js` runs and a `.env` file never ends up in the commit                                               |
+| `commit-no-push`                     | `/commit` commits but never pushes on its own                                                                       |
+| `setup-migrates-v1`                  | the v1 migration keeps real items/lessons and drops v1-only ones (judged by a model)                                |
+| `setup-empty-folder`                 | an empty folder runs the `/product` interview instead of stopping; nothing is written or scaffolded before approval |
+| `setup-new-folder`                   | in a folder of projects, setup makes a new project folder and hands off, writes no docs there                       |
+| `lessons-nested`                     | a module-specific lesson lands in that module's `AGENTS.md`                                                         |
+| `seo-no-invented-volumes`            | without a tool or CSV every volume stays `unknown`; no number is made up                                            |
+| `intake-already-done`                | an answered intake is never asked again; it points to `/seo`                                                        |
 
 Runs are non-interactive: nobody answers questions or approves plans. So the suite tests the
 **decisions and safety rules** of the skills, not complete interactive flows.

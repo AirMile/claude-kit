@@ -1,7 +1,14 @@
 import { expect, test, type TestBody } from "claude-code/testing";
 
 import { FOOTER } from "./delegate-run";
-import { newTask, type Task, CHANGE_LABELS } from "./flow-policy";
+import {
+  newTask,
+  onNoReviewer,
+  onReview,
+  type Task,
+  CHANGE_LABELS,
+} from "./flow-policy";
+import { missing } from "./flow-evidence";
 import { VERIFY_LABELS } from "./task-policy";
 import { LABELS } from "./model-policy";
 import { world, write, bash, stop } from "./flow-fixture";
@@ -76,6 +83,92 @@ for (const gpt of [false, true]) {
     expect((await stop($)).block === undefined).toBe(gpt);
   });
 }
+
+test("a verifier spawned for another task does not answer for this one", async ($, on) => {
+  const git = { index: "a", work: "a" };
+  const w = world(
+    on,
+    stored({
+      track: "light",
+      id: 1,
+      gateV: 0,
+      levels: { d: 1, e: 0, v: 1, r: 0 },
+      basePrint: "base",
+    }),
+    git,
+  );
+  on("agent.spawn", async () => ({ model: "sonnet", agentId: "old" }));
+  on("turn.complete", async () => ({ text: "" }));
+  await write($, "/p/app/src/a.ts");
+  git.work = "b";
+  await $.agent.spawn({
+    subagentType: "kit:verifier",
+    prompt: "Verify",
+    provider: { plugin: "kit" },
+  } as never);
+  await bash($, "npm test");
+  expect((await stop($)).block).toBe(undefined); // task 1 closes
+  expect((w.store.flowTasks as { s1?: Task }).s1).toBe(undefined);
+  git.work = "c";
+  await write($, "/p/app/src/a.ts"); // task 2 begins
+  await $.turn.complete({
+    agentId: "old",
+    answer: "suite: fail",
+    reason: "answer",
+  } as never);
+  expect((w.store.flowTasks as { s1: Task }).s1.verifier).toBe(undefined);
+});
+
+test("a verifier spawned with no task open answers for the task its work starts", async ($, on) => {
+  const w = world(on, { mode: "off", flowTasks: {} });
+  on("agent.spawn", async () => ({ model: "sonnet", agentId: "v" }));
+  on("turn.complete", async () => ({ text: "" }));
+  await $.agent.spawn({
+    subagentType: "kit:verifier",
+    prompt: "Verify",
+    provider: { plugin: "kit" },
+  } as never);
+  await $.tool.call({
+    tool: "Write",
+    file_path: "/p/app/src/probe.ts",
+    content: "x",
+    agentId: "v",
+  } as never);
+  await $.turn.complete({
+    agentId: "v",
+    answer: "suite: fail",
+    reason: "answer",
+  } as never);
+  expect((w.store.flowTasks as { s1: Task }).s1.verifier).toBe("fail");
+});
+
+test("a reviewer that runs after a no-reviewer excuse cancels it, so its FAIL holds", () => {
+  const base = {
+    ...newTask(1, "medium", "p0"),
+    gateV: 2 as const,
+    files: ["src/a.ts"],
+    lastEditAt: 5,
+  };
+  const refused = onNoReviewer(base, "GPT has no room", "p1");
+  const failed = onReview(refused, {
+    outcome: "fail",
+    family: "gemini",
+    depth: false,
+    print: "p1",
+    at: 6,
+  });
+  expect(failed.noReviewer).toBe(undefined);
+  // a late review of older code (p0) leaves the current round's excuse in place
+  const late = onReview(refused, {
+    outcome: "pass",
+    family: "gemini",
+    depth: false,
+    print: "p0",
+    at: 6,
+  });
+  expect(late.noReviewer).toEqual({ round: "p1", reason: "GPT has no room" });
+  expect(missing(failed, "p1").join(" ")).toContain("P0/P1");
+});
 
 test("a verifier binds to its spawn print and an untracked answer is ignored", async ($, on) => {
   const git = { index: "a", work: "a" };
@@ -226,6 +319,14 @@ test("clear logs reset for an open task", async ($, on) => {
 
 for (const [name, over, wants] of [
   ["a test pass and no excuse: no verifier", {}, false],
+  [
+    "an excuse lapsed by a passing review: no verifier",
+    {
+      noReviewer: { round: "p1", reason: "GPT has no room" },
+      review: { outcome: "pass", family: "gemini", depth: false, at: 3 },
+    },
+    false,
+  ],
   [
     "a test pass and a no-reviewer excuse: verifier",
     { noReviewer: { round: "p1", reason: "GPT has no room" } },

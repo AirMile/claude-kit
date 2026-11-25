@@ -155,6 +155,24 @@ test("a pass git could not fingerprint does not inherit a baseline run's print",
   expect(needsVerifier(onReview(blind, gpt("p1")), "p1")).toBe(true);
 });
 
+test("a review that passes after a no-reviewer excuse lifts the verifier need", () => {
+  const t = onCheck(
+    { ...newTask(1, "heavy", "p0"), files: ["src/a.ts"], lastEditAt: 5 },
+    true,
+    6,
+    "p1",
+    "test",
+  );
+  const refused = onNoReviewer(t, "GPT has no room", "p1");
+  expect(needsVerifier(refused, "p1")).toBe(true);
+  const gemini = onReview(refused, {
+    ...gpt("p1", 7),
+    family: "gemini" as const,
+  });
+  expect(needsVerifier(gemini, "p1")).toBe(false);
+  expect(stopVerdict(gemini, "Done.", "p1").outcome).toBe("done");
+});
+
 test("V3 always needs the verifier, on any track", () => {
   const t = onReview(
     onCheck(

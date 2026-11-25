@@ -1,6 +1,6 @@
 import type { EngineInterface, On } from "claude-code";
 
-import { gateLevel } from "./flow-evidence";
+import { gateLevel, reviewProblem } from "./flow-evidence";
 import {
   checkOf,
   checkSettled,
@@ -296,7 +296,9 @@ export function flowRecovery(): string | undefined {
   // no-reviewer excuse is keyed by print, so it counts here whatever its round
   const verifier =
     policy.needsVerifier(state.task, undefined) ||
-    (state.task.track === "heavy" && state.task.noReviewer !== undefined)
+    (state.task.track === "heavy" &&
+      state.task.noReviewer !== undefined &&
+      reviewProblem(state.task, undefined) !== undefined)
       ? " and the kit:verifier on its criteria"
       : "";
   const review =

@@ -16,8 +16,16 @@ import {
 import { state, load, save } from "./flow-state";
 import { worktreePrint } from "./flow-store";
 
-export type ReviewStart = { print: string | undefined; at: number };
+// taskId: the task open at the start; an answer for another task's work is dropped. No task
+// then: it counts for the task the work starts (a verifier's first edit may create it).
+export type ReviewStart = {
+  print: string | undefined;
+  at: number;
+  taskId?: number;
+};
 type Spawn = ReviewStart & { kind: "verifier" | "review" };
+const otherTask = (task: Task, start: ReviewStart) =>
+  start.taskId !== undefined && start.taskId !== task.id;
 const spawned = new Map<string, Spawn>();
 
 // Both kinds bind their answer to the code and clock at spawn, never at completion.
@@ -34,10 +42,13 @@ export async function flowSpawned(
         ? "review"
         : undefined;
   if (!agentId || !kind) return;
+  await load($);
+  const taskId = state.task?.id; // the task at spawn, before any await
   spawned.set(agentId, {
     kind,
     print: await worktreePrint($),
     at: await $.clock.now(),
+    taskId,
   });
 }
 
@@ -48,7 +59,7 @@ function agentAnswer(
 ): Task | undefined {
   const start = spawned.get(agentId);
   spawned.delete(agentId);
-  if (!task || !start) return undefined;
+  if (!task || !start || otherTask(task, start)) return undefined;
   return start.kind === "verifier"
     ? onVerifier(task, verifierPassed(answer), start.at, start.print)
     : onReview(task, reviewRecord(start, "claude", answer));
@@ -90,7 +101,12 @@ export async function flowReviewStart(
 ): Promise<ReviewStart | undefined> {
   await load($);
   if (!state.task) return undefined;
-  return { print: await worktreePrint($), at: await $.clock.now() };
+  const taskId = state.task.id; // read before the awaits below
+  return {
+    print: await worktreePrint($),
+    at: await $.clock.now(),
+    taskId,
+  };
 }
 
 export async function flowReviewEnd(
@@ -101,7 +117,7 @@ export async function flowReviewEnd(
   error?: string,
 ) {
   await load($);
-  if (!state.task || !start) return;
+  if (!state.task || !start || otherTask(state.task, start)) return;
   state.task = onReview(state.task, reviewRecord(start, family, answer, error));
   await save($);
 }

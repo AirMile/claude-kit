@@ -81,7 +81,8 @@ export function verifierReason(
   if (gateLevel(t) >= 3) return "a V3 task";
   if (t.track !== "heavy") return undefined;
   if (!testPassed(t, print)) return "no passing test run on this code";
-  if (t.noReviewer?.round === roundOf(t, print))
+  // the excuse lapses once a review passed after all (e.g. Gemini after GPT had no room)
+  if (t.noReviewer?.round === roundOf(t, print) && reviewProblem(t, print))
     return "no reviewer this round";
   return undefined;
 }
@@ -224,6 +225,17 @@ export const onReview = (task: Task, record: ReviewRecord): Task => {
       : previous.print === undefined && previous.at > task.lastEditAt)
   )
     return task;
+  // a reviewer did run on the excused code: the excuse no longer filters its verdict out of
+  // holds. A late review of older code leaves a newer round's excuse alone.
+  const excused = task.noReviewer;
+  if (
+    excused &&
+    (record.outcome === "pass" || record.outcome === "fail") &&
+    (record.print !== undefined
+      ? record.print === excused.round
+      : record.at > task.lastEditAt)
+  )
+    return { ...task, review: record, noReviewer: undefined };
   return { ...task, review: record };
 };
 export const onNoReviewer = (
