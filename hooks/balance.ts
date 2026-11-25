@@ -1,16 +1,10 @@
-import {
-  band,
-  gptTight,
-  lean,
-  type Band,
-  type Meters,
-} from "./delegate-policy";
+import type { Meters } from "./delegate-policy";
+import { gptRefusal, runCost, shareRefusal } from "./gpt-limits";
 
-// Shared delegation state, without a dependency on flow or delegate.
+// Shared plan meters, without a dependency on flow or delegate: whether GPT can take a review
+// now, and both plans' last figures for flow's log.
 export type MeterState = { meters: Meters; observedAt: number; ok: boolean };
 type Balance = { enabled: boolean; claude: MeterState; gpt: MeterState };
-
-let currentBand: Band = "balanced";
 
 const FRESH_MS = 15 * 60_000;
 let current: Balance = {
@@ -33,14 +27,18 @@ export const balanceMeters = (): { claude: Meters; gpt: Meters } => ({
   gpt: current.gpt.meters,
 });
 
-export function balance(now: number): {
-  ready: boolean;
-  leaning: boolean;
-  band: Band;
-} {
-  const { enabled, claude, gpt } = current;
-  if (claude.ok && gpt.ok)
-    currentBand = band(currentBand, lean(claude.meters, gpt.meters, now));
+// Whether ChatGPT has room to share a build of this size, for the task note on Claude Pro.
+export const sharing = (now: number, role: "build" | "build+"): boolean =>
+  balance(now).ready &&
+  !shareRefusal(
+    current.gpt.meters,
+    current.claude.meters,
+    now,
+    runCost(role, role === "build" ? "terra" : "sol"),
+  );
+
+export function balance(now: number): { ready: boolean } {
+  const { enabled, gpt } = current;
   return {
     ready:
       enabled &&
@@ -48,8 +46,6 @@ export function balance(now: number): {
       now - gpt.observedAt < FRESH_MS &&
       hasPct(gpt.meters, "five_hour") &&
       hasPct(gpt.meters, "seven_day") &&
-      !gptTight(gpt.meters),
-    leaning: currentBand === "gpt-heavy",
-    band: currentBand,
+      !gptRefusal(gpt.meters, now, runCost("review", "sol")),
   };
 }

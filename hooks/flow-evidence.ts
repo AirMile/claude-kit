@@ -100,7 +100,8 @@ const verifierCurrent = (t: Task, print: string | undefined) =>
     ? t.verifiedPrint === print
     : t.lastVerifierAt > t.lastEditAt;
 // A review counts when some other family than the reviewer wrote the code; no recorded writer
-// means Claude (this chat).
+// means Claude (this chat). Below V3 a fresh Claude reviewer counts too, whoever wrote it: a
+// second pair of eyes that needs no other subscription. V3 (risky work) keeps another family.
 const writers = (t: Task): Family[] => {
   const w: Family[] = [];
   if (t.gptWrote) w.push("gpt");
@@ -108,8 +109,10 @@ const writers = (t: Task): Family[] => {
   if (t.claudeWrote || w.length === 0) w.push("claude");
   return w;
 };
-const familyCounts = (t: Task, family: Family) =>
+const otherFamily = (t: Task, family: Family) =>
   writers(t).some((w) => w !== family);
+const reviewCounts = (t: Task, family: Family) =>
+  otherFamily(t, family) || (family === "claude" && gateLevel(t) < 3);
 
 export function reviewProblem(
   t: Task,
@@ -125,7 +128,7 @@ export function reviewProblem(
     gateLevel(t) < 3 &&
     t.verifier === "pass" &&
     verifierCurrent(t, print) &&
-    familyCounts(t, "claude")
+    otherFamily(t, "claude")
   )
     return undefined;
   if (!r) return "no review yet";
@@ -136,10 +139,10 @@ export function reviewProblem(
   if (r.outcome === "fail")
     return "the reviewer reported P0/P1 findings: fix them, then review again";
   if (r.outcome === "no verdict") return "the review had no `verdict:` line";
-  if (!familyCounts(t, r.family))
+  if (!reviewCounts(t, r.family))
     return t.gptWrote || t.geminiWrote
       ? `${t.gptWrote ? "GPT" : "Gemini"} wrote the code: call mcp__kit__delegate role review with author ${t.gptWrote ? "gpt" : "gemini"} to use another family`
-      : "Claude wrote the code: use the other family, GPT or Gemini (provider gemini), for the review";
+      : 'Claude wrote the code and a V3 review needs another family: mcp__kit__delegate role review for GPT; no room → wait, or the user says "skip verify"';
   if (gateLevel(t) >= 3 && !r.depth)
     return "a V3 review needs a `failure-paths:` line";
   return undefined;
@@ -217,14 +220,26 @@ export const isOpen = (t: Task, print: string | undefined): boolean =>
 
 export const onReview = (task: Task, record: ReviewRecord): Task => {
   const previous = task.review;
-  if (
-    (record.outcome === "error" || record.outcome === "no verdict") &&
-    (previous?.outcome === "pass" || previous?.outcome === "fail") &&
-    (record.print !== undefined
-      ? previous.print === record.print
-      : previous.print === undefined && previous.at > task.lastEditAt)
-  )
-    return task;
+  const sameCode =
+    record.print !== undefined
+      ? previous?.print === record.print
+      : previous?.print === undefined && (previous?.at ?? 0) > task.lastEditAt;
+  // A run without a verdict says less than one with it.
+  const noVerdict =
+    record.outcome === "error" || record.outcome === "no verdict";
+  const weaker =
+    sameCode &&
+    noVerdict &&
+    (previous?.outcome === "pass" || previous?.outcome === "fail");
+  // The Claude stand-in may not displace another family's findings: not on code that did not
+  // change (with any outcome, or a Claude fail would open the way for a pass), nor with a late
+  // answer that started before them.
+  const displaces =
+    record.family === "claude" &&
+    previous?.outcome === "fail" &&
+    previous.family !== "claude" &&
+    (sameCode || record.at < previous.at);
+  if (weaker || displaces) return task;
   // a reviewer did run on the excused code: the excuse no longer filters its verdict out of
   // holds. A late review of older code leaves a newer round's excuse alone.
   const excused = task.noReviewer;
@@ -307,7 +322,7 @@ export function holdText(
       `kit flow: ${problem}. Get a review via mcp__kit__delegate role review` +
         `${t.gptWrote ? " (author gpt when GPT wrote the code)" : t.geminiWrote ? " (author gemini when Gemini wrote the code)" : ""}. ` +
         "The review answer must start with `verdict: pass|fail`." +
-        (!t.review || t.gptWrote || t.geminiWrote
+        (gateLevel(t) < 3 || !t.review || t.gptWrote || t.geminiWrote
           ? " On the Claude route, put the footer from delegate’s answer word for word in the subagent prompt or it is not recognised as a review."
           : ""),
     );

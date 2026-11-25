@@ -32,14 +32,10 @@ export const readBudget = (): ReadBudget => ({
 export function countRead(
   state: ReadBudget,
   chars: number,
-  leaning: boolean,
 ): string | undefined {
   state.calls++;
   state.chars += chars;
-  if (
-    state.noted ||
-    (state.calls < (leaning ? 4 : 5) && state.chars < (leaning ? 10000 : 15000))
-  )
+  if (state.noted || (state.calls < 5 && state.chars < 15000))
     return undefined;
   state.noted = true;
   return `kit: this turn read ${state.calls} times (${state.chars} characters) itself. Hand the rest of the exploring to mcp__kit__delegate as one brief (role search or research); keep the decision here.`;

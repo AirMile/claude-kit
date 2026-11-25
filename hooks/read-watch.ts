@@ -1,6 +1,5 @@
 import type { On } from "claude-code";
 
-import { balance } from "./balance";
 import { log } from "./flow-store";
 import { countRead, isExplore, readBudget } from "./read-budget";
 
@@ -94,11 +93,7 @@ export function readWatch(on: On) {
         !isExplore(e.tool, e.tool === "Bash" ? e.command : undefined)
       )
         return ran;
-      const note = countRead(
-        turn,
-        (ran.text ?? "").length,
-        balance(await $.clock.now()).leaning,
-      );
+      const note = countRead(turn, (ran.text ?? "").length);
       if (note)
         await log($, {
           event: "read-note",

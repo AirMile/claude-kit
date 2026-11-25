@@ -116,6 +116,12 @@ export async function gptStatus(
   return loading;
 }
 
+// What a route is judged on: the read in flight (the one after a run) when there is one, so the
+// next run sees the meters that run moved. The band keeps using the last read meanwhile.
+export function gptCurrent($: EngineInterface): Promise<GptStatus> {
+  return loading ?? gptStatus($);
+}
+
 export async function pins(
   $: EngineInterface,
 ): Promise<Partial<Record<Family, string>>> {

@@ -469,8 +469,8 @@ assess the criteria. Human-only checks remain pending.
 
 Use `/task-readiness <task>` to start or `/task-readiness <slug>` to resume a
 spec in `docs/specs/`. Work spanning chats or on the roadmap keeps a spec; small
-obvious edits need no skill. It delegates self-contained work to Claude or GPT
-according to available subscription capacity and reviews the diff. Commit only
+obvious edits need no skill. GPT gives reviews and second plans; on Claude Pro it also
+takes research and builds (see Delegation). Commit only
 when requested or allowed by the flow note.
 
 ### /commit
@@ -591,7 +591,7 @@ you approve → `/improve` applies it and ticks the line off.
 
 Hands a task to a GPT model through the Codex CLI, so it runs on your ChatGPT plan instead of
 Claude's limits. Claude uses it when you ask for GPT (Sol, Terra, Luna, Astra, e.g. "vraag Sol
-wat hij van dit plan vindt") and for delegated work; you can also call it yourself.
+wat hij van dit plan vindt") and for reviews and second plans; you can also call it yourself.
 
 ```
 /codex Sol: review the current diff
@@ -604,7 +604,9 @@ the models from `scripts/codex-status.js`. GPT models are named by family and th
 in Codex's own catalog is used, so a new release (Terra 6.1, say) is picked up without a kit
 update. Needed per device: the Codex CLI installed and `codex login` done once, with ChatGPT.
 kit checks this by itself: it looks for Codex in the usual install places (Homebrew, npm, bun, the
-Codex app), not only on the PATH; tells apart "not installed" from "not logged in" in a toast and
+ChatGPT and Codex apps), not only on the PATH, and of several installs uses the newest version
+(Codex lists only the models its version knows, so an outdated CLI does not hide new ones; the
+app's version may be a pre-release); tells apart "not installed" from "not logged in" in a toast and
 in `/gpt`; and looks again every 30 seconds until Codex is ready, so installing it mid-session
 needs no restart.
 
@@ -861,7 +863,7 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
     `‹ high ›`, a press on `‹` or `›` one level down or up (`default`, the session's own,
     then low to max); it holds over new chats and restarts. The engine lowers a level the
     model lacks.
-  - **GPT**: `GPT` or `GPT off` (may GPT take delegated work). A ChatGPT window from half used
+  - **GPT**: `GPT` or `GPT off` (may kit send work to GPT). A ChatGPT window from half used
     shows on it (`GPT 5h 62%`).
   - **Limit**: `⏸ Off` (no pause, no pings; the default) → `⏸♨ Warm` (keep the cache warm
     while idle; `♨×3` after it counts the pings) → `⏸ Limit` (pause at the plan limit, the
@@ -875,12 +877,25 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   work before it, so it never drops to low in the middle of a build:
 
   ```
-  kind      Lean             Balanced          Quality
+  Pro       Lean             Balanced          Quality
   question  Sonnet · low     Sonnet · low      Sonnet · medium
   routine   Sonnet · medium  Sonnet · medium   Opus   · high
   planning  Opus   · high    Opus   · high     Opus   · high
   heavy     Opus   · high    Opus   · xhigh    Opus   · xhigh
+
+  Max       Lean             Balanced          Quality
+  question  Sonnet · low     Sonnet · low      Sonnet · medium
+  routine   Sonnet · medium  Opus   · medium   Opus   · high
+  planning  Opus   · high    Opus   · high     Fable  · high
+  heavy     Opus   · xhigh   Fable  · high     Fable  · xhigh
   ```
+
+  The **Claude plan** bounds the models: kit reads it from the login (`organizationType` in
+  `~/.claude.json`, or in `CLAUDE_CONFIG_DIR`; read again each new chat), or you set it with
+  `/mode plan auto|pro|max`. That field is no official format, so anything but a Max login
+  counts as Pro. On Pro kit never picks Fable (there it runs on paid usage credits). On Max
+  Fable counts against up to half the weekly limit, and kit can't see how much of that is left:
+  with usage credits on, work past it is billed.
 
   The first prompt of a chat (a new session or after `/clear`, not a resume) picks the model
   before it is sent: when it differs from the session's, you are asked to switch or stay (a switch sends every request to that model; the model picker keeps
@@ -950,8 +965,10 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   one the last passing check started on; without git, the order of the edits and checks.
   Only real runs count (a test, typecheck, lint or build command, not `echo test`); a failing
   check wipes earlier evidence; a piped check (`npm test | tail`) passes only when its output
-  names no failure. V2 and V3 work also needs a review from the other model family (V3 names
-  failure paths). The `kit:verifier`'s PASS on that code, read from its own answer, is needed
+  names no failure. V2 and V3 work also needs a review: at V2 a fresh Claude reviewer counts
+  whoever wrote the code, GPT or Gemini only on code they did not solely write; at V3 only
+  another family than the writer (naming failure paths). No Claude review displaces another
+  family's fail on the same code. The `kit:verifier`'s PASS on that code, read from its own answer, is needed
   by tier: always at V3; on heavy work only when no real test run passed on the code (lint or
   build alone, or a failure that was already there) or no reviewer could run; and after a
   verifier reported failures, until it passes. It holds at most once per round of changes and twice per request, never when the turn ends on a question to you or you said to
@@ -971,62 +988,77 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   risky: migration, auth, data loss), shown in the band as `D1 E1 V1`:
 
   ```
-  Define   D0 answer directly   D1 goal, bounds, testable outcome   D2 GPT researches
-           first (also planning and heavy work)   D3 two blind proposals, Sol and Astra
-  Execute  E0 here (a one-line tweak, an answer)   E1 one GPT worker (default)
-           E2 a stronger worker, split briefs   E3 parallel analysis, one writer
+  Define   D0 answer directly   D1 goal, bounds, testable outcome   D2 read the code first,
+           a second plan from GPT at a real fork (also planning and heavy work)
+           D3 two blind proposals, Sol and Astra
+  Execute  E0 here (a one-line tweak, an answer)   E1 here, with its covering check (default)
+           E2 here in steps, each checked   E3 stuck or large: a blind second plan from GPT
   Verify   V0 the answer's sources   V1 a covering check or a visual look
-           V2 + a review by the other family   V3 adversarial: failure paths, integration
+           V2 + a review (a fresh Claude one counts without GPT room)
+           V3 adversarial, by another family: failure paths, integration
   Refactor R0 (this increment always)
   ```
 
-  One note says the levels, who executes, the next step and the evidence; it is the only place
-  that hands work to `mcp__kit__delegate`, and at E1/E2 a change with its covering check to
-  `mcp__kit__run_task`. No note for all-zero levels or a short reply (it
-  keeps the open task's levels). "Met z'n drieën", "laat sol en astra meedenken" or "council"
-  sets D3 for that prompt. Budget lowers Execute and parallelism, never Verify: no GPT room →
-  E0, no room for an Astra run (about 18 points of GPT's 5h window) → D2, with the reason in
-  the note. The task growing or its first failing check raises E and V by one. Each decision
+  One note says the levels, the next step and the evidence. On Claude Max the work stays here
+  and the note names `mcp__kit__delegate` only where another model family, or a wide read by a
+  Claude subagent, adds something. On Claude Pro, while ChatGPT shares the work (see
+  Delegation), D2 sends research to `mcp__kit__delegate` and E1/E2 a change with its covering
+  check to `mcp__kit__run_task`. No note for all-zero levels or a short reply (it keeps the open
+  task's levels). "Met z'n drieën", "laat sol en astra meedenken" or "council" sets D3 for that
+  prompt; without room for an Astra run (about 18 points of GPT's 5h window) it stays D2, with
+  the reason in the note. Verify is never lowered. The task growing or its first failing check
+  raises E and V by one, so repeated trouble ends at a second plan from GPT (E3). Each decision
   is logged with both 5h meters; `/flow` shows the counts per level and how many E1+
   decisions saw a GPT run before the next one.
 
-- **Delegation**: flow's decision note (and `/task-readiness`) hands self-contained work to the tool
-  `mcp__kit__delegate` with a role. The mod picks Claude or GPT by role and by which plan has
-  room, on the newest model per family:
+- **Delegation**: where `mcp__kit__delegate` runs a piece of work follows the Claude plan
+  (`/mode plan`). Max has room, so GPT only adds what Claude can't give itself; on Pro both
+  subscriptions share the work:
 
   ```
-  role      both have room          Claude tight     no GPT (tight, off, no Codex)
-  search    Claude Sonnet (Explore) GPT Luna         Claude Sonnet
-  research  GPT Sol, read-only      GPT Sol          Claude Sonnet
-  build     GPT Terra, writes       GPT Terra        built here
-  build+    GPT Sol, writes         GPT Sol          built here
-  review    GPT Sol of Claude's code; Claude Sonnet of GPT's; no GPT → the checks and verifier
-  plan      GPT Sol: a blind second plan (no GPT → none)
+  role        Claude Max                    Claude Pro, ChatGPT has its share
+  search      Claude Sonnet (Explore)       GPT Luna
+  research    Claude Sonnet (subagent)      GPT Sol
+  build       this chat                     GPT Terra
+  build+      this chat                     GPT Sol
+  review      GPT Sol of Claude's code (Astra for a V3 task); of GPT's code, or without
+              GPT room below V3: a fresh Claude reviewer (Fable on Max, Opus on Pro)
+  plan        GPT Sol: a blind second plan
+  any, named  the GPT model you ask for
   ```
 
-  Claude is tight at 70% of its 5h window, or when its week runs 10 points ahead of the time
-  gone by; ChatGPT at 80% (5h) or 90% (weekly), read from Codex at most every 10 minutes. Astra
-  never runs by itself: only when you name it. A change is built here without GPT: a Claude
-  subagent would start cold on what this chat already knows. **GPT off** on the band (or
-  `/gpt off`) keeps all delegated work on Claude (the right column), reads nothing from Codex
-  and hides its meters; a GPT model you name still runs. While GPT is on, a GPT run may write
-  without asking (that switch is the standing request); with it off, a write asks first. A GPT run returns its final message, the files
-  it changed and a `thread` for a follow-up without a new brief; its whole log stays in Codex's
-  session file. Writing runs one at a time, commit nothing, and Claude reviews the diff and runs
-  the checks. A Claude route comes back as "run this as an Agent subagent on model X". For heavy work, task-readiness also requests a review by the other model family. Not free: the brief, the report and the diff review still cost Claude
-  tokens, so it pays off for work with many steps, not for a one-line fix.
+  On Pro ChatGPT has its share while the run keeps its 5h window at 70% or less, its week at
+  75% or less (the rest is kept for reviews), and its week is at most 10 points further ahead
+  of the time gone by than Claude's; otherwise the Max column applies.
 
-- **Task runner**: `mcp__kit__run_task` takes one change brief plus 1-3 covering checks (each
-  an argv, e.g. `["claude", "plugin", "test", "."]`). It routes like delegate's `build` (or
-  `build+`), runs GPT's build once, then runs the checks itself at the session root (no shell,
-  10 minutes each). A failing check goes back to the same Codex thread with its argv and last
-  60 output lines, and all checks run again: at most 2 fix rounds, 30 minutes in all. The chat
-  gets one short result: `pass`, `failing` (with the tail, never reported as passing),
-  `stopped` (a Codex error, a check that can't start or times out, the deadline) or `not run`
-  (GPT off, no Codex, a Claude route, another writing GPT run: the lock is delegate's). The
-  check results are the mod's own reading, and flow counts them like a Bash check. Its checks
-  run as you, outside Codex's sandbox, so every call asks permission and shows the argv. It
-  leaves the diff review (and at V2+ the other-family review) to the chat.
+  **ChatGPT's limits**: a run kit picks itself starts only when it fits: about 5 points of the
+  5h window for a Sol read, 18 for Astra, and neither window past 95% (a window past its reset
+  counts as empty; the meters are read from Codex at most every 10 minutes and again after each
+  run). No room, no Codex or GPT off: a second plan is made here and a review goes to the Claude
+  reviewer; a V3 review stays open until GPT can run or you waive it. A model you name runs anyway. **GPT off** on the band (or
+  `/gpt off`) reads nothing from Codex and hides its meters; a GPT model you name still runs.
+  While GPT is on, a GPT run may write without asking (that switch is the standing request);
+  with it off, a write asks first. A GPT run returns its final message, the files it changed
+  and a `thread` for a follow-up without a new brief (checked against the limits too, unless
+  you named the model); its whole log stays in Codex's session file. Writing runs one at a
+  time, commit nothing, and Claude reviews the diff and runs the checks. A Claude route comes
+  back as "run this as an Agent subagent on model X".
+
+- **Task runner**: for a change GPT builds (on Pro by itself, on Max when you ask).
+  `mcp__kit__run_task` takes one change brief, a model only if you named one, and 1-3 covering
+  checks (each an argv, e.g.
+  `["claude", "plugin", "test", "."]`), runs GPT's build once, then runs the checks itself at
+  the session root (no shell, 10 minutes each). A failing check goes back to the same Codex
+  thread with its argv and last 60 output lines, and all checks run again: at most 2 fix
+  rounds, 30 minutes in all. Every round starts only while ChatGPT's limits have room (about 5
+  points of the 5h window, 20 for a large Sol build, 25 for Astra), named model or not, since
+  a run cut off leaves half a change. The chat gets one short result: `pass`, `failing` (with
+  the tail, never reported as passing), `stopped` (a Codex error, a check that can't start or
+  times out, the deadline, no room for the next round) or `not run` (Max without a named
+  model, no Codex, no room, another writing GPT run: the lock is delegate's). The check results are the mod's
+  own reading, and flow counts them like a Bash check. Its checks run as you, outside Codex's
+  sandbox, so every call asks permission and shows the argv. It leaves the diff review (and at
+  V2+ the review) to the chat.
 
 - **/gpt**: the newest model per family and the ChatGPT meters; `/gpt on` and `/gpt off` set
   the GPT switch. `/gpt pin terra gpt-5.6-terra`

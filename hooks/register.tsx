@@ -51,8 +51,8 @@ import { syncWindows } from "./window-sync";
 //   is open or, on Warm, while the chat is idle (keep-warm); the band's limit button or
 //   /warm sets both per chat.
 // - fresh_start: /task-readiness's safe point clears the chat and resumes (fresh-start).
-// - delegate: work handed to Claude or GPT through Codex by role and room, ChatGPT's meters in
-//   the band while GPT is on, /gpt (delegate).
+// - delegate: a review or second plan handed to GPT through Codex (on Claude Pro the rest too),
+//   ChatGPT's meters in the band while GPT is on, /gpt (delegate).
 // - run_task: a GPT change, host checks and repairs on the same thread (task-runner).
 // - flow: each change task's track, its notes and the check before a turn ends, /flow (flow).
 // - window sync: ChatGPT's 5h window started with a new Claude one (window-sync).

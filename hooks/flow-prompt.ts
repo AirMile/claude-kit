@@ -59,7 +59,7 @@ const RESUME =
 export const isResume = (text: string): boolean => RESUME.test(text);
 
 // The prompt classifiers run together: what changes, what it needs verified, whether fresh
-// reading is needed. A direct question skips the first two; without GPT, the last is skipped.
+// reading is needed. A direct question skips the first two; a thin reply skips all three.
 // Only the questions asked go into the one call; none asked, no call.
 export async function classifyPrompt(
   $: EngineInterface,
@@ -72,7 +72,7 @@ export async function classifyPrompt(
   const direct = thin || kind === "question";
   const asks: Ask["name"][] = [];
   if (!direct) asks.push("change", "verify");
-  if (ready && !isThin(text)) asks.push("explore");
+  if (!isThin(text)) asks.push("explore");
   const reply = asks.length
     ? await $.model
         .complete({

@@ -87,7 +87,14 @@ test("Not delegated excuses this round's review hold; the next change folds with
   on("model.complete", async (_$, e) => labelAnswer(e.prompt, { change: CHANGE_LABELS.light }));
   on("prompt.submit", async (_$, e) => ({ text: e.text }));
   const w = world(on, {
-    store: { mode: "off", gpt: false, flowTasks: { s1: task() } },
+    store: {
+      mode: "off",
+      gpt: false,
+      // V3: no Claude stand-in, so GPT off leaves no reviewer; its verifier already passed
+      flowTasks: {
+        s1: { ...task(), gateV: 3, verifier: "pass", lastVerifierAt: 3 },
+      },
+    },
   });
   const out = await delegate($, { role: "review", brief: "Review" });
   expect(out).toContain("Not delegated");

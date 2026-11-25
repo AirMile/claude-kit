@@ -37,24 +37,13 @@ test("only read tools and wholly reading shell commands count", async () => {
 test("five calls or 15000 characters send one note per prompt", async () => {
   const calls = readBudget();
   for (let i = 0; i < 4; i++)
-    expect(countRead(calls, 10, false)).toBe(undefined);
-  expect(countRead(calls, 10, false)).toContain("read 5 times (50 characters)");
-  expect(countRead(calls, 20000, false)).toBe(undefined);
+    expect(countRead(calls, 10)).toBe(undefined);
+  expect(countRead(calls, 10)).toContain("read 5 times (50 characters)");
+  expect(countRead(calls, 20000)).toBe(undefined);
   const chars = readBudget();
-  expect(countRead(chars, 14999, false)).toBe(undefined);
-  expect(countRead(chars, 1, false)).toContain(
+  expect(countRead(chars, 14999)).toBe(undefined);
+  expect(countRead(chars, 1)).toContain(
     "read 2 times (15000 characters)",
   );
-  expect(countRead(readBudget(), 15000, false)).toContain("read 1 times");
-});
-
-test("leaning lowers the budget to four calls or 10000 characters; reset starts fresh", async () => {
-  const calls = readBudget();
-  for (let i = 0; i < 3; i++) expect(countRead(calls, 0, true)).toBe(undefined);
-  expect(countRead(calls, 0, true)).toContain("read 4 times");
-  expect(countRead(calls, 0, true)).toBe(undefined);
-  const chars = readBudget();
-  expect(countRead(chars, 9999, true)).toBe(undefined);
-  expect(countRead(chars, 1, true)).toContain("10000 characters");
-  expect(countRead(readBudget(), 1, true)).toBe(undefined);
+  expect(countRead(readBudget(), 15000)).toContain("read 1 times");
 });

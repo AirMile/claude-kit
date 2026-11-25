@@ -10,6 +10,7 @@ const run = ($: T$, input: Record<string, unknown> = {}) =>
     tool: "mcp__kit__run_task",
     brief: "Fix the form.",
     checks: [ARGV],
+    family: "terra",
     ...input,
   } as never);
 
@@ -53,6 +54,23 @@ test("a failed check resumes the same thread with its argv and output tail, then
   ]);
 });
 
+test("run_task does not start when ChatGPT's meters cannot be read", async ($, on) => {
+  const w = world(on, { unread: true });
+  const out = String((await run($)).result);
+  expect(out).toContain("run_task not run");
+  expect(out).toContain("ChatGPT's limits could not be read");
+  expect(w.spawned.length).toBe(0);
+});
+
+test("a repair round does not start once ChatGPT's window is full", async ($, on) => {
+  const w = world(on, { codes: [1, 0], fullAfter: 1 });
+  const out = String((await run($)).result);
+  expect(out).toContain("run_task stopped");
+  expect(out).toContain("round 2 not started: ChatGPT's 5h window is at 99%");
+  expect(out).toContain("→ exit 1"); // the failing round stays visible
+  expect(w.spawned.length).toBe(1);
+});
+
 test("two unsuccessful fix rounds return failing with the tail and never pass", async ($, on) => {
   const w = world(on, { codes: [1, 1, 1] });
   const out = String((await run($)).result);
@@ -73,10 +91,9 @@ test("a check's timeout is capped by the remaining total deadline", async ($, on
   expect(w.spawned.length).toBe(1);
 });
 
-for (const guard of ["brief", "checks", "off", "missing", "tight"] as const) {
+for (const guard of ["brief", "checks", "unnamed", "missing", "tight"] as const) {
   test(`run_task does not start: ${guard}`, async ($, on) => {
     const w = world(on, {
-      off: guard === "off",
       missing: guard === "missing",
       claude: guard === "tight",
     });
@@ -88,13 +105,17 @@ for (const guard of ["brief", "checks", "off", "missing", "tight"] as const) {
             ? { brief: " " }
             : guard === "checks"
               ? { checks: [] }
-              : {},
+              : guard === "unnamed"
+                ? { family: undefined }
+                : {},
         )
       ).result,
     );
     expect(out).toContain("run_task not run");
     expect(out).toContain("Not run:");
-    if (guard === "off") expect(out).toContain("GPT is off in the band");
+    if (guard === "unnamed")
+      expect(out).toContain("Claude does this itself");
+    if (guard === "tight") expect(out).toContain("5h window is at 99%");
     expect(w.spawned.length).toBe(0);
     expect(w.checks.length).toBe(0);
   });
@@ -110,6 +131,7 @@ for (const hold of ["root", "check"] as const)
       const other = await $.tool.call({
         tool: "mcp__kit__delegate",
         role: "build",
+        family: "terra",
         brief: "Edit.",
       } as never);
       expect(String(other.result)).toContain("another GPT run that writes");
@@ -225,4 +247,11 @@ test("run_task stays visible and leaves permission checking to the normal prompt
     input: { brief: "Fix.", checks: [ARGV] },
   } as never);
   expect(checked.decision).toBe("ask");
+});
+
+test("on Claude Pro run_task builds on GPT without a named model", async ($, on) => {
+  const w = world(on, { pro: true });
+  const out = String((await run($, { family: undefined })).result);
+  expect(out).toContain("run_task pass");
+  expect(w.spawned[0]?.argv).toContain("gpt-6.1-terra");
 });

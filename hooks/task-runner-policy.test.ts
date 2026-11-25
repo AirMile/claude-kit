@@ -250,3 +250,13 @@ test("stopped results show the check error, stop reason and unfinished work", as
   expect(out).toContain("Never report this as passing");
   expect(out).not.toContain("other-family review");
 });
+
+test("a named GPT family is kept, any other word refused", () => {
+  const checks = [["npm", "test"]];
+  expect(
+    readRunInput({ brief: "Fix it.", checks, family: "sol" }),
+  ).toMatchObject({ family: "sol" });
+  expect(readRunInput({ brief: "Fix it.", checks, family: "opus" })).toContain(
+    "family must be one of",
+  );
+});

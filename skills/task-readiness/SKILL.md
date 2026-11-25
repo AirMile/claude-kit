@@ -70,8 +70,7 @@ Approvals:   <where you will stop>
 Open:        <questions left, or "none">
 ```
 
-All four are already clear from the request and the repo → one line instead, and start. Do not
-interview for the sake of it.
+All four already clear from the request and the repo → one line instead, and start.
 
 ## Then work
 
@@ -80,20 +79,26 @@ feat/<slug>` (or `fix/<slug>`) before the first edit; on another branch (a workt
 stay. Choose the approach yourself; for a real fork name two or three options and pick one with a
 reason. Check as you go, not only at the end. Library API you are unsure of → context7.
 
-- **Use both subscriptions.** With `mcp__kit__delegate` (and `mcp__kit__run_task` for a change
-  with its covering checks) hand self-contained work (research, a standalone group of
-  criteria, a review) to whichever of Claude or GPT has room; the mod's levels say who. Read
-  its diff yourself.
+- **Use GPT as the mod's notes say** (they follow the Claude plan: Pro shares research and
+  builds with GPT, Max does them here). On both, ask `mcp__kit__delegate` role `review` or
+  `plan` for a heavy task's review, a real design fork or after failed fixes (GPT when it has
+  room); GPT for anything else only when a note or the user asks. Read its diff yourself.
 - **Bugs:** reproduce first, state the cause as a hypothesis with what you expect to see, get
   that evidence cheaply (targeted log tagged `[DBG:<slug>]`, one screenshot), fix the proven
   cause. A failed fix needs new evidence before the next; never the same fix reworded. A
   regression with a known good commit → `git bisect run`. Done = the repro is green and every
   `DBG` line is gone.
-- **Verify before you finish:** a heavy task gets an other-family review (`mcp__kit__delegate`
-  role `review`): its P0/P1 findings are fails. The `kit:verifier` agent (fresh context; give it
-  the criteria, changed files and baseline) is needed only at V3, when no test run passed on
-  the final code, or when no reviewer could run; the flow's hold says which. Fix, re-run the
-  failing checks and the full suite.
+- **Verify before you finish:** a heavy task gets a review (`mcp__kit__delegate` role
+  `review`): its P0/P1 findings are fails. Without GPT room it answers with a fresh Claude
+  reviewer, which counts below V3. A V3 task without room → ask once: wait / "skip verify".
+  The `kit:verifier` agent (fresh context; give it the criteria, changed files and baseline)
+  is needed only at V3, when no test run passed on the final code, or when no reviewer could run. Fix, re-run the failing checks and the full
+  suite; evidence is tied to the code, so the flow's hold names what must run again (a
+  docs-only fix reopens nothing). A finding outside the agreed criteria → write it down as a
+  limit (docs, out of scope), not another round.
+- **A live peer session edits this checkout** (changed files you didn't write) → propose a
+  worktree. Staying → edit only your own lines; checks on HEAD (`git worktree add --detach`)
+  plus your files; no `run_task`; review only your paths; note it in the Handoff.
 - A criterion or an out-of-scope line must change → stop, show the delta, ask once.
 
 ## Spec file (only for work that outlives this chat)

@@ -18,6 +18,8 @@ export function world(
     percent?: number;
     store?: Record<string, unknown>;
     drawn?: true; // a mounted band redraws on ui.invalidate: leave it to the engine
+    login?: string; // organizationType in the login's config (default: no config)
+    configDir?: string; // CLAUDE_CONFIG_DIR
   },
 ) {
   const asked: string[] = [];
@@ -63,6 +65,26 @@ export function world(
   });
   if (!opts.drawn) on("ui.invalidate", async () => ({ value: undefined }));
   on("ui.log", async () => ({ value: undefined }));
+  const read: string[] = []; // paths read, when the world has a login
+  on("env.get", async (_$, e) => ({
+    value: !opts.login
+      ? undefined
+      : e.name === "HOME"
+        ? "/home/u"
+        : e.name === "CLAUDE_CONFIG_DIR"
+          ? opts.configDir
+          : undefined,
+  }));
+  if (opts.login)
+    on("fs.read", async (_$, e) => {
+      read.push(e.path);
+      // read at call time: a test may change the login between chats
+      return {
+        value: JSON.stringify({
+          oauthAccount: { organizationType: opts.login },
+        }),
+      };
+    });
   on("store.get", async (_$, e) => ({ value: store[e.key] }));
   on("store.set", async (_$, e) => {
     store[e.key] = e.value;
@@ -77,7 +99,7 @@ export function world(
     return { text: e.text };
   });
   on("classic.SessionStart", async () => ({}));
-  return { asked, offered, sent, cleared, store };
+  return { asked, offered, sent, cleared, store, read };
 }
 // The model and effort the band shows beside the profile.
 // The effort between ‹ and › (a Text is found by its text, not its key).

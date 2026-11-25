@@ -14,6 +14,7 @@ import {
   changed,
   codexArgs,
   codexHint,
+  gptCurrent,
   gptOn,
   gptStatus,
   pins,
@@ -22,16 +23,17 @@ import {
   type GptStatus,
 } from "./codex-run";
 import { agyArgs, type AgyRun, retryBrief, runAgy } from "./agy-run";
-import { balance } from "./balance";
-import { flowDelegated } from "./flow";
+import { flowDelegated, flowGateLevel } from "./flow";
 import { REVIEW_MARK } from "./flow-evidence";
 import {
   claudeMeters,
   noteClaudeLimits,
   noteGptMeters,
 } from "./delegate-balance";
+import { getPlan } from "./plan";
 
 export const threads = new Map<string, Family>();
+const namedThreads = new Set<string>(); // runs on a family the user named
 export const agyThreads = new Set<string>(); // conversation ids of Gemini runs this session
 let writing = false; // a GPT run that writes is going: one at a time in this checkout
 
@@ -67,8 +69,12 @@ export type RoutingInput = {
   author?: Author;
   family?: Family;
   thread?: string;
+  strict?: boolean; // the limits bind a named family too
 };
-export type GptRoute = Extract<Route, { provider: "gpt" }> & { role: Role };
+export type GptRoute = Extract<Route, { provider: "gpt" }> & {
+  role: Role;
+  named?: boolean; // on a family asked for by name
+};
 export type DelegationRoute =
   | Extract<Route, { provider: "none" }>
   | {
@@ -89,47 +95,53 @@ export async function routeDelegation(
   input: RoutingInput,
 ): Promise<DelegationRoute> {
   const on = await gptOn($);
+  // A follow-up keeps its thread's model; only a run on a named one stays past the limits.
+  const known = input.thread ? threads.get(input.thread) : undefined;
   const family =
-    input.family ?? (input.thread ? threads.get(input.thread) : undefined);
+    input.family ??
+    (input.thread && namedThreads.has(input.thread) ? known : undefined);
   // With GPT off, Codex is read only for a family the user named.
   const st: GptStatus =
     on || family
-      ? await gptStatus($)
+      ? await gptCurrent($)
       : { argv: null, state: "missing", models: [], limits: {}, at: 0 };
   const now = await $.clock.now();
   const usage = await $.session.usage().catch(() => undefined);
   noteClaudeLimits(usage?.rateLimits ?? [], now);
-  const claude = claudeMeters();
+  const claude = claudeMeters(); // a failed read keeps the last good ones
   const gpt = st.argv && !st.error ? st.limits : undefined;
   noteGptMeters(on, gpt, now, st.at);
+  // A V3 task's review takes the strongest other family, and no Claude stand-in.
+  const risky =
+    input.role === "review" &&
+    (await flowGateLevel($).catch(() => 0)) >= 3;
   const r = route({
     role: input.role,
     author: input.author,
     family,
-    band: balance(now).band,
+    strict: input.strict,
+    continues: family ? undefined : known,
+    risky,
     gptOn: on,
     models: newest(st.models, await pins($)),
-    claude,
     gpt,
+    plan: await getPlan($),
+    claude,
     now,
   });
   if (r.provider === "none") return r;
   if (r.provider === "claude")
-    return {
-      provider: "claude",
-      r,
-      why: !on
-        ? "GPT is off in the band"
-        : st.error
-          ? `Codex: ${st.error}`
-          : "Claude has the room or the role",
-    };
+    return { provider: "claude", r, why: r.why };
   if (!st.argv)
     return {
       provider: "unavailable",
       reason: codexHint(st) ?? "Codex is not available here",
     };
-  return { provider: "gpt", r: { ...r, role: input.role }, argv: st.argv };
+  return {
+    provider: "gpt",
+    r: { ...r, role: input.role, ...(family ? { named: true } : {}) },
+    argv: st.argv,
+  };
 }
 
 export async function runDelegated(
@@ -175,7 +187,10 @@ export async function runDelegated(
     void gptStatus($, true); // the ChatGPT meters moved
   }
   const familyRun = parseModel({ id: r.model })?.family;
-  if (run.thread && familyRun) threads.set(run.thread, familyRun);
+  if (run.thread && familyRun) {
+    threads.set(run.thread, familyRun);
+    if (r.named) namedThreads.add(run.thread);
+  }
   const files = [...(await changed($, root))]
     .filter(([path, hash]) => before.get(path) !== hash)
     .map(([path]) => path);

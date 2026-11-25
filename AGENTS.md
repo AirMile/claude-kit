@@ -20,7 +20,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   above the prompt (`hooks/kit-band.tsx`: one line of usage, switches a press
   cycles (the profile, GPT on or off, the limit button (Off (default), Warm, Limit: pause + warm while work is open; per chat)), the effort with ‹ › when the profile is off, git, dashboard; the menus in
   `hooks/band-menus.tsx`, the Claude·GPT meters in `hooks/band-meters.tsx`), model/effort per prompt and subagent
-  (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, switches kept by `hooks/model-switch.ts`, `/mode`), flow (`hooks/flow.ts` on the pure `hooks/flow-policy.ts`, `hooks/flow-check.ts` and
+  (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, switches kept by `hooks/model-switch.ts`, the Claude plan in `hooks/plan.ts`, `/mode`), flow (`hooks/flow.ts` on the pure `hooks/flow-policy.ts`, `hooks/flow-check.ts` and
   `hooks/flow-log.ts`, review and verifier glue in `hooks/flow-agents.ts`, evidence in
   `hooks/flow-evidence.ts`, task state in `hooks/flow-state.ts`, storage and git fingerprint in
   `hooks/flow-store.ts`: each change task's
@@ -30,16 +30,17 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   `Protected:` globs of `AGENTS.md § Commands`, the lock in `$.store`), the commit gate (`hooks/commit-gate.ts` on
   `hooks/commit-gate-policy.ts`: `git commit` is denied while the open medium or heavy task is unverified, by the
   Stop gate's own evidence, `/commitgate off` per project),
-  `mcp__kit__delegate` (`hooks/delegate.ts` on the pure `hooks/delegate-policy.ts`: work handed
-  to Claude or GPT by role and by which plan has room, the newest GPT model per family; the
+  `mcp__kit__delegate` (`hooks/delegate.ts` on the pure `hooks/delegate-policy.ts`: review,
+  second plan and a named model to GPT, on Claude Pro research and building too, within
+  ChatGPT's limits (`hooks/gpt-limits.ts`), the newest GPT model per family; the
   Codex side, its catalog, the ChatGPT meters, the GPT switch and a run, in `hooks/codex-run.ts`;
   `/gpt` command in `hooks/gpt-command.ts`; its GPT run, route and writer lock in
   `hooks/delegate-run.ts`), `mcp__kit__run_task` (`hooks/task-runner.ts` on the pure
   `hooks/task-runner-policy.ts`: one GPT change, the chat's checks run by the mod, fixes on the
   same thread), ChatGPT's 5h window started with a new Claude one
-  (`hooks/window-sync.ts` on the pure `hooks/window-sync-policy.ts`), shared delegation balance (`hooks/balance.ts`, meters in `hooks/delegate-balance.ts`),
+  (`hooks/window-sync.ts` on the pure `hooks/window-sync-policy.ts`), GPT readiness and both plans' meters (`hooks/balance.ts`, `hooks/delegate-balance.ts`),
   task systems (the pure `hooks/task-policy.ts`: per typed prompt a Define/Execute/Verify/Refactor
-  level and the one note that names who executes; `hooks/flow-levels.ts` decides, raises and logs
+  level and the one note with the next step; `hooks/flow-levels.ts` decides, raises and logs
   them with both 5h meters and feeds the band, flow keeps them on the task; classifiers in
   `hooks/flow-prompt.ts`, the explore label in `hooks/explore-first.ts`),
   read budgets (`hooks/read-budget.ts`, observed by `hooks/read-watch.ts`), a pause before the plan limit with
@@ -93,7 +94,7 @@ product/roadmap, `setup` for AGENTS/decisions, `task-readiness/references/spec-t
 - The mod (`hooks/*.ts*`) costs no context (it runs as code), so no total line budget: one
   purpose per file, ≤ ~300 lines each (larger → split). It reads only specs (`Status` +
   criteria), `AGENTS.md § Commands` (flow: which kinds of check a task must pass; guard: `Protected:` globs), `docs/roadmap.md` and read-only git state (spec commits and
-  worktrees on other branches); it writes only through `roadmap-file.ts` and
+  worktrees on other branches), plus `organizationType` from the login's `~/.claude.json` (`hooks/plan.ts`); it writes only through `roadmap-file.ts` and
   `$.store` (worktree marks, pins). It starts Codex only for `mcp__kit__delegate`,
   `mcp__kit__run_task` and the window-sync ping: what a writing run changes is Codex's work, in
   Codex's sandbox, reviewed by the chat. The only other commands it runs for the chat are the

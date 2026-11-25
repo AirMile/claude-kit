@@ -86,6 +86,7 @@ const build = ($: T$) =>
   $.tool.call({
     tool: "mcp__kit__delegate",
     role: "build",
+    family: "terra",
     brief: "Edit src/a.ts.",
   } as never);
 

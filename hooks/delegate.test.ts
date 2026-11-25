@@ -1,6 +1,6 @@
 import { expect, test } from "claude-code/testing";
 
-import type { Task } from "./flow-policy";
+import { newTask, type Task } from "./flow-policy";
 import { world, delegate } from "./delegate-fixture";
 
 const EVENTS = [
@@ -19,10 +19,11 @@ const EVENTS = [
   }),
 ];
 
-test("with room on both, a build runs on the newest Terra and only its final message comes back", async ($, on) => {
+test("a build on a named model runs its newest version and only the final message comes back", async ($, on) => {
   const w = world(on, { events: EVENTS });
   const out = await delegate($, {
     role: "build",
+    family: "terra",
     brief: "Add a submit button to the form.",
   });
   const argv = w.spawned[0]?.argv ?? [];
@@ -41,10 +42,56 @@ test("with room on both, a build runs on the newest Terra and only its final mes
   expect(task?.claudeWrote).toBe(undefined);
 });
 
-test("a search runs on Luna when ChatGPT has room", async ($, on) => {
+test("a search and a build stay on Claude: no GPT run", async ($, on) => {
+  const w = world(on, { events: EVENTS });
+  const found = await delegate($, { role: "search", brief: "Find it." });
+  expect(found).toContain("Route: Claude (Claude does this itself");
+  expect(found).toContain('model "sonnet"');
+  const built = await delegate($, { role: "build", brief: "Add it." });
+  expect(built).toContain("Not delegated: Claude does this itself");
+  expect(w.spawned.length).toBe(0);
+});
+
+test("a follow-up of an automatic run is checked against the limits", async ($, on) => {
+  const w = world(on, { events: EVENTS, fullAfter: 1 });
+  await delegate($, { role: "review", brief: "Review it.", author: "claude" });
+  const out = await delegate($, {
+    role: "research",
+    brief: "And the retries?",
+    thread: "t-123",
+  });
+  expect(out).toContain("Route: Claude");
+  expect(out).toContain("5h window is at 99%");
+  expect(w.spawned.length).toBe(1);
+});
+
+test("a follow-up of a named run keeps running past the limit", async ($, on) => {
+  const w = world(on, { events: EVENTS, fullAfter: 1 });
+  await delegate($, { role: "plan", brief: "Plan it.", family: "sol" });
+  await delegate($, { role: "research", brief: "More.", thread: "t-123" });
+  expect(w.spawned.length).toBe(2);
+});
+
+test("the review of a risky task runs on Astra", async ($, on) => {
+  const now = Date.parse("2026-10-27T12:00:00Z");
+  on("session.id", async () => ({ value: "s1" }));
+  const w = world(on, {
+    events: EVENTS,
+    store: {
+      flowTasks: {
+        s1: { ...newTask(now, "heavy"), gateV: 3 },
+      },
+    },
+  });
+  await delegate($, { role: "review", brief: "Review it.", author: "claude" });
+  expect(w.spawned[0]?.argv).toContain("gpt-6-astra");
+});
+
+test("a named search runs on Luna", async ($, on) => {
   const w = world(on, { events: EVENTS });
   const out = await delegate($, {
     role: "search",
+    family: "luna",
     brief: "Find where the form is submitted.",
   });
   expect(w.spawned[0]?.argv).toContain("gpt-6-luna");
@@ -101,7 +148,7 @@ test("a review runs read-only with the brief and asks for ranked findings", asyn
   );
 });
 
-test("without Codex a change is built here and research goes to Claude, saying why", async ($, on) => {
+test("without Codex a plan is made here and research stays on Claude", async ($, on) => {
   const w = world(on, {
     status: {
       argv: null,
@@ -111,25 +158,20 @@ test("without Codex a change is built here and research goes to Claude, saying w
       error: "codex not found",
     },
   });
-  const out = await delegate($, {
-    role: "build",
-    brief: "Add a submit button.",
-  });
+  const out = await delegate($, { role: "plan", brief: "Plan the retries." });
   expect(w.spawned.length).toBe(0);
-  expect(out).toBe(
-    "Not delegated: Codex is not available here: build it here.",
-  );
+  expect(out).toBe("Not delegated: Codex is not available here: plan here.");
   const read = await delegate($, {
     role: "research",
     brief: "Weigh the retry options.",
   });
-  expect(read).toContain("Route: Claude (Codex: codex not found)");
+  expect(read).toContain("Route: Claude (Claude does this itself");
   expect(read).toContain('model "sonnet"');
   expect(read).toContain(
     'Add to the subagent prompt: "Read only: change no files. Aim for 4000 characters or less. Conclusion first; evidence as file:line; uncertainties. No command logs, file contents beyond short quotes, or diffs."',
   );
   expect(w.store.flowLog).toMatchObject([
-    { event: "delegate", text: "build", provider: "none", outcome: "failed" },
+    { event: "delegate", text: "plan", provider: "none", outcome: "failed" },
     { event: "delegate", text: "research", provider: "claude", outcome: "ok" },
   ]);
 });
@@ -140,7 +182,9 @@ test("/gpt shows the newest model per family and pins one", async ($, on) => {
   expect(String((shown as { text?: string }).text)).toContain(
     "terra: Terra 6.1 (gpt-6.1-terra)",
   );
-  expect(String((shown as { text?: string }).text)).toContain("balance: ");
+  expect(String((shown as { text?: string }).text)).toContain(
+    "GPT does: review and second plan",
+  );
   const pinned = await $.command.run({
     command: "gpt",
     args: "pin terra gpt-5.6-terra",
@@ -157,7 +201,7 @@ test("with GPT off a build stays here and Codex is not read; a named family stil
     role: "build",
     brief: "Add a submit button.",
   });
-  expect(out).toBe("Not delegated: GPT is off in the band: build it here.");
+  expect(out).toContain("Not delegated: Claude does this itself");
   expect(w.reads()).toBe(0);
   await delegate($, {
     role: "research",
@@ -245,6 +289,7 @@ test("a read-only GPT run claims no changes; a tree that differs is listed apart
   const w = world(on, { events: EVENTS });
   const out = await delegate($, {
     role: "search",
+    family: "luna",
     brief: "Find where the form is submitted.",
   });
   expect(w.spawned[0]?.argv).toContain("read-only");
@@ -255,7 +300,45 @@ test("a read-only GPT run claims no changes; a tree that differs is listed apart
 
 test("a read-only run with an unchanged tree prints only the nothing line", async ($, on) => {
   world(on, { events: EVENTS, clean: true });
-  const out = await delegate($, { role: "search", brief: "Find it." });
+  const out = await delegate($, { role: "search",
+    family: "luna", brief: "Find it." });
   expect(out).toContain("Changed: nothing (read-only run)");
   expect(out).not.toContain("Changed meanwhile");
+});
+
+test("on Claude Pro an unnamed build runs on GPT", async ($, on) => {
+  const w = world(on, { events: EVENTS, store: { plan: "pro" } });
+  const out = await delegate($, { role: "build", brief: "Add a button." });
+  expect(w.spawned[0]?.argv).toContain("gpt-6.1-terra");
+  expect(out).toContain("GPT Terra 6.1 (build");
+});
+
+test("a failed Claude usage read keeps weighing the last good meters", async ($, on) => {
+  const usage = { fails: false };
+  const w = world(on, { events: EVENTS, store: { plan: "pro" }, usage });
+  await delegate($, { role: "build", brief: "One." });
+  expect(w.spawned.length).toBe(0); // Claude's week is barely used: GPT's is further
+  usage.fails = true;
+  await delegate($, { role: "build", brief: "Two." });
+  expect(w.spawned.length).toBe(0);
+});
+
+test("without GPT room a heavy task's review goes to a fresh Claude reviewer", async ($, on) => {
+  const now = Date.parse("2026-10-27T12:00:00Z");
+  on("session.id", async () => ({ value: "s1" }));
+  const w = world(on, {
+    events: EVENTS,
+    fullAfter: 0,
+    store: { flowTasks: { s1: newTask(now, "heavy") } },
+  });
+  const out = await delegate($, {
+    role: "review",
+    brief: "Review it.",
+    author: "claude",
+  });
+  expect(w.spawned.length).toBe(0);
+  expect(out).toContain('model "fable"');
+  expect(out).toContain("verdict: pass");
+  const task = (w.store.flowTasks as Record<string, Task>).s1;
+  expect(task?.noReviewer).toBe(undefined); // a reviewer exists: the gate keeps asking for it
 });
