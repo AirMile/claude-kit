@@ -55,7 +55,7 @@ test("a red V1 check raises only the note, including after another prompt; growt
 });
 
 for (const gpt of [false, true]) {
-  test(`Claude's marked subagent review counts only with GPT authorship (${gpt})`, async ($, on) => {
+  test(`below V3 Claude's marked subagent review counts, whoever wrote (GPT: ${gpt})`, async ($, on) => {
     const w = world(on, stored({ gptWrote: gpt }));
     on("agent.spawn", async () => ({ model: "sonnet", agentId: "reviewer" }));
     on("turn.complete", async () => ({ text: "" }));
@@ -80,7 +80,7 @@ for (const gpt of [false, true]) {
     expect("kind" in (w.store.flowTasks as { s1: Task }).s1.review!).toBe(
       false,
     );
-    expect((await stop($)).block === undefined).toBe(gpt);
+    expect((await stop($)).block).toBe(undefined);
   });
 }
 
@@ -238,8 +238,8 @@ test("stored reviews reload with their evidence", async ($, on) => {
   );
 });
 
-for (const gateV of [1, 2] as const) {
-  test(`recovery names the other-family review at V2+ (${gateV})`, async ($, on) => {
+for (const gateV of [1, 2, 3] as const) {
+  test(`recovery names a review at V2, another family at V3 (${gateV})`, async ($, on) => {
     world(on, stored({ gateV, lastEditAt: 1 }));
     on("session.compact", async () => ({
       messages: [{ role: "user", text: "Summary", toolUses: [] }],
@@ -251,9 +251,9 @@ for (const gateV of [1, 2] as const) {
       trigger: "manual",
       messages: [{ role: "user", text: "Continue", toolUses: [] }],
     });
-    expect(JSON.stringify(result).includes("and an other-family review")).toBe(
-      gateV >= 2,
-    );
+    const text = JSON.stringify(result);
+    expect(text.includes("and a review")).toBe(gateV === 2);
+    expect(text.includes("and an other-family review")).toBe(gateV === 3);
   });
 }
 
@@ -349,7 +349,7 @@ for (const [name, over, wants] of [
       messages: [{ role: "user", text: "Continue", toolUses: [] }],
     });
     const text = JSON.stringify(result);
-    expect(text).toContain("other-family review");
+    expect(text).toContain("and a review");
     expect(text.includes("kit:verifier on its criteria")).toBe(wants);
   });
 

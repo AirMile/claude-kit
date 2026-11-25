@@ -141,9 +141,19 @@ test("a named model runs past the limit unless the caller is strict", async () =
 test("a full window leaves the review open and plans here", async () => {
   const gpt = { five_hour: { pct: 93, resetsAt: in_(2) } };
   const full = "ChatGPT's 5h window is at 93% (resets in 2h 0m)";
-  expect(route(at({ role: "review", gpt }))).toEqual({
+  // Below V3 a fresh Claude reviewer stands in, on the plan's strongest model.
+  expect(route(at({ role: "review", gpt }))).toMatchObject({
+    provider: "claude",
+    model: "fable",
+    effort: "high",
+    why: `${full}: a fresh Claude reviewer stands in`,
+  });
+  expect(route(at({ role: "review", gpt, plan: "pro" }))).toMatchObject({
+    model: "opus",
+  });
+  expect(route(at({ role: "review", gpt, risky: true }))).toEqual({
     provider: "none",
-    reason: `${full}; the task stays open until it has a review or the user waives it`,
+    reason: `${full}; a V3 task needs another family: it stays open until it has a review or the user waives it`,
   });
   expect(route(at({ role: "plan", gpt }))).toEqual({
     provider: "none",
@@ -171,7 +181,7 @@ test("a follow-up stays on its GPT thread within the limits and never becomes a 
 });
 
 test("the riskiest review takes Astra when it fits, otherwise Sol", async () => {
-  const deep = { role: "review", prefer: "astra" } as const;
+  const deep = { role: "review", risky: true } as const;
   expect(route(at(deep))).toMatchObject({
     model: "gpt-6-astra",
     sandbox: "read-only",
@@ -194,8 +204,11 @@ test("a review goes to the family that did not write it", async () => {
   });
   expect(route(at({ role: "review", author: "gpt" }))).toMatchObject({
     provider: "claude",
-    model: "sonnet",
+    model: "fable",
   });
+  expect(
+    route(at({ role: "review", author: "gpt", risky: true })),
+  ).toMatchObject({ provider: "claude" });
 });
 
 test("without a name or the riskiest review, nothing runs on Astra", async () => {
@@ -216,16 +229,18 @@ test("without a name or the riskiest review, nothing runs on Astra", async () =>
   ).toMatchObject({ model: "gpt-6.1-terra" });
 });
 
-test("with GPT off nothing goes to GPT unless a family is named; no Claude review of Claude", async () => {
+test("with GPT off nothing goes to GPT unless a family is named; no Claude review of risky work", async () => {
   expect(route(at({ role: "build", gptOn: false })).provider).toBe("none");
   expect(route(at({ role: "research", gptOn: false }))).toMatchObject({
     provider: "claude",
   });
   expect(route(at({ role: "review", gptOn: false }))).toMatchObject({
-    provider: "none",
-    reason:
-      "GPT is off in the band; the task stays open until it has a review or the user waives it",
+    provider: "claude",
+    why: "GPT is off in the band: a fresh Claude reviewer stands in",
   });
+  expect(
+    route(at({ role: "review", gptOn: false, risky: true })),
+  ).toMatchObject({ provider: "none" });
   expect(
     route(at({ role: "review", gptOn: false, author: "gpt" })),
   ).toMatchObject({
@@ -295,10 +310,12 @@ test("on Pro without GPT the work stays on Claude", async () => {
 });
 
 test("no run kit picks starts without any ChatGPT meter", async () => {
-  expect(route(at({ role: "review", gpt: {} }))).toMatchObject({
+  expect(route(at({ role: "review", gpt: {}, risky: true }))).toMatchObject({
     provider: "none",
-    reason:
-      "ChatGPT's limits could not be read; the task stays open until it has a review or the user waives it",
+  });
+  expect(route(at({ role: "review", gpt: {} }))).toMatchObject({
+    provider: "claude",
+    why: "ChatGPT's limits could not be read: a fresh Claude reviewer stands in",
   });
   expect(route(at({ role: "plan", gpt: {} })).provider).toBe("none");
 });

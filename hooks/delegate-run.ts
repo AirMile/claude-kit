@@ -23,7 +23,7 @@ import {
   type GptStatus,
 } from "./codex-run";
 import { agyArgs, type AgyRun, retryBrief, runAgy } from "./agy-run";
-import { flowDelegated, flowLevels } from "./flow";
+import { flowDelegated, flowGateLevel } from "./flow";
 import { REVIEW_MARK } from "./flow-evidence";
 import {
   claudeMeters,
@@ -111,17 +111,17 @@ export async function routeDelegation(
   const claude = claudeMeters(); // a failed read keeps the last good ones
   const gpt = st.argv && !st.error ? st.limits : undefined;
   noteGptMeters(on, gpt, now, st.at);
-  // The riskiest task's review takes the strongest other family.
-  const deep =
+  // A V3 task's review takes the strongest other family, and no Claude stand-in.
+  const risky =
     input.role === "review" &&
-    (await flowLevels($).catch(() => undefined))?.v === 3;
+    (await flowGateLevel($).catch(() => 0)) >= 3;
   const r = route({
     role: input.role,
     author: input.author,
     family,
     strict: input.strict,
     continues: family ? undefined : known,
-    prefer: deep ? "astra" : undefined,
+    risky,
     gptOn: on,
     models: newest(st.models, await pins($)),
     gpt,

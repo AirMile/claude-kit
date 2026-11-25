@@ -944,8 +944,10 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   one the last passing check started on; without git, the order of the edits and checks.
   Only real runs count (a test, typecheck, lint or build command, not `echo test`); a failing
   check wipes earlier evidence; a piped check (`npm test | tail`) passes only when its output
-  names no failure. V2 and V3 work also needs a review from the other model family (V3 names
-  failure paths). The `kit:verifier`'s PASS on that code, read from its own answer, is needed
+  names no failure. V2 and V3 work also needs a review: at V2 a fresh Claude reviewer counts
+  whoever wrote the code, GPT or Gemini only on code they did not solely write; at V3 only
+  another family than the writer (naming failure paths). No Claude review displaces another
+  family's fail on the same code. The `kit:verifier`'s PASS on that code, read from its own answer, is needed
   by tier: always at V3; on heavy work only when no real test run passed on the code (lint or
   build alone, or a failure that was already there) or no reviewer could run; and after a
   verifier reported failures, until it passes. It holds at most once per round of changes and twice per request, never when the turn ends on a question to you or you said to
@@ -971,7 +973,8 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   Execute  E0 here (a one-line tweak, an answer)   E1 here, with its covering check (default)
            E2 here in steps, each checked   E3 stuck or large: a blind second plan from GPT
   Verify   V0 the answer's sources   V1 a covering check or a visual look
-           V2 + a review by the other family   V3 adversarial: failure paths, integration
+           V2 + a review (a fresh Claude one counts without GPT room)
+           V3 adversarial, by another family: failure paths, integration
   Refactor R0 (this increment always)
   ```
 
@@ -997,7 +1000,8 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   research    Claude Sonnet (subagent)      GPT Sol
   build       this chat                     GPT Terra
   build+      this chat                     GPT Sol
-  review      GPT Sol of Claude's code (Astra for a V3 task); Claude Sonnet of GPT's
+  review      GPT Sol of Claude's code (Astra for a V3 task); of GPT's code, or without
+              GPT room below V3: a fresh Claude reviewer (Fable on Max, Opus on Pro)
   plan        GPT Sol: a blind second plan
   any, named  the GPT model you ask for
   ```
@@ -1009,8 +1013,8 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   **ChatGPT's limits**: a run kit picks itself starts only when it fits: about 5 points of the
   5h window for a Sol read, 18 for Astra, and neither window past 95% (a window past its reset
   counts as empty; the meters are read from Codex at most every 10 minutes and again after each
-  run). No room, no Codex or GPT off: a second plan is made here, and a review stays open until
-  it can run or you waive it. A model you name runs anyway. **GPT off** on the band (or
+  run). No room, no Codex or GPT off: a second plan is made here and a review goes to the Claude
+  reviewer; a V3 review stays open until GPT can run or you waive it. A model you name runs anyway. **GPT off** on the band (or
   `/gpt off`) reads nothing from Codex and hides its meters; a GPT model you name still runs.
   While GPT is on, a GPT run may write without asking (that switch is the standing request);
   with it off, a write asks first. A GPT run returns its final message, the files it changed
@@ -1033,7 +1037,7 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   model, no Codex, no room, another writing GPT run: the lock is delegate's). The check results are the mod's
   own reading, and flow counts them like a Bash check. Its checks run as you, outside Codex's
   sandbox, so every call asks permission and shows the argv. It leaves the diff review (and at
-  V2+ the other-family review) to the chat.
+  V2+ the review) to the chat.
 
 - **/gpt**: the newest model per family and the ChatGPT meters; `/gpt on` and `/gpt off` set
   the GPT switch. `/gpt pin terra gpt-5.6-terra`

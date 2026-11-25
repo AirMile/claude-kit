@@ -132,7 +132,7 @@ test("heavy floors the gate at V2; V0/V1 need only the passing check", async () 
   expect(verified(onReview(t, review()), "p1")).toBe(true);
 });
 
-test("the reviewer must be the other family, with either allowed for mixed writers", async () => {
+test("at V3 the reviewer must be the other family, with either allowed for mixed writers", async () => {
   for (const [gptWrote, claudeWrote] of [
     [false, false],
     [false, true],
@@ -140,14 +140,30 @@ test("the reviewer must be the other family, with either allowed for mixed write
     [true, true],
   ]) {
     for (const family of ["gpt", "claude"] as Family[]) {
-      const t = onReview(work({ gptWrote, claudeWrote }), review({ family }));
+      const t = onReview(
+        work({ gptWrote, claudeWrote, gateV: 3 }),
+        review({ family, depth: true }),
+      );
       const counts = family === "gpt" ? !gptWrote || claudeWrote : gptWrote;
       expect(reviewProblem(t, "p1") === undefined).toBe(counts);
     }
   }
+  const risky = onReview(work({ gateV: 3 }), review({ family: "claude" }));
+  expect(reviewProblem(risky, "p1")).toContain("needs another family");
+  expect(reviewProblem(risky, "p1")).toContain('"skip verify"');
   expect(
-    reviewProblem(onReview(work(), review({ family: "claude" })), "p1"),
-  ).toContain("Claude wrote");
+    reviewProblem(onReview(work({ gptWrote: true, gateV: 3 }), review()), "p1"),
+  ).toContain("author gpt");
+});
+
+test("below V3 a fresh Claude reviewer counts; no writer reviews itself on GPT", async () => {
+  for (const claudeWrote of [false, true]) {
+    const own = work({ claudeWrote });
+    const by = (family: Family, outcome: "pass" | "fail" = "pass") =>
+      reviewProblem(onReview(own, review({ family, outcome })), "p1");
+    expect(by("claude")).toBe(undefined);
+    expect(by("claude", "fail")).toContain("P0/P1");
+  }
   expect(
     reviewProblem(onReview(work({ gptWrote: true }), review()), "p1"),
   ).toContain("author gpt");
@@ -287,8 +303,12 @@ test("a hold names every missing item and preserves the check and verifier sente
   expect(hold).toContain("no review yet");
   expect(hold).toContain("verdict: pass|fail");
   expect(hold).toContain("footer from delegate’s answer word for word");
+  // below V3 the Claude route can follow any review, so its footer is always named
   expect(
     holdText(onReview(t, review({ outcome: "error" })), "p1"),
+  ).toContain("footer from delegate");
+  expect(
+    holdText(onReview({ ...t, gateV: 3 }, review({ outcome: "error" })), "p1"),
   ).not.toContain("footer from delegate");
   expect(holdText({ ...t, gptWrote: true }, "p1")).toContain("author gpt");
   expect(
@@ -610,4 +630,49 @@ test("a stale pass (print changed) keeps the generic wording", () => {
     expect(text).not.toContain(NONE);
   // a recognised call whose status was masked still counts as a check seen
   expect(noCheckSeen(work({ checkCalls: 1 }))).toBe(false);
+});
+
+test("a Claude pass does not clear another family's fail on the same code", async () => {
+  for (const family of ["gpt", "gemini"] as Family[]) {
+    const failed = onReview(work(), review({ family, outcome: "fail" }));
+    const after = onReview(failed, review({ family: "claude", at: 7 }));
+    expect(reviewProblem(after, "p1")).toContain("P0/P1");
+    // the reviewer itself passing a second look does clear it, and so does changed code
+    expect(
+      reviewProblem(onReview(after, review({ family, at: 8 })), "p1"),
+    ).toBe(undefined);
+    const edited = onReview(
+      after,
+      review({ family: "claude", print: "p2", at: 9 }),
+    );
+    expect(reviewProblem(edited, "p2")).toBe(undefined);
+  }
+});
+
+test("a hold below V3 says how the Claude route's review is recognised", async () => {
+  const stale = onReview(work(), review({ family: "claude", print: "p0" }));
+  expect(holdText(stale, "p1")).toContain("put the footer");
+  expect(holdText({ ...stale, gateV: 3 }, "p1")).not.toContain(
+    "put the footer",
+  );
+});
+
+test("no Claude run, in any order, displaces another family's fail on this code", async () => {
+  for (const basePrint of ["p0", undefined]) {
+    const print = basePrint ? "p1" : undefined;
+    const run = (over: Partial<ReviewRecord>) => review({ print, ...over });
+    const failed = onReview(
+      work({ basePrint }),
+      run({ family: "gpt", outcome: "fail", at: 7 }),
+    );
+    const claude = (t: Task, over: Partial<ReviewRecord>) =>
+      onReview(t, run({ family: "claude", ...over }));
+    // a Claude fail may not take its place and then be cleared by a Claude pass
+    const twice = claude(claude(failed, { outcome: "fail", at: 8 }), { at: 9 });
+    expect(reviewProblem(twice, print)).toContain("P0/P1");
+    expect(twice.review?.family).toBe("gpt");
+    // nor a late answer on older code
+    const late = claude(failed, { print: basePrint && "p9", at: 6 });
+    expect(late.review?.family).toBe("gpt");
+  }
 });

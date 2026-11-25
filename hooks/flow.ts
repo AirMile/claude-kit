@@ -61,6 +61,12 @@ export async function flowLevels(
   return state.task?.levels;
 }
 
+// The Verify level the gate holds the open task to; 0 without a task.
+export async function flowGateLevel($: EngineInterface): Promise<number> {
+  await load($);
+  return state.task ? gateLevel(state.task) : 0;
+}
+
 // A check counts for the worktree it started on, whoever ran it (a subagent's too).
 export async function flowCheckStart(
   $: EngineInterface,
@@ -301,8 +307,13 @@ export function flowRecovery(): string | undefined {
       reviewProblem(state.task, undefined) !== undefined)
       ? " and the kit:verifier on its criteria"
       : "";
+  const level = gateLevel(state.task);
   const review =
-    gateLevel(state.task) >= 2 ? " and an other-family review" : "";
+    level >= 3
+      ? " and an other-family review"
+      : level === 2
+        ? " and a review"
+        : "";
   return `kit flow: an open ${state.task.track} task changed ${files}; before you finish, run the check that covers it${verifier}${review}.`;
 }
 

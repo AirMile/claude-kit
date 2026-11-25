@@ -79,7 +79,7 @@ test("the review of a risky task runs on Astra", async ($, on) => {
     events: EVENTS,
     store: {
       flowTasks: {
-        s1: { ...newTask(now, "heavy"), levels: { d: 2, e: 2, v: 3, r: 0 } },
+        s1: { ...newTask(now, "heavy"), gateV: 3 },
       },
     },
   });
@@ -321,4 +321,24 @@ test("a failed Claude usage read keeps weighing the last good meters", async ($,
   usage.fails = true;
   await delegate($, { role: "build", brief: "Two." });
   expect(w.spawned.length).toBe(0);
+});
+
+test("without GPT room a heavy task's review goes to a fresh Claude reviewer", async ($, on) => {
+  const now = Date.parse("2026-10-27T12:00:00Z");
+  on("session.id", async () => ({ value: "s1" }));
+  const w = world(on, {
+    events: EVENTS,
+    fullAfter: 0,
+    store: { flowTasks: { s1: newTask(now, "heavy") } },
+  });
+  const out = await delegate($, {
+    role: "review",
+    brief: "Review it.",
+    author: "claude",
+  });
+  expect(w.spawned.length).toBe(0);
+  expect(out).toContain('model "fable"');
+  expect(out).toContain("verdict: pass");
+  const task = (w.store.flowTasks as Record<string, Task>).s1;
+  expect(task?.noReviewer).toBe(undefined); // a reviewer exists: the gate keeps asking for it
 });

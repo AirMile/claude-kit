@@ -46,7 +46,7 @@ export type Route =
     }
   | {
       provider: "claude";
-      model: "sonnet" | "opus";
+      model: "sonnet" | "opus" | "fable";
       effort: Effort;
       subagentType: "Explore" | "general-purpose";
       writes: boolean;
@@ -157,7 +157,7 @@ export type RouteInput = {
   family?: Family; // asked for by name: it wins
   strict?: boolean; // a named family must fit the limits too (run_task: it writes)
   continues?: Family; // a follow-up on a run kit picked the model for
-  prefer?: Family; // taken instead of Sol when it fits (the riskiest review)
+  risky?: boolean; // a V3 task's review: Astra when it fits, and only another family
   gptOn: boolean; // the band's GPT switch
   models: Partial<Record<Family, GptModel>>;
   gpt: Meters | undefined; // undefined: Codex is missing or not logged in
@@ -165,6 +165,14 @@ export type RouteInput = {
   claude?: Meters; // Claude's windows, weighed against ChatGPT's on Pro
   now: number;
 };
+
+// A fresh Claude reviewer on the plan's strongest model (Fable bills extra on Pro).
+function reviewer(i: RouteInput, why: string): Route {
+  const picked = onClaude("review", why);
+  return picked.provider === "claude"
+    ? { ...picked, model: i.plan === "pro" ? "opus" : "fable" }
+    : picked;
+}
 
 // The model GPT takes shared work on; reviews and plans run on Sol.
 const SHARED: Record<Role, Family> = {
@@ -213,7 +221,7 @@ export function route(i: RouteInput): Route {
       : onGpt(i.role, m);
   }
   if (i.role === "review" && i.author === "gpt")
-    return onClaude("review", "a review needs another family");
+    return reviewer(i, "a review needs another family");
   // A follow-up that writes is a build: GPT's only where it shares the work.
   const writes = WRITE_ROLES.includes(i.role);
   // On Pro a follow-up of shared work stays within the share (shared() below).
@@ -230,7 +238,7 @@ export function route(i: RouteInput): Route {
         );
   const fits = (f: Family) => i.models[f] !== undefined && !full(f);
   const family =
-    i.continues ?? (i.prefer && fits(i.prefer) ? i.prefer : "sol");
+    i.continues ?? (i.risky && fits("astra") ? "astra" : "sol");
   const want = i.models[family];
   const unread = i.gpt && !i.gpt.five_hour && !i.gpt.seven_day;
   const refused = unread ? "ChatGPT's limits could not be read" : full(family);
@@ -241,12 +249,15 @@ export function route(i: RouteInput): Route {
     : i.gpt === undefined
       ? "Codex is not available here"
       : (refused ?? `no ${family} model in Codex's catalog`);
-  // A second Claude review would not be another family, so the work stays open.
-  if (i.role === "review")
-    return {
-      provider: "none",
-      reason: `${why}; the task stays open until it has a review or the user waives it`,
-    };
+  if (i.role === "review") {
+    // Risky work takes no Claude review of Claude's code, so it stays open.
+    return i.risky
+      ? {
+          provider: "none",
+          reason: `${why}; a V3 task needs another family: it stays open until it has a review or the user waives it`,
+        }
+      : reviewer(i, `${why}: a fresh Claude reviewer stands in`);
+  }
   return onClaude(i.role, `${why}: ${here}`);
 }
 

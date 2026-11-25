@@ -154,7 +154,7 @@ const SHARED_EXECUTE: Partial<Record<Level, string>> = {
 const VERIFY: Record<Level, string> = {
   0: "Check the answer against its sources.",
   1: "Run a covering test, typecheck or lint; visually check UI.",
-  2: "Run a covering check and get an independent other-family review via mcp__kit__delegate (role review): the gate wants both on the final code.",
+  2: "Run a covering check and get an independent review via mcp__kit__delegate (role review: GPT, or a fresh Claude reviewer without room): the gate wants both on the final code.",
   3: "Run a covering check and get an adversarial other-family review via mcp__kit__delegate (role review) of failure paths and integration (its answer has a failure-paths line): the gate wants both on the final code.",
 };
 const REFACTOR = [

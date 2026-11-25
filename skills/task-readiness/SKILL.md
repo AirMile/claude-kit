@@ -80,19 +80,19 @@ stay. Choose the approach yourself; for a real fork name two or three options an
 reason. Check as you go, not only at the end. Library API you are unsure of → context7.
 
 - **Use GPT as the mod's notes say** (they follow the Claude plan: Pro shares research and
-  builds with GPT, Max does them here). On both, `mcp__kit__delegate` role `review` or `plan`
-  goes to GPT: a heavy task's review, a real design fork, stuck after failed fixes; GPT for
-  anything else only when a note or the user asks. Read its diff yourself.
+  builds with GPT, Max does them here). On both, ask `mcp__kit__delegate` role `review` or
+  `plan` for a heavy task's review, a real design fork or after failed fixes (GPT when it has
+  room); GPT for anything else only when a note or the user asks. Read its diff yourself.
 - **Bugs:** reproduce first, state the cause as a hypothesis with what you expect to see, get
   that evidence cheaply (targeted log tagged `[DBG:<slug>]`, one screenshot), fix the proven
   cause. A failed fix needs new evidence before the next; never the same fix reworded. A
   regression with a known good commit → `git bisect run`. Done = the repro is green and every
   `DBG` line is gone.
-- **Verify before you finish:** a heavy task gets an other-family review (`mcp__kit__delegate`
-  role `review`): its P0/P1 findings are fails. No room for it → ask once: Gemini review
-  (provider `gemini`) / wait / "skip verify". The `kit:verifier` agent (fresh context; give it
-  the criteria, changed files and baseline) is needed only at V3, when no test run passed on
-  the final code, or when no reviewer could run. Fix, re-run the failing checks and the full
+- **Verify before you finish:** a heavy task gets a review (`mcp__kit__delegate` role
+  `review`): its P0/P1 findings are fails. Without GPT room it answers with a fresh Claude
+  reviewer, which counts below V3. A V3 task without room → ask once: wait / "skip verify".
+  The `kit:verifier` agent (fresh context; give it the criteria, changed files and baseline)
+  is needed only at V3, when no test run passed on the final code, or when no reviewer could run. Fix, re-run the failing checks and the full
   suite; evidence is tied to the code, so the flow's hold names what must run again (a
   docs-only fix reopens nothing). A finding outside the agreed criteria → write it down as a
   limit (docs, out of scope), not another round.
