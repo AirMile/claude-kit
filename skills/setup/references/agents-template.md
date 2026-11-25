@@ -27,7 +27,9 @@
   branch and push it; trunk pushes the default branch)
 - Fresh worktree: `<install cmd>` before anything else
 - Dev server: only use one this session started. Default port taken → a free one via `PORT`,
-  and point the app's own URL variables (e.g. `NEXT_PUBLIC_SERVER_URL`) at it too.
+  and point the app's own URL variables (e.g. `NEXT_PUBLIC_SERVER_URL`) at it too. A second
+  server refused (Next 16+: one `dev` per folder) → check the running one read-only, or run
+  `build` and `start` on a free port (rebuild after each fix); say which.
 - Database: worktrees share the local one → <own `DATABASE_URL` per worktree | schema push off
   outside the main checkout>; migrations only from the main checkout.
 - Merge conflicts in docs/roadmap.md, docs/decisions.md or AGENTS.md: keep compatible additions of both sides,

@@ -81,7 +81,8 @@ of raw colors, sizes and spacing.` (add once).
 
 ## 5. Verify
 
-Run the dev server (only a server this session started (default port taken → a free one; see `AGENTS.md § Git`); stop only what you started), screenshot 1-2 existing
+Run the dev server (only a server this session started (default port taken → a free one;
+second one refused → the running one read-only; see `AGENTS.md § Git`); stop only what you started), screenshot 1-2 existing
 pages in both themes, check the console. Broken styling → fix before reporting.
 
 ## Report
