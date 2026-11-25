@@ -2,10 +2,18 @@ import type { On, ToolSpec } from "claude-code";
 
 import { afterTurn } from "./auto-compact";
 import { flowAnswer } from "./flow";
+import { limitPaused } from "./limit-guard";
+import { hasKept } from "./limit-queue";
 
 // /task-readiness's safe point, automated: the model calls fresh_start after the user picked
 // "Fresh start"; when that turn ends, the chat clears and /kit:task-readiness <slug> resumes from the
 // spec in the fresh one. Same chain as the roadmap pane's Pick up, but run from turn.complete.
+
+// Clearing a paused chat, or one that still keeps prompts, would drop them (limit-guard.ts).
+function blocked(): string {
+  if (limitPaused()) return ", paused for the plan limit";
+  return hasKept() ? ", prompts are still kept (/limit resume sends them)" : "";
+}
 
 const TOOL = "mcp__kit__fresh_start";
 const SLUG = /^[a-z0-9][a-z0-9-]*$/;
@@ -49,12 +57,18 @@ export function freshStart(on: On) {
     }
     const slug = armed;
     armed = null;
-    if (e.reason !== "answer") {
-      $.ui.toast(`kit: fresh start for ${slug} cancelled`);
+    const why = blocked();
+    if (e.reason !== "answer" || why) {
+      $.ui.toast(`kit: fresh start for ${slug} cancelled${why}`);
       return done;
     }
     // Outside the hook: $.command.run rejects inside a hook the turn waits on.
     $.clock.after(300, async () => {
+      const still = blocked();
+      if (still) {
+        $.ui.toast(`kit: fresh start for ${slug} cancelled${still}`);
+        return;
+      }
       try {
         await $.command.run({ command: "clear" });
       } catch (err) {

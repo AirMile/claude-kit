@@ -2,6 +2,7 @@ import type { CommandSpec, EngineInterface, On } from "claude-code";
 
 import { agentCalls, askedEffort } from "./agent-effort";
 import { limitPrompt, limitStep } from "./limit-guard";
+import { noteSpawned, replayDropped, replayOf } from "./limit-queue";
 import {
   agentKind,
   carry,
@@ -135,7 +136,8 @@ async function escalate(
   const usage = await $.session.usage().catch(() => undefined);
   const step = escalation(have, want, usage?.context?.percent);
   if (step.step === "none") return {};
-  if (step.step === "effort" || kept === "stay" || !mayAsk) {
+  // Without asking, a standing "agent" choice still sends its note.
+  if (step.step === "effort" || kept === "stay" || (!mayAsk && kept !== "agent")) {
     effort = stretch(have);
     return {};
   }
@@ -203,12 +205,14 @@ async function resend(
 
 // The profile's part of a typed prompt: the model and effort for its kind of work, the first
 // prompt's model question, and the escalation when it needs a stronger model. Returns why the
-// prompt is held, if it is.
+// prompt is held, if it is. A replayed command (limit-queue.ts) runs unattended: no question,
+// since an escalation may clear the chat and drop what else was kept.
 async function profilePick(
   $: EngineInterface,
   profile: Profile,
   kind: Kind,
   text: string,
+  replay: boolean,
 ): Promise<{ drop?: string }> {
   // A command's kind is explicit; a thin reply keeps the work's kind.
   const ran = commandKind(text) ? kind : carry(kind, lastKind, text);
@@ -216,13 +220,13 @@ async function profilePick(
   const p = pick(profile, ran);
   if (await restoreSwitch($)) decided = true; // a reload kept the switch
   let asked = false;
-  if (!decided) {
+  if (!decided && !replay) {
     decided = true;
     asked = await askFirstModel($, p.model);
   }
   effort = p.effort;
   // The first prompt's question just settled the model: no second one for it.
-  const step = await escalate($, text, p.model, !asked);
+  const step = await escalate($, text, p.model, !asked && !replay);
   await showStatus($);
   if (step.drop) return { drop: step.drop };
   if (step.note) escalated = step.note;
@@ -250,7 +254,8 @@ export function autoModel(on: On) {
 
   on("prompt.submit", async ($, e, next) => {
     notePrompt(); // a new turn: a planned auto-compact is stale (auto-compact.ts)
-    const held = await limitPrompt($, e.text);
+    const replay = replayOf(e);
+    const held = await limitPrompt($, e);
     if (held) {
       $.ui.toast(held, { timeoutMs: 10_000 });
       return { drop: held };
@@ -261,12 +266,16 @@ export function autoModel(on: On) {
       e.origin.kind === "composer" ||
       e.origin.kind === "bridge" ||
       (e.origin.kind === "plugin" && e.origin.name === "kit");
-    if (!typed) return next(e);
+    if (!typed) {
+      const ran = await next(e);
+      replayDropped(replay, ran.drop);
+      return ran;
+    }
     const kind = (await kindOf($, e.text)) ?? "routine";
     // The profile picks the model and effort; flow (flow.ts) the workflow. Neither needs the
     // other.
     const step: { drop?: string } =
-      now === "off" ? {} : await profilePick($, now, kind, e.text);
+      now === "off" ? {} : await profilePick($, now, kind, e.text, !!replay);
     if (step.drop) {
       $.ui.toast(step.drop, { timeoutMs: 10_000 });
       return { drop: step.drop };
@@ -276,9 +285,11 @@ export function autoModel(on: On) {
       await flowPrompt($, e.text, kind),
     ].filter((n): n is string => n !== undefined);
     escalated = undefined;
-    return next(
+    const ran = await next(
       notes.length ? { ...e, context: [...(e.context ?? []), ...notes] } : e,
     );
+    replayDropped(replay, ran.drop);
+    return ran;
   });
 
   // A streaming event: the hook is a generator that forwards the chunks beneath.
@@ -305,6 +316,7 @@ export function autoModel(on: On) {
     const now = await getMode($);
     if (now === "off" || e.fork) {
       const started = await next(e);
+      noteSpawned(started.agentId); // the plan-limit pause tells it from a forked command
       await flowSpawned($, started.agentId, e.subagentType, e.prompt); // flow binds verifier and review evidence
       return started;
     }
@@ -313,6 +325,7 @@ export function autoModel(on: On) {
     // A plugin's or user's agent keeps its own definition unless kit knows its work.
     if (!isEngine && !known) {
       const started = await next(e);
+      noteSpawned(started.agentId);
       await flowSpawned($, started.agentId, e.subagentType, e.prompt);
       return started;
     }
@@ -321,6 +334,7 @@ export function autoModel(on: On) {
     const spawned = await next(
       isEngine && !e.model ? { ...e, model: p.model } : e,
     );
+    noteSpawned(spawned.agentId);
     await flowSpawned($, spawned.agentId, e.subagentType, e.prompt);
     const own = subagentEffort(askedEffort(e.tool_use_id), p.effort);
     if (spawned.agentId && own) agentEffort.set(spawned.agentId, own);

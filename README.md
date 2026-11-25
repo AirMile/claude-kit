@@ -821,8 +821,8 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   Not within 3 turns of the last compaction, not while the plan-limit pause holds, never when a
   fresh start is armed; a prompt you send first cancels it. Every completed compaction (native,
   yours or kit's) goes into a per-project ledger of the last 50 (tokens before/after, who
-  started it). `/autocompact status` shows the state, the threshold and the latest rows;
-  `/autocompact off|on` per project. A compact that fails turns it off until `/clear`.
+  started it). `/kitcompact status` shows the state, the threshold and the latest rows;
+  `/kitcompact off|on` per project (`/autocompact` is Claude Code's own command). A compact that fails turns it off until `/clear`.
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt, one line: usage at the left
@@ -841,10 +841,10 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
     model lacks.
   - **GPT**: `GPT` or `GPT off` (may GPT take delegated work). A ChatGPT window from half used
     shows on it (`GPT 5h 62%`).
-  - **Limit**: `⏸ Limit` (pause at the plan limit, the cache warm while work is open; the
-    default) → `⏸♨ Warm` (also keep the cache warm while idle; `♨×3` after it counts the
-    pings) → `⏸ Off` (no pause, no pings); see Keep warm. Kept per chat, over a reload or
-    restart; a new chat starts at `⏸ Limit`.
+  - **Limit**: `⏸ Off` (no pause, no pings; the default) → `⏸♨ Warm` (keep the cache warm
+    while idle; `♨×3` after it counts the pings) → `⏸ Limit` (pause at the plan limit, the
+    cache warm while work is open); see Keep warm. Kept per chat, over a reload or restart; a
+    new chat starts at `⏸ Off`.
 - **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (the band's profile button cycles them,
   or `/mode lean|balanced|quality|off`). The choice is kept across sessions. Each prompt is sorted (kit's own skills by name, the rest by a Haiku
   classifier) into question, routine, planning or heavy work, and the profile maps that to a
@@ -875,14 +875,33 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   (a review: effort high, its model is its own), other built-in agents classified on their
   task. An explicit `model` or `effort` on the Agent call is kept.
 
-- **Plan limit pause**: on unless the band's limit button reads `⏸ Off` for this chat.
+- **Plan limit pause**: only while the limit button reads `⏸ Limit` for this chat.
   When the 5-hour limit nears 100%, the chat pauses before
   its next model request. The pause point is 95%, lower when the percentage climbs fast
   between two readings (other chats and agents count too: the figure is account-wide), and
-  2 points stay free. While paused, prompts you send are kept and sent at the reset, the
-  band shows `paused until 14:05`, and **Resume now** ends the pause by hand. The prompt
-  cache is kept warm meanwhile (see Keep warm), only when the reset is under 5 hours away:
-  further out, a cold start is cheaper. At the reset a cut-off turn continues by itself.
+  2 points stay free. While paused, prompts and skill or prompt commands are kept and
+  replayed in order at the reset; commands run as commands. Local commands keep working.
+  A built-in that already ran is not replayed; kit says its existing effects stand.
+  Attachments are not kept, and the hold message says so. A person's prompt is replayed as
+  their words; notifications and peer messages keep a plugin frame. A kept prompt that starts
+  with `/` without being a command (a path) gets a `Kept prompt:` line before it, since a
+  plugin may not send it as it stands.
+  The band shows `paused until 14:05`, and **Resume now** ends the pause by hand.
+  A dropped or rejected replay stays kept with the items behind it; kit reports the reason
+  and count. **Resume now** or `/limit resume` retries them without waiting on the replay.
+  `/clear` or `/resume` drops the old chat's kept prompts and says how many were dropped; a
+  command already on its way is refused when it arrives, a plain prompt already on its way may
+  still enter. A forked command (`/code-review`) that the pause cuts is kept and run again.
+  A built-in prompt command kit does not know is not kept, and the hold message says so.
+  A cut command kit cannot identify is not kept, and a toast says so. `fresh_start` does not
+  clear a chat that is paused or still keeps prompts.
+  `/limit [status|off|warm|pause|resume]` replies in text, also during a running turn and on
+  clients without the band. Empty or `status` shows Off, Warm or Limit, the pause time and
+  kept count. `off`, `warm` and `pause` set the button; `pause` selects Limit (pause near the
+  5-hour limit, not immediately). `resume` ends a pause or retries kept prompts.
+  The prompt cache is kept warm meanwhile (see Keep warm), only when the reset is under
+  5 hours away: further out, a cold start is cheaper. At the reset a cut-off turn continues
+  by itself, ahead of the kept prompts.
 - **Flow**: the change workflow, for every request and without `/task-readiness`. Each change task gets
   a track, from a Haiku classifier that judges the change's risk (not the model it needs):
 

@@ -28,3 +28,10 @@
   type-check (test inputs are partial by design, so ignore errors in `*.test.ts`). `npx -y` can
   hang: then run the cached 5.6.3 under `~/.npm/_npx/*/node_modules/typescript/bin/tsc` with
   `NODE_OPTIONS=--max-old-space-size=8192`. A cached tsc 6.0.3 ran out of heap on this repo.
+- The host skips a plugin's own hooks for what its code raises (`prompt.submit` of a
+  `$.prompt.submit`, `command.run` of a `$.command.run`), not the `prompt.submit` of a command it
+  runs. `$.prompt.submit` refuses a text that starts with `/`. Bundled skills read
+  `source: "builtin"` in `$.command.list()`; a forked skill raises no `prompt.submit` and no
+  `agent.spawn`. The test harness shows none of this: confirm such a path with a live debug log.
+- A headless `claude -p "/<command>"` runs it for real (`/kit:commit` staged this repo): run it
+  in a scratch folder with `--disallowedTools Bash,Edit,Write`, and check a probe mod loaded.

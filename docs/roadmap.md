@@ -25,7 +25,7 @@
 - [ ] **context-spike** · two experiments, go/no-go for the next two items: a session.append rewrite reaches the model; a session.compact hook returning its own messages with one stubbed Read keeps tool pairs intact
 - [ ] **check-collapse** · shrink successful check output (build, test, install) at write time, failures stay whole; after a spike go
 - [ ] **context-prune** · age re-readable tool results into one-line stubs inside the session.compact hook, own file ≤300 lines, no LLM summary; after a spike go
-- [ ] **context-policy** · auto compact at a task boundary (no open flow task, no question, no queued prompt) at ≥ min(50% window, 160k), 3-turn cooldown, ledger of every compaction, `/autocompact` · spec: docs/specs/context-policy.md
+- [ ] **context-policy** · auto compact at a task boundary (no open flow task, no question, no queued prompt) at ≥ min(50% window, 160k), 3-turn cooldown, ledger of every compaction, `/kitcompact` · spec: docs/specs/context-policy.md
 - [ ] **fresh-anywhere** · clear and resume at any task boundary, always the user's choice, needs a current spec Handoff
 - [ ] **agent-brief-cap** · fixed return format and answer cap for Claude subagents, plus a cumulative read budget per task
 

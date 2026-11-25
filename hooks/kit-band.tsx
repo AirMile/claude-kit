@@ -12,6 +12,7 @@ import {
   setHold,
   warmCommandRun,
 } from "./limit-guard";
+import { limitCommandRun } from "./limit-command";
 import { type Hold, nextHold } from "./limit-policy";
 import {
   type Effort,
@@ -272,6 +273,10 @@ export function kitBand(on: On) {
 
   on("command.run", { command: "warm" }, async ($, e) => ({
     text: await warmCommandRun($, e.args),
+  }));
+
+  on("command.run", { command: "limit" }, async ($, e) => ({
+    text: await limitCommandRun($, e.args),
   }));
 
   // There is no call that unfolds a band the person folded; a redraw is what a plugin has.

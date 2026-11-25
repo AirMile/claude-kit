@@ -12,7 +12,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   `hooks/push-guard.test.cjs` is its regression test. Its `modules` names `hooks/register.tsx`,
   the kit mod (Claude Code 2.1.287+): native compaction priorities and recovery note
   (`hooks/compaction.ts`), auto-compact at a task boundary with a compaction ledger and
-  `/autocompact` (`hooks/auto-compact.ts` on the pure `hooks/context-policy.ts`), usage figures, and the tools
+  `/kitcompact` (`hooks/auto-compact.ts` on the pure `hooks/context-policy.ts`), usage figures, and the tools
   `mcp__kit__roadmap_view` / `mcp__kit__theme_view` (`hooks/roadmap-open.ts`,
   `hooks/theme-view.tsx`) that `/product` and `/theme` call to open their panes (plus the `/panel` command), the band
   above the prompt (`hooks/kit-band.tsx`: one line of usage, switches a press
@@ -41,7 +41,8 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   them with both 5h meters and feeds the band, flow keeps them on the task; classifiers in
   `hooks/flow-prompt.ts`, the explore label in `hooks/explore-first.ts`),
   read budgets (`hooks/read-budget.ts`, observed by `hooks/read-watch.ts`), a pause before the plan limit with
-  cache keep-alive (`hooks/limit-guard.ts` on the pure `hooks/limit-policy.ts`), keep-alive forks by hand or
+  cache keep-alive (`hooks/limit-guard.ts` on the pure `hooks/limit-policy.ts`, kept prompts and
+  command replay in `hooks/limit-queue.ts`, text control with `/limit` in `hooks/limit-command.ts`), keep-alive forks by hand or
   for the pause (`hooks/keep-warm.ts`, `/warm`), `/band` (the roadmap
   pane draws through the pure `roadmap-{dashboard,tabs,phase,card,later}.tsx` on `roadmap-parts.tsx`, with
   the Session tab's facts by `hooks/chat-facts.ts`),

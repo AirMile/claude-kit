@@ -1,5 +1,8 @@
 import type {
+  CommandRunInput,
+  CommandRunResult,
   EngineInterface,
+  PromptSubmitInput,
   TurnStepInput,
   TurnStepResult,
 } from "claude-code";
@@ -23,6 +26,11 @@ import {
   withHold,
 } from "./limit-policy";
 
+import {
+  dropKept, hasKept, keepCommand, keepPrompt, keepResume, keptCount, leftBehind,
+  noteCutStep, notePrompted, queueInfo, replayDropped, replayKept, replayOf, watchFork,
+} from "./limit-queue";
+
 // Pauses this chat before the 5-hour plan limit runs out, has keep-warm.ts keep
 // its prompt cache warm while the reset is near, and resumes at the reset.
 // - register.tsx feeds every usage reading to noteLimits;
@@ -32,17 +40,14 @@ import {
 //   hold (getHold/setHold): off, pause (warm while work is open) or warm (also while idle;
 //   /warm sets it). keep-warm.ts follows the hold.
 
-const RESUME_PROMPT =
-  "kit: the plan limit has reset. Continue where you stopped before the pause.";
-
-type Pause = { until: number; percent: number; cut: boolean };
+// What the pause cut: the main turn, and the steps of subagents and forks.
+type Pause = { until: number; percent: number; cut: boolean; agentCuts: number };
 
 const last = new Map<string, Reading>();
 let rises: number[] = []; // recent rises per reading, all windows
 let paused: Pause | null = null;
 // While paused near the plan limit nothing should spend tokens (auto-compact.ts).
 export const limitPaused = (): boolean => paused !== null;
-let queued: string[] = [];
 type Timer = ReturnType<EngineInterface["clock"]["after"]>;
 
 let resumeTimer: Timer | null = null;
@@ -59,24 +64,28 @@ async function sessionId($: EngineInterface): Promise<string | null> {
   }
 }
 
-// This chat's hold, read from $.store when the session changes (a new chat, a reload).
-export async function getHold($: EngineInterface): Promise<Hold> {
+// This chat's hold, read from $.store when the session changes (a new chat, a reload). True
+// when it was read now.
+async function readSession($: EngineInterface): Promise<boolean> {
   const id = await sessionId($);
-  if (id !== holdFor) {
-    holdFor = id;
-    const stored = id
-      ? await $.store.get(HOLD_KEY).catch(() => undefined)
-      : undefined;
-    hold = id ? holdOf(stored, id) : DEFAULT_HOLD;
-    syncHold($, hold);
-  } else if (hold === "warm" && warmHold() !== "warm") {
-    await setHold($, "pause"); // a failed ping turned keep warm off
-  }
+  if (id === holdFor) return false;
+  holdFor = id;
+  const stored = id
+    ? await $.store.get(HOLD_KEY).catch(() => undefined)
+    : undefined;
+  hold = id ? holdOf(stored, id) : DEFAULT_HOLD;
+  syncHold($, hold);
+  return true;
+}
+
+export async function getHold($: EngineInterface): Promise<Hold> {
+  // A failed ping turned keep warm off: stored, and nothing kept is sent for it.
+  if (!(await readSession($)) && hold === "warm" && warmHold() !== "warm")
+    await storeHold($, DEFAULT_HOLD);
   return hold;
 }
 
-export async function setHold($: EngineInterface, next: Hold) {
-  if (holdFor === undefined) await getHold($);
+async function storeHold($: EngineInterface, next: Hold) {
   hold = next;
   syncHold($, next);
   if (holdFor) {
@@ -85,8 +94,14 @@ export async function setHold($: EngineInterface, next: Hold) {
       .set(HOLD_KEY, withHold(stored, holdFor, next))
       .catch(() => {});
   }
-  if (next !== "pause") await resumeNow($); // Off and Warm never hold a chat
   $.ui.invalidate("ui.render");
+}
+
+// Set by hand: on this chat, also right after a /clear that nothing has read yet.
+export async function setHold($: EngineInterface, next: Hold) {
+  await readSession($);
+  await storeHold($, next);
+  if (next !== "pause") await resumeNow($); // Off and Warm never hold a chat
 }
 
 // /warm: on is the hold with keep warm, off drops back to Off (the default).
@@ -122,7 +137,7 @@ async function pause(
   percent: number,
   now: number,
 ) {
-  paused = { until, percent, cut: false };
+  paused = { until, percent, cut: false, agentCuts: 0 };
   $.ui.toast(
     `kit: plan limit at ${Math.round(percent)}%, paused until ${clockTime(until, now)}. ` +
       "Prompts you send now are kept and sent then.",
@@ -134,20 +149,40 @@ async function pause(
   $.ui.invalidate("ui.render");
 }
 
-// Ends the pause: at the reset, or by hand from the band (into extra usage, say).
-export async function resumeNow($: EngineInterface) {
-  if (!paused) return;
-  const { cut } = paused;
+function endPause($: EngineInterface) {
   resumeTimer?.cancel();
   resumeTimer = null;
   endPauseWarm();
   paused = null;
   rises = [];
-  const waiting = queued;
-  queued = [];
   $.ui.invalidate("ui.render");
-  if (cut) await $.prompt.submit({ text: RESUME_PROMPT }).catch(() => {});
-  for (const text of waiting) await $.prompt.submit({ text }).catch(() => {});
+}
+
+// /clear or /resume ends this chat: its pause goes with it, and the kept prompts are
+// dropped, since sending them would put them in another chat.
+export function leavePause($: EngineInterface) {
+  if (!paused && !hasKept()) return;
+  const wasPaused = !!paused;
+  const n = dropKept();
+  endPause($);
+  const count = n ? `${n} kept prompt${n === 1 ? "" : "s"} dropped` : "";
+  if (!wasPaused && !count) return;
+  const said = wasPaused
+    ? `the pause ended with that chat${count ? `; ${count}` : ""}`
+    : `${count} with that chat`;
+  $.ui.toast(`kit: ${said}.`, { timeoutMs: 10_000 });
+}
+
+// No command hook waits for replay: the worker starts outside it, also on a retry.
+export async function resumeNow($: EngineInterface) {
+  if (paused) {
+    const { cut, agentCuts } = paused;
+    endPause($);
+    if (cut || agentCuts > 0) keepResume();
+  }
+  const waiting = hasKept();
+  replayKept($);
+  return waiting;
 }
 
 // Before a model request: while paused, end the turn here instead (no request is made).
@@ -156,7 +191,10 @@ export async function limitStep(
   e: TurnStepInput,
 ): Promise<TurnStepResult | null> {
   if (!paused) return null;
-  paused.cut = true;
+  if (e.agentId) {
+    paused.agentCuts += 1;
+    noteCutStep(e.agentId);
+  } else paused.cut = true;
   const when = clockTime(paused.until, await $.clock.now());
   return {
     turnId: e.turnId,
@@ -171,20 +209,86 @@ export async function limitStep(
 // Before a prompt enters: while paused, keep it for the reset; the reason says so.
 export async function limitPrompt(
   $: EngineInterface,
-  text: string,
+  e: PromptSubmitInput,
 ): Promise<string | null> {
+  if (e.command) notePrompted(e.command.name);
+  if (leftBehind(e)) return "kit: dropped with the chat it was kept in.";
   if (!paused) return null;
-  queued = [...queued, text];
-  const when = clockTime(paused.until, await $.clock.now());
-  return `kit: paused for the plan limit; this prompt is sent at ${when}.`;
+  const replay = replayOf(e);
+  const keep = replay || !e.command || (await isPromptCommand($, e.command.name));
+  const now = await $.clock.now();
+  if (!paused) return null; // the pause ended while the command was looked up
+  const attachments = e.attachments?.length ? " attachments are not kept." : "";
+  const held =
+    `kit: paused for the plan limit; this prompt is sent at ${clockTime(paused.until, now)}.`;
+  if (replay) {
+    replayDropped(replay, held);
+    return held;
+  }
+  if (!keep)
+    return (
+      `kit: paused for the plan limit; /${e.command?.name} is built in or unknown, so it is ` +
+      "not sent again; what it already did stands. Run it again after the pause if " +
+      "nothing happened." + attachments
+    );
+  keepPrompt(e);
+  return held + attachments;
 }
 
-// The band's line while paused, empty otherwise.
+// Around a typed command: a forked one raises no prompt.submit, so a pause that cuts its
+// subagent is seen only here. It is kept and run again after the pause.
+export async function limitCommandWatch(
+  $: EngineInterface,
+  e: CommandRunInput,
+  next: (e: CommandRunInput) => Promise<CommandRunResult>,
+): Promise<CommandRunResult> {
+  const forkCut = watchFork(e.command);
+  const ran = await next(e);
+  const cuts = forkCut();
+  if (!cuts) return ran;
+  const keep = await isPromptCommand($, e.command);
+  const now = await $.clock.now();
+  let said = "is not kept; run it again after the pause";
+  if (keep && paused) {
+    settleForkCuts(cuts); // it runs again: no "continue" prompt on its account
+    keepCommand(e.command, e.args);
+    said = `is kept, it runs again at ${clockTime(paused.until, now)}`;
+    $.ui.invalidate("ui.render");
+  }
+  $.ui.toast(`kit: the plan-limit pause cut /${e.command}; it ${said}.`, {
+    timeoutMs: 10_000,
+  });
+  return ran;
+}
+
+// Cut steps of a command that is kept are made good by running it again.
+export function settleForkCuts(n: number) {
+  if (paused) paused.agentCuts = Math.max(0, paused.agentCuts - n);
+}
+
+// Built-in prompt commands the skill listing leaves out (the person's to run only); measured
+// live. One that is missing here is not kept, and the chat says so.
+const PROMPT_BUILTINS = ["batch", "debug", "run-skill-generator"];
+
+async function isPromptCommand($: EngineInterface, name: string): Promise<boolean> {
+  try {
+    const command = (await $.command.list()).find((c) => c.name === name);
+    if (!command) return false;
+    if (command.source !== "builtin" || PROMPT_BUILTINS.includes(name)) return true;
+    const usage = await $.session.usage({ breakdown: "summary" });
+    return !!usage.context.breakdown?.skills?.skillFrontmatter.some((s) => s.name === name);
+  } catch {
+    return false; // never repeat a command whose effects we cannot identify
+  }
+}
+
+// Keep the band's retry button available after a refused send.
 export async function limitInfo($: EngineInterface): Promise<string> {
-  if (!paused) return "";
+  if (!paused) return queueInfo();
   const parts = [
     `paused until ${clockTime(paused.until, await $.clock.now())}`,
   ];
-  if (queued.length) parts.push(`${queued.length} queued`);
+  const n = keptCount();
+  if (n) parts.push(`${n} queued`);
   return parts.join(" · ");
 }

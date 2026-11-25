@@ -116,7 +116,7 @@ async function fresh($: T$) {
   for (let i = 0; i < 3; i += 1) await begin($);
 }
 const auto = ($: T$, args: string) =>
-  $.command.run({ command: "autocompact", args } as never) as Promise<{
+  $.command.run({ command: "kitcompact", args } as never) as Promise<{
     text?: string;
   }>;
 const compact = ($: T$, trigger: string) =>
@@ -236,7 +236,7 @@ test("a prompt before the planned compact fires cancels it", async ($, on) => {
   expect(s.compacts).toBe(0);
 });
 
-test("/autocompact off stops it for the project, on restores it", async ($, on) => {
+test("/kitcompact off stops it for the project, on restores it", async ($, on) => {
   const s = world(on);
   await fresh($);
   expect(String((await auto($, "off")).text)).toContain("autocompact: off");
@@ -260,7 +260,7 @@ test("an armed fresh start wins: it clears, no compact", async ($, on) => {
 
 // A thrown test hook reaches the mod as "unknown command", so the busy skip is unit-tested in
 // context-policy.test.ts (isBusy).
-test("a failing compact turns it off with one toast; /autocompact on clears that", async ($, on) => {
+test("a failing compact turns it off with one toast; /kitcompact on clears that", async ($, on) => {
   const s = world(on, { fail: "unknown command" });
   await fresh($);
   await turn($);
@@ -286,7 +286,7 @@ test("a turn that starts without a prompt before the compact fires cancels it", 
   expect(s.compacts).toBe(0);
 });
 
-test("/autocompact off before the planned compact fires cancels it", async ($, on) => {
+test("/kitcompact off before the planned compact fires cancels it", async ($, on) => {
   const s = world(on, { late: true });
   await fresh($);
   await begin($);
@@ -317,4 +317,12 @@ test("the ledger keeps the last 50 compactions; precompute adds none", async ($,
   await compact($, "precompute");
   expect(ledger(s).length).toBe(50);
   expect(ledger(s).every((r) => (r as { trigger: string }).trigger === "auto")).toBe(true);
+});
+
+// Claude Code has its own /autocompact: registering that name is refused, and a hook on it
+// answers in the built-in's place.
+test("kit leaves the built-in /autocompact alone", async ($, on) => {
+  on("command.run", async () => ({ text: "the built-in" }));
+  const r = await $.command.run({ command: "autocompact", args: "status" } as never);
+  expect((r as { text: string }).text).toBe("the built-in");
 });

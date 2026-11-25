@@ -27,7 +27,8 @@ import { noteFile, resetChat } from "./chat-facts";
 import { compaction } from "./compaction";
 import { bandCommand, bandUsage, kitBand } from "./kit-band";
 import { noteStop, warmCommand } from "./keep-warm";
-import { noteLimits } from "./limit-guard";
+import { limitCommand } from "./limit-command";
+import { leavePause, limitCommandWatch, noteLimits } from "./limit-guard";
 import { panelCommand, roadmapOpen, roadmapTool } from "./roadmap-open";
 import { roadmapEdited, roadmapStale, roadmapView } from "./roadmap-view";
 import type { Usage } from "./roadmap-parts";
@@ -144,6 +145,9 @@ export const register: Register = (on) => {
     await $.command.register(panelCommand);
     await $.command.register(modeCommand);
     await $.command.register(warmCommand);
+    await $.command.register(limitCommand).catch((err) => {
+      $.ui.toast(`kit: could not register /limit (${String(err)})`);
+    });
     await $.command.register(bandCommand);
     await $.command.register(gptCommand);
     await $.command.register(flowCommand);
@@ -163,6 +167,7 @@ export const register: Register = (on) => {
   // A /clear fires no session.start or measure until the next turn: drop the old context
   // figure now, or the dashboard keeps showing it in the fresh chat.
   on("session.end", async ($, e, next) => {
+    if (e.reason === "clear" || e.reason === "resume") leavePause($);
     if (e.reason === "clear") {
       resetChat();
       resetAutoCompact();
@@ -173,6 +178,9 @@ export const register: Register = (on) => {
     }
     return next(e);
   });
+
+  // Every command: a forked one that the plan-limit pause cuts is kept (limit-guard.ts).
+  on("command.run", async ($, e, next) => limitCommandWatch($, e, next));
 
   on("session.measure", async ($, e, next) => {
     roadmapStale(); // the pane reloads git and specs on its next draw

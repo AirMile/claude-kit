@@ -15,13 +15,13 @@ import { limitPaused } from "./limit-guard";
 // notes the boundary (register.tsx, after flow's verdict); fresh-start.ts's turn.complete, the
 // mod's only one, calls afterTurn, which runs /compact outside the hook once the session is
 // idle. compaction.ts records every completed compaction in a per-project ledger. On by
-// default; /autocompact off turns it off for this project.
+// default; /kitcompact off turns it off for this project (/autocompact is Claude Code's own).
 
 const OFF = "kit:autocompact";
 const LEDGER = "kit:context-ledger";
 
 export const autoCompactCommand: CommandSpec = {
-  name: "autocompact",
+  name: "kitcompact",
   description:
     "kit: compact the chat by itself at a task boundary (on by default)",
   argumentHint: "[on | off | status]",
@@ -40,7 +40,7 @@ let mainTurns = 0;
 let boundary: number | null = null; // the epoch of the last turn's boundary, if it ended at one
 let lastCompactTurn: number | undefined;
 let kitStarted = false; // the next completed compaction is ours
-let broken = false; // compact failed in this chat: off until /clear or /autocompact on
+let broken = false; // compact failed in this chat: off until /clear or /kitcompact on
 
 export function noteBoundary(atBoundary: boolean) {
   boundary = atBoundary && epoch === turnEpoch ? epoch : null;
@@ -104,7 +104,7 @@ export async function afterTurn($: EngineInterface): Promise<void> {
   if (!d.compact) return;
   // Outside the hook: $.command.run rejects inside a hook the turn waits on. When it fires,
   // everything is checked again after the last await: a prompt, /clear, a compaction, the
-  // plan-limit pause or /autocompact off since the boundary cancels it.
+  // plan-limit pause or /kitcompact off since the boundary cancels it.
   $.clock.after(300, async () => {
     const on = await isOn($, dir);
     if (!on || broken || epoch !== planned || limitPaused()) return;
@@ -194,5 +194,5 @@ export function autoCompact(on: On) {
     }
     return next(e);
   });
-  on("command.run", { command: "autocompact" }, autoCompactCommandRun);
+  on("command.run", { command: "kitcompact" }, autoCompactCommandRun);
 }

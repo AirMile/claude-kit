@@ -20,13 +20,13 @@ compaction is recorded so the threshold can be tuned from data.
 - [x] No compact while a flow task is open, after a turn that ended on a question, after an
       aborted or errored turn, for a subagent, when a fresh start is armed, or within 3 turns of
       the last compaction — check: `claude plugin test .` (context-policy.test.ts, auto-compact.test.ts)
-- [x] `/autocompact off` stops it for this project (kept in `$.store`), `on` restores it,
+- [x] `/kitcompact off` stops it for this project (kept in `$.store`), `on` restores it,
       `status` shows the state, the threshold and the latest ledger rows — check: `claude plugin test .`
 - [x] Every completed compaction (native auto, manual, kit's own) appends one row (time,
       trigger, auto by kit, tokens before/after) to a per-project ledger in `$.store`, capped at
       50 rows — check: `claude plugin test .`
 - [x] A failing `compact` command shows one toast and turns the policy off for this chat
-      (until `/clear` or `/autocompact on`); a "turn is running" refusal just skips — check: `claude plugin test .`
+      (until `/clear` or `/kitcompact on`); a "turn is running" refusal just skips — check: `claude plugin test .`
 - [x] Typecheck and mod load stay green — check: `npx -y -p typescript@5.6.3 tsc --noEmit -p .`
       and `claude plugin validate` in a scratch copy (AGENTS.md § Conventions)
 
@@ -53,7 +53,7 @@ endsOnQuestion, skip cooldown. Known limits: the "turn is running" skip is unit-
 (command.run queues, so it is probably never reached); `kit` in the ledger assumes
 command.run resolves after the compaction.
 
-Manual (pending): with the updated plugin, run `/autocompact status`, work past the
+Manual (pending): with the updated plugin, run `/kitcompact status`, work past the
 threshold, ask something that changes no files and whose answer is no question → toast
-"kit: task done … compacting" and a compaction; `/autocompact status` shows a newest "kit"
+"kit: task done … compacting" and a compaction; `/kitcompact status` shows a newest "kit"
 row; the next two such prompts start no compaction.
