@@ -39,25 +39,28 @@ separate `chore:` commit).
 
 ## 3. Branch and group
 
-`AGENTS.md § Git` says `branches` (or nothing) and you are on the default branch → AskUserQuestion
-first: New branch `<type>/<scope>` (Recommended) / Commit on <default>. New branch → `git switch
--c` before staging.
+`AGENTS.md § Git` says `branches` (or nothing), you are on the default branch and it has a commit
+(`git rev-parse HEAD`) → AskUserQuestion first: New branch `<type>/<scope>` (Recommended) / Commit
+on <default>. New branch → `git switch -c` before staging. No commit yet → the default branch.
 
 Group changed paths by concern (directory + kind of change). Don't read diffs for this.
 
 - **1 group** → stage it.
-- **2+ groups, no file in two groups** → AskUserQuestion: Split into N commits (Recommended) /
-  One commit. Split = stage and commit group by group with whole files; afterwards
-  `git status --porcelain` must be empty of the grouped files.
-- **A file carries two concerns** → one commit; mention it in the body. Don't hand-split hunks.
+- **2+ groups** → split: stage and commit group by group with whole files; afterwards
+  `git status --porcelain` must be empty of the grouped files. Ask (Split into N commits
+  (Recommended) / One commit) only on a bare `/commit` that the history doesn't decide (the last
+  20 subjects commit such a change apart, e.g. `chore: bump …` → split).
+- **A file carries two concerns** → its groups become one commit, the body names both; other
+  groups still split. Don't hand-split hunks.
 
 `feature=<slug>` mode: one commit with the code, the spec and the roadmap line; skip the split
 question.
 
 Staging when nothing is staged: stage the group(s) directly; the user asked to commit. This
 session wrote some changes and other changed paths it never touched (a peer session, the
-user's editor) → stage only its own paths and list the rest under `left`. Something already
-staged → commit only what's staged, and say what was left out.
+user's editor) → stage only its own paths and list the rest under `left`. A file both changed →
+AskUserQuestion: Leave it out (Recommended) / Commit it whole (body names the other change).
+Already staged by someone else → commit only what's staged, and say what was left out.
 
 ## 4. Message
 
@@ -87,6 +90,8 @@ Conventional format:
   Commit (Recommended) / Edit / Cancel. Each commit of a split gets its own confirmation unless
   the user approved the whole list at once.
 - `feature=<slug>` mode, or the user's request already said to commit → commit without asking.
+- No AskUserQuestion (non-interactive run) → any ask in this skill takes its (Recommended)
+  option when the request said to commit, never pushes; else show the message and stop.
 
 ```bash
 git commit -m "$(cat <<'EOF'
@@ -104,7 +109,8 @@ session.
 ## 6. Push
 
 `feature=<slug>` mode (only when the user typed it themself; "commit this" is a plain commit)
-lands the finished work as the project chose; otherwise never push unless the user asked for it
+lands the finished work as the project chose: typing it is the ask a flow note's "push nothing"
+waits for. Otherwise never push unless the user asked for it
 in this request, or answers yes now.
 
 - **`feature=<slug>` mode** → `Land:` in `AGENTS.md § Git`, without asking. Missing → one
