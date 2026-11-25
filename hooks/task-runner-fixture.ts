@@ -10,6 +10,9 @@ export function world(
     off?: boolean;
     missing?: boolean;
     claude?: boolean;
+    fullAfter?: number; // ChatGPT's 5h window reads full after this many runs
+    unread?: boolean; // the models are listed, the meter read fails
+    pro?: boolean; // Claude Pro: GPT shares the work
     failRound?: number;
     checkError?: "timeout" | "start";
     failRoot?: boolean;
@@ -30,6 +33,7 @@ export function world(
   };
   const store: Record<string, unknown> = {
     gpt: !opts.off,
+    plan: opts.pro ? "pro" : "max",
     ...(opts.flow ? { flowTasks: { s1: task } } : {}),
   };
   let releaseRoot!: () => void;
@@ -90,8 +94,16 @@ export function world(
           models: opts.missing
             ? []
             : [{ id: "gpt-6.1-terra" }, { id: "gpt-6.1-sol" }],
-          limits: {
-            five_hour: { pct: opts.claude ? 99 : 1 },
+          ...(opts.unread
+            ? { error: "codex app-server did not answer" }
+            : {}),
+          limits: opts.unread ? {} : {
+            five_hour: {
+              pct:
+                opts.claude || spawned.length >= (opts.fullAfter ?? Infinity)
+                  ? 99
+                  : 1,
+            },
             seven_day: { pct: 1 },
           },
         }),

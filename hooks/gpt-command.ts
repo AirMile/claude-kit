@@ -1,7 +1,10 @@
 import type { CommandSpec, EngineInterface } from "claude-code";
 
-import { balance } from "./balance";
 import { FAMILIES, newest, type Family } from "./delegate-policy";
+import { gptRefusal, runCost, shareRefusal } from "./gpt-limits";
+import { balanceMeters } from "./balance";
+import { getPlan } from "./plan";
+import type { Plan } from "./model-policy";
 import {
   codexHint,
   gptOn,
@@ -27,6 +30,7 @@ function statusText(
   pinned: Partial<Record<Family, string>>,
   now: number,
   sync: string,
+  plan: Plan,
 ): string {
   const lines = FAMILIES.map((f) => {
     const m = models[f];
@@ -42,7 +46,26 @@ function statusText(
       ? `Codex: ${st.error}`
       : `ChatGPT ${st.limits.plan ?? ""}: 5h ${pct("five_hour")} · weekly ${pct("seven_day")}`,
   );
-  lines.push(`balance: ${balance(now).band}`);
+  const readable = !hint && !st.error;
+  const room = (why: string | undefined) =>
+    readable ? ` · room: ${why ? `no, ${why}` : "yes"}` : "";
+  lines.push(
+    "GPT does: review and second plan (Sol; Astra for the riskiest review)" +
+      room(gptRefusal(st.limits, now, runCost("review", "sol"))),
+  );
+  lines.push(
+    plan === "pro"
+      ? "Claude Pro: GPT also takes search, research and building" +
+          room(
+            shareRefusal(
+              st.limits,
+              balanceMeters().claude,
+              now,
+              runCost("build", "terra"),
+            ),
+          )
+      : "Claude Max: Claude searches, researches and builds",
+  );
   lines.push(sync);
   return lines.join("\n");
 }
@@ -55,8 +78,8 @@ export async function gptCommandRun($: EngineInterface, e: { args: string }) {
     return {
       text:
         verb === "on"
-          ? "kit: GPT on: delegated work may run on GPT when ChatGPT has room."
-          : "kit: GPT off: delegated work stays on Claude; a GPT model runs only when you name it.",
+          ? "kit: GPT on: reviews and second plans, on Claude Pro also research and building, when ChatGPT has room."
+          : "kit: GPT off: no work goes to GPT unless you name a model.",
     };
   }
   if (!(await gptOn($)))
@@ -78,6 +101,7 @@ export async function gptCommandRun($: EngineInterface, e: { args: string }) {
         next,
         await $.clock.now(),
         await syncLine($),
+        await getPlan($),
       ),
     };
   }
@@ -89,6 +113,7 @@ export async function gptCommandRun($: EngineInterface, e: { args: string }) {
       pinned,
       await $.clock.now(),
       await syncLine($),
+      await getPlan($),
     ),
   };
 }

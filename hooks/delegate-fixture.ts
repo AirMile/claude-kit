@@ -29,11 +29,13 @@ export function world(
     events?: string[]; // what Codex writes on stdout
     agy?: { json?: string; code?: number }; // what agy prints on stdout, and its exit code
     clean?: boolean; // the worktree is unchanged after the run
+    fullAfter?: number; // ChatGPT's 5h window reads full after this many runs
+    usage?: { fails: boolean }; // Claude's week reads 0% used, until the read fails
     agyJsons?: string[]; // one stdout per agy run, in order (a retry gets the second)
   } = {},
 ) {
   const spawned: { argv: readonly string[]; input?: string }[] = [];
-  const store: Record<string, unknown> = { ...opts.store };
+  const store: Record<string, unknown> = { plan: "max", ...opts.store };
   let gitCalls = 0;
   let statusReads = 0;
   on("session.root", async () => ({ value: "/p/app" }));
@@ -44,13 +46,22 @@ export function world(
     store[e.key] = e.value;
     return { value: undefined };
   });
-  on("session.usage", async () => ({
-    value: {
-      startedAt: 0,
-      context: { window: 200_000, percent: 10 },
-      rateLimits: [{ kind: "five_hour", percentUsed: 20, resetsAt: later(3) }],
-    },
-  }));
+  on("session.usage", async () => {
+    if (opts.usage?.fails) throw new Error("no usage");
+    return {
+      value: {
+        startedAt: 0,
+        context: { window: 200_000, percent: 10 },
+        rateLimits: [
+          { kind: "five_hour", percentUsed: 20, resetsAt: later(3) },
+          // a week that has 100h of its 168 left: 0% used is 40 behind
+          ...(opts.usage
+            ? [{ kind: "seven_day", percentUsed: 0, resetsAt: later(100) }]
+            : []),
+        ],
+      },
+    };
+  });
   on("process.run", async (_$, e) => {
     if (e.argv[0] === "node" && !String(e.argv[1]).endsWith("agy-find.js")) {
       statusReads++;
@@ -58,8 +69,11 @@ export function world(
         argv: ["/bin/codex"],
         models: CATALOG.map((id) => ({ id })),
         limits: {
-          five_hour: { pct: 1, resetsAt: later(4) },
-          seven_day: { pct: 6, resetsAt: later(100) },
+          five_hour: {
+            pct: spawned.length >= (opts.fullAfter ?? Infinity) ? 99 : 1,
+            resetsAt: later(4),
+          },
+          seven_day: { pct: opts.usage ? 20 : 6, resetsAt: later(100) },
         },
       };
       return {

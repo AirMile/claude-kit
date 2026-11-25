@@ -21,6 +21,7 @@ import {
   type RunInput,
   type Status,
 } from "./task-runner-policy";
+import { FAMILIES } from "./delegate-policy";
 
 // Until .claude-plugin/types/claude-code-mcp (generated, gitignored) lists the tool; written in
 // the generator's own shape so the two declarations merge.
@@ -30,6 +31,7 @@ declare module "claude-code" {
       brief: string;
       checks: string[][];
       role?: "build" | "build+";
+      family?: "sol" | "terra" | "luna" | "astra";
     };
   }
 }
@@ -41,10 +43,13 @@ const TOOL = "mcp__kit__run_task";
 export const runTaskTool: ToolSpec = {
   name: "run_task",
   description:
-    "kit: hand one change brief plus its covering check argv(s). The mod runs GPT's build, " +
+    "kit: GPT builds, on Claude Pro when kit's note says so, on Max only when the user asks: " +
+    "hand one change brief plus its covering check argv(s), with family (sol, terra, luna, " +
+    "astra) only if the user named it. The mod runs GPT's build, " +
     "runs the checks itself as the host user (no shell, session root), feeds a failing check " +
-    "back to the same Codex thread up to 2 times, and returns one short result. " +
-    "Review the diff afterwards. role: build (default) or build+ for a hard change.",
+    "back to the same Codex thread up to 2 times while ChatGPT's limits have room, and returns " +
+    "one short result. Review the diff afterwards. role: build (default) or build+ for a hard " +
+    "change. Otherwise make the change in this chat.",
   inputSchema: {
     type: "object",
     properties: {
@@ -56,6 +61,7 @@ export const runTaskTool: ToolSpec = {
         items: { type: "array", minItems: 1, items: { type: "string" } },
       },
       role: { type: "string", enum: ["build", "build+"] },
+      family: { type: "string", enum: [...FAMILIES] },
     },
     required: ["brief", "checks"],
   },
@@ -77,7 +83,9 @@ function notice($: EngineInterface, toolUseId: string, text: string) {
 
 async function runTask($: EngineInterface, input: RunInput, toolUseId: string) {
   const began = await $.clock.now();
-  const picked = await routeDelegation($, { role: input.role });
+  // A writing run must fit the limits, named model or not: cut off, it leaves half a change.
+  const wanted = { role: input.role, family: input.family, strict: true };
+  const picked = await routeDelegation($, wanted);
   if (picked.provider !== "gpt")
     return notRun(picked.provider === "claude" ? picked.why : picked.reason);
   if (!acquireWriter())
@@ -100,6 +108,14 @@ async function runTask($: EngineInterface, input: RunInput, toolUseId: string) {
       if (left <= 0) {
         error = `round ${rounds + 1}: total deadline reached`;
         break;
+      }
+      if (rounds) {
+        const again = await routeDelegation($, wanted);
+        if (again.provider !== "gpt") {
+          const why = again.provider === "claude" ? again.why : again.reason;
+          error = `round ${rounds + 1} not started: ${why}`;
+          break;
+        }
       }
       checks = []; // a round that stops before its checks shows none of the last round's
       notice($, toolUseId, `build · round ${rounds + 1}`);

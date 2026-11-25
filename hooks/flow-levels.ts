@@ -1,6 +1,7 @@
 import type { EngineInterface } from "claude-code";
 
-import { balance, balanceMeters } from "./balance";
+import { balance, balanceMeters, sharing } from "./balance";
+import { getPlan } from "./plan";
 import type { Change } from "./flow-policy";
 import { log } from "./flow-store";
 import type { Kind } from "./model-policy";
@@ -25,6 +26,18 @@ const meters = () => {
   const m = balanceMeters();
   return { claude5h: m.claude.five_hour?.pct, gpt5h: m.gpt.five_hour?.pct };
 };
+
+// The plans' room for this task: GPT shares the work only on Claude Pro.
+async function roomNow($: EngineInterface, ready: boolean) {
+  const pro = (await getPlan($)) === "pro";
+  const now = await $.clock.now();
+  return roomOf(
+    ready,
+    balanceMeters().gpt,
+    pro && sharing(now, "build"),
+    pro && sharing(now, "build+"),
+  );
+}
 
 function redraw($: EngineInterface) {
   try {
@@ -61,7 +74,7 @@ export async function promptLevels(
     redraw($);
     return { levels: i.prev, gateV: i.gate ?? i.prev.v };
   }
-  const room = roomOf(i.ready, balanceMeters().gpt);
+  const room = await roomNow($, i.ready);
   // Growth raises the task's Execute and Verify by one, as an edit's growth does.
   const prev = i.grew && i.prev ? escalate(i.prev, room).levels : i.prev;
   const inputs = {
@@ -113,7 +126,7 @@ export async function raiseLevels(
 ): Promise<{ levels: Levels; note: string } | undefined> {
   if (!levels) return undefined;
   const now = await $.clock.now();
-  const d = escalate(levels, roomOf(balance(now).ready, balanceMeters().gpt));
+  const d = escalate(levels, await roomNow($, balance(now).ready));
   if (sameLevels(levels, d.levels)) return undefined;
   await log($, {
     task,

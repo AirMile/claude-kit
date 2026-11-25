@@ -18,9 +18,8 @@ test("flow sends a track note with a change task; a question gets none", async (
   });
   await $.prompt.submit({ text: "rebuild the importer", origin: TYPED });
   expect(String(w.sent[0]?.context)).toContain("kit flow (heavy)");
-  // The decision note rides along; without GPT room Execute drops to E0, Verify stays.
-  expect(String(w.sent[0]?.context)).toContain("kit task: D2 E0 V2.");
-  expect(String(w.sent[0]?.context)).toContain("GPT has no room: E0");
+  // The decision note rides along; Claude executes, whatever room GPT has.
+  expect(String(w.sent[0]?.context)).toContain("kit task: D2 E2 V2.");
   await $.prompt.submit({ text: "what does this do?", origin: TYPED });
   expect(w.sent[1]?.context ?? []).toEqual([]);
 });

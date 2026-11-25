@@ -4,11 +4,13 @@ import {
   displayName,
   type Effort,
   family,
+  included,
   isEffort,
-  MODELS,
+  modelsFor,
   switchOf,
   withSwitch,
 } from "./model-policy";
+import { getPlan } from "./plan";
 
 // What is set beside the profile: the model main requests are rewritten to once auto-model.ts
 // or the band switched away from the session's own (kept in $.store per session id, so a mod
@@ -30,12 +32,13 @@ export function dropSwitch(fresh: boolean) {
 }
 
 // The model main requests go to instead of the session's: none once the user picked
-// another model by hand.
+// another model by hand, or while the plan no longer includes the switched one.
 export async function override(
   $: EngineInterface,
 ): Promise<string | undefined> {
   await restoreSwitch($);
-  return chosen && (await $.session.model()) === base ? chosen : undefined;
+  if (!chosen || (await $.session.model()) !== base) return undefined;
+  return included(await getPlan($), chosen) ? chosen : undefined;
 }
 
 // The model main requests really go to.
@@ -134,8 +137,10 @@ export async function askFirstModel(
   if ((await $.session.turns()) > 1) return false;
   const have = await $.session.model();
   if (family(want) === family(have)) return false;
-  // All models, the suggested one on top; the session's own reads "Stay on".
-  const ordered = [want, ...MODELS.filter((m) => m !== want)];
+  // The plan's models, the suggested one on top; the session's own reads "Stay on".
+  const models = modelsFor(await getPlan($));
+  const ordered = [want, ...models.filter((m) => m !== want)];
+  if (!ordered.some((m) => family(m) === family(have))) ordered.push(have);
   const labels = new Map(
     ordered.map((m) => [
       family(m) === family(have)

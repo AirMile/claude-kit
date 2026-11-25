@@ -14,33 +14,31 @@ const meters = (pct: number) => ({
   seven_day: { pct, resetsAt },
 });
 
-test("balance follows either provider's meters and the GPT switch", async () => {
+test("GPT is ready while a review fits both windows and the switch is on", async () => {
+  const at = (five: number, week: number) => ({
+    five_hour: { pct: five },
+    seven_day: { pct: week, resetsAt },
+  });
   noteGptMeters(true, meters(20), now);
-  noteClaudeLimits([{ kind: "seven_day", percentUsed: 29, resetsAt }], now);
-  expect(balance(now)).toEqual({ ready: true, leaning: false, band: "balanced" });
-  noteClaudeLimits([{ kind: "seven_day", percentUsed: 30, resetsAt }], now);
-  expect(balance(now)).toEqual({ ready: true, leaning: true, band: "gpt-heavy" });
-  noteGptMeters(true, meters(21), now);
-  expect(balance(now).leaning).toBe(true);
-  noteGptMeters(true, meters(26), now);
-  expect(balance(now).leaning).toBe(false);
-  noteGptMeters(false, {}, now);
+  expect(balance(now)).toEqual({ ready: true });
+  noteGptMeters(true, at(90, 94), now);
+  expect(balance(now).ready).toBe(true);
+  noteGptMeters(true, at(91, 20), now);
+  expect(balance(now).ready).toBe(false);
+  noteGptMeters(true, at(10, 95), now);
+  expect(balance(now).ready).toBe(false);
+  noteGptMeters(false, meters(20), now);
   expect(balance(now).ready).toBe(false);
   noteGptMeters(true, undefined, now);
   expect(balance(now).ready).toBe(false);
-  noteGptMeters(true, { five_hour: { pct: 80 } }, now);
-  expect(balance(now).ready).toBe(false);
-  noteGptMeters(true, { seven_day: { pct: 90 } }, now);
+  noteGptMeters(true, { five_hour: { pct: 10 } }, now);
   expect(balance(now).ready).toBe(false);
 });
 
-test("a failed usage read keeps Claude's last good meters and the previous band", async () => {
-  noteGptMeters(true, meters(20), now);
+test("a failed usage read keeps Claude's last good meters", async () => {
   noteClaudeLimits([{ kind: "seven_day", percentUsed: 40, resetsAt }], now);
-  expect(balance(now).leaning).toBe(true);
   noteClaudeLimits([], now + 1);
   expect(claudeMeters()).toEqual({ seven_day: { pct: 40, resetsAt } });
-  expect(balance(now + 1).leaning).toBe(true);
 });
 
 test("GPT readiness expires and missing percentages cannot make it ready", async () => {
@@ -49,7 +47,6 @@ test("GPT readiness expires and missing percentages cannot make it ready", async
   expect(balance(now + 15 * 60_000).ready).toBe(false);
   noteGptMeters(true, { five_hour: {}, seven_day: {} } as never, now);
   expect(balance(now).ready).toBe(false);
-  expect(balance(now).leaning).toBe(true);
   noteGptMeters(true, meters(20), now + 16 * 60_000, now);
   expect(balance(now + 16 * 60_000).ready).toBe(false);
 });

@@ -14,12 +14,6 @@ const read = ($: T$, chars = 1) =>
     file_path: "/p/app/a.ts",
     limit: chars,
   } as never);
-const measure = (percentUsed: number, resetsAt: string) =>
-  ({
-    context: { percent: 10, tokens: 20000 },
-    rateLimits: [{ kind: "seven_day", percentUsed, resetsAt }],
-    changed: ["rateLimits"],
-  }) as never;
 
 test("explore raises Define to D2; one call labels it; the decision is logged", async ($, on) => {
   const w = world(on, { explore: true, change: true });
@@ -29,7 +23,7 @@ test("explore raises Define to D2; one call labels it; the decision is logged", 
   expect(context).toContain("kit flow (medium)");
   expect(context).toContain("kit task: D2 E1 V1.");
   expect(context).toContain("role research");
-  expect(context).toContain("role build");
+  expect(context).not.toContain("run_task");
   expect(w.completed.length).toBe(1);
   expect(w.completed[0]?.prompt).toContain(
     "Change the retry handling in this repository",
@@ -43,7 +37,7 @@ test("explore raises Define to D2; one call labels it; the decision is logged", 
   expect(decisions[0]?.gpt5h).toBe(10);
 });
 
-test("questions and task-readiness explore; thin replies and GPT off skip the explore classifier", async ($, on) => {
+test("questions and task-readiness explore, with GPT on or off; thin replies skip the explore classifier", async ($, on) => {
   const w = world(on, { explore: true });
   await $.command.run({ command: "gpt", args: "" });
   const explored = () =>
@@ -57,8 +51,7 @@ test("questions and task-readiness explore; thin replies and GPT off skip the ex
   expect(explored()).toBe(2);
   await $.command.run({ command: "gpt", args: "off" });
   await prompt($);
-  expect(explored()).toBe(2);
-  expect(String(w.prompts.at(-1)?.context)).not.toContain("kit task");
+  expect(explored()).toBe(3);
 });
 
 test("council asks set D3 for that prompt; without room for Astra it becomes D2", async ($, on) => {
@@ -102,20 +95,6 @@ test("read notes preserve tool context, exclude subagents and checks, and reset 
   ]);
 });
 
-test("Claude meter updates lower the budget and refreshed ChatGPT meters restore it", async ($, on) => {
-  const w = world(on);
-  await $.command.run({ command: "gpt", args: "" });
-  await $.session.measure(measure(20, w.resetsAt));
-  await prompt($);
-  expect((await read($, 9999)).context?.length).toBe(1);
-  expect(String((await read($)).context)).toContain("10000 characters");
-  w.gpt(20);
-  await $.command.run({ command: "gpt", args: "" });
-  await prompt($);
-  for (let i = 0; i < 4; i++) expect((await read($)).context?.length).toBe(1);
-  expect(String((await read($)).context)).toContain("read 5 times");
-});
-
 test("failed reads do not use the turn's budget", async ($, on) => {
   world(on, { off: true });
   await prompt($);
@@ -141,6 +120,9 @@ for (const outcome of ["ok", "claude", "failed", "partial", "none"] as const) {
     const input = {
       tool: "mcp__kit__delegate",
       role: outcome === "none" ? "build" : "search",
+      ...(outcome === "claude" || outcome === "none"
+        ? {}
+        : { family: "luna" }),
       brief: "Find the retry code.",
     } as never;
     await $.tool.call(input);
@@ -176,6 +158,7 @@ for (const status of ["pass", "failing", "stopped", "not run"] as const) {
     for (let i = 0; i < 4; i++) await read($);
     const out = await $.tool.call({
       tool: "mcp__kit__run_task",
+      ...(status === "not run" ? {} : { family: "terra" }),
       brief: "Fix the retry.",
       checks: [["/cover"]],
     } as never);
@@ -193,3 +176,21 @@ for (const status of ["pass", "failing", "stopped", "not run"] as const) {
     });
   });
 }
+
+test("on Claude Pro the task note hands work to GPT while it has room", async ($, on) => {
+  const w = world(on, { change: true, pro: true });
+  await $.command.run({ command: "gpt", args: "" });
+  await prompt($, "Change the retry handling in this repository");
+  expect(String(w.prompts[0]?.context)).toContain("run_task (role build)");
+});
+
+for (const [fivePct, step] of [
+  [50, "run_task (role build+)"],
+  [60, "Make it here in steps"],
+] as const)
+  test(`on Pro a heavy note judges a large build's room (5h ${fivePct}%)`, async ($, on) => {
+    const w = world(on, { change: true, heavy: true, pro: true, fivePct });
+    await $.command.run({ command: "gpt", args: "" });
+    await prompt($, "Rebuild the retry handling across this repository");
+    expect(String(w.prompts[0]?.context)).toContain(step);
+  });

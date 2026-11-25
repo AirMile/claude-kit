@@ -22,8 +22,9 @@ runs for real and a Claude route does not stand in for it).
 ## With `mcp__kit__delegate` (the usual way)
 
 Call it with a `role` (`search`, `research`, `build`, `build+`, `review`, `plan`) and a brief.
-The user named a model → add `family` (`sol`, `terra`, `luna`, `astra`). A follow-up on the same
-run → `thread` from its answer. The tool runs Codex, keeps its log out of this chat and returns
+The user asked for GPT → add `family` (the model they named: `sol`, `terra`, `luna`, `astra`;
+none → `sol`); without it only `review` and `plan` go to GPT. A follow-up on the same run →
+`thread` from its answer. The tool runs Codex, keeps its log out of this chat and returns
 the final message and changed files. A Claude route in its answer → run it with the Agent tool
 as it says.
 

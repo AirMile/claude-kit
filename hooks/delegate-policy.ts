@@ -1,11 +1,14 @@
-import type { Effort } from "./model-policy";
+import { gptRefusal, runCost, shareRefusal } from "./gpt-limits";
+import type { Effort, Plan } from "./model-policy";
 
-// Where a delegated piece of work runs: Claude (Sonnet, Opus as a subagent) or GPT
-// through Codex (Luna, Terra, Sol), by its role and by which plan has room. Pure: delegate.ts
-// feeds it the meters and Codex's catalog. GPT models are named by family and the newest
-// version wins, so a new release is used without a code change; a family never stands in for
-// another (Sol never becomes Astra), and Astra runs only when asked for by name. With the band's
-// GPT switch off, only a family asked for by name runs on GPT.
+// Where a delegated piece of work runs: Claude, or GPT through Codex. GPT always takes what only
+// another model family can give: a review of this chat's work and a blind second plan (Sol; Astra
+// for the riskiest review), and any role on a model the user names. On Claude Pro it also takes
+// searching (Luna), research (Sol) and building (Terra, Sol) while ChatGPT has its share of room,
+// to spare Claude's limits; on Max those stay on Claude. Pure: delegate.ts feeds it ChatGPT's meters and Codex's catalog. GPT models are
+// named by family and the newest version wins, so a new release is used without a code change; a
+// family never stands in for another by version. With the band's GPT switch off, only a family
+// asked for by name runs on GPT.
 
 export type Role =
   "search" | "research" | "build" | "build+" | "review" | "plan";
@@ -17,16 +20,6 @@ export const ROLES: readonly Role[] = [
   "review",
   "plan",
 ];
-export type Band = "gpt-heavy" | "balanced" | "claude-safe";
-
-export function band(prev: Band, lean: number): Band {
-  if (lean >= 10) return "gpt-heavy";
-  if (lean <= -10) return "claude-safe";
-  if (prev === "gpt-heavy" && lean >= 5) return prev;
-  if (prev === "claude-safe" && lean <= -5) return prev;
-  return "balanced";
-}
-
 export type Family = "sol" | "terra" | "luna" | "astra";
 export const FAMILIES: readonly Family[] = ["sol", "terra", "luna", "astra"];
 export type Author = "claude" | "gpt" | "gemini";
@@ -57,6 +50,7 @@ export type Route =
       effort: Effort;
       subagentType: "Explore" | "general-purpose";
       writes: boolean;
+      why: string;
     }
   | { provider: "none"; reason: string };
 
@@ -93,62 +87,27 @@ export function newest(
   return out;
 }
 
-const HOUR = 3_600_000;
-const SPAN: Record<keyof Meters, number> = {
-  five_hour: 5 * HOUR,
-  seven_day: 168 * HOUR,
-};
+// Roles where another family is worth a run of its own.
+export const OTHER_FAMILY: readonly Role[] = ["review", "plan"];
+const WRITE_ROLES: readonly Role[] = ["build", "build+"];
 
-// How far a window's use runs ahead of the time gone by in it, in points: 40% used two days
-// into seven is about 11 ahead.
-export function ahead(
-  w: Window | undefined,
-  kind: keyof Meters,
-  now: number,
-): number {
-  if (!w?.resetsAt) return 0;
-  const left = Math.max(0, Date.parse(w.resetsAt) - now);
-  const gone = Math.min(1, Math.max(0, 1 - left / SPAN[kind]));
-  return w.pct - gone * 100;
-}
-
-export const CLAUDE_TIGHT = { five_hour: 70, ahead: 10 } as const;
-export const GPT_TIGHT = { five_hour: 80, seven_day: 90 } as const;
-export const LEAN = 10;
-
-export function lean(
-  claude: Meters,
-  gpt: Meters | undefined,
-  now: number,
-): number {
-  return (
-    ahead(claude.seven_day, "seven_day", now) -
-    ahead(gpt?.seven_day, "seven_day", now)
-  );
-}
-
-export const claudeTight = (m: Meters, now: number): boolean =>
-  (m.five_hour?.pct ?? 0) >= CLAUDE_TIGHT.five_hour ||
-  ahead(m.seven_day, "seven_day", now) >= CLAUDE_TIGHT.ahead;
-
-export const gptTight = (m: Meters): boolean =>
-  (m.five_hour?.pct ?? 0) >= GPT_TIGHT.five_hour ||
-  (m.seven_day?.pct ?? 0) >= GPT_TIGHT.seven_day;
-
-type GptPick = { family: Family; effort: Effort; writes: boolean };
-type ClaudePick = Omit<Extract<Route, { provider: "claude" }>, "provider">;
+type GptPick = { effort: Effort; writes: boolean };
+type ClaudePick = Omit<
+  Extract<Route, { provider: "claude" }>,
+  "provider" | "why"
+>;
 
 const GPT: Record<Role, GptPick> = {
-  search: { family: "luna", effort: "low", writes: false },
-  research: { family: "sol", effort: "medium", writes: false },
-  build: { family: "terra", effort: "medium", writes: true },
-  "build+": { family: "sol", effort: "high", writes: true },
-  review: { family: "sol", effort: "high", writes: false },
-  plan: { family: "sol", effort: "high", writes: false },
+  search: { effort: "low", writes: false },
+  research: { effort: "medium", writes: false },
+  build: { effort: "medium", writes: true },
+  "build+": { effort: "high", writes: true },
+  review: { effort: "high", writes: false },
+  plan: { effort: "high", writes: false },
 };
 
-// Without GPT a change is built here: a Claude subagent would start cold on what this chat
-// already knows. A blind plan from the same family adds little next to this chat's own.
+// A change is made here: a Claude subagent would start cold on what this chat already knows. A
+// blind plan from the same family adds little next to this chat's own.
 const CLAUDE: Record<Role, ClaudePick | undefined> = {
   search: {
     model: "sonnet",
@@ -176,7 +135,7 @@ const CLAUDE: Record<Role, ClaudePick | undefined> = {
 function onClaude(role: Role, why: string): Route {
   const pick = CLAUDE[role];
   return pick
-    ? { provider: "claude", ...pick }
+    ? { provider: "claude", ...pick, why }
     : { provider: "none", reason: why };
 }
 
@@ -194,50 +153,101 @@ function onGpt(role: Role, m: GptModel): Route {
 
 export type RouteInput = {
   role: Role;
-  band: Band;
   author?: Author; // who wrote what a review looks at; this chat (Claude) when absent
   family?: Family; // asked for by name: it wins
+  strict?: boolean; // a named family must fit the limits too (run_task: it writes)
+  continues?: Family; // a follow-up on a run kit picked the model for
+  prefer?: Family; // taken instead of Sol when it fits (the riskiest review)
   gptOn: boolean; // the band's GPT switch
   models: Partial<Record<Family, GptModel>>;
-  claude: Meters;
   gpt: Meters | undefined; // undefined: Codex is missing or not logged in
+  plan?: Plan; // the Claude plan; Max when absent
+  claude?: Meters; // Claude's windows, weighed against ChatGPT's on Pro
   now: number;
 };
 
+// The model GPT takes shared work on; reviews and plans run on Sol.
+const SHARED: Record<Role, Family> = {
+  search: "luna",
+  research: "sol",
+  build: "terra",
+  "build+": "sol",
+  review: "sol",
+  plan: "sol",
+};
+
+// Work Claude could do too, on Pro: GPT's while its share has room.
+function shared(i: RouteInput, here: string): Route {
+  const family = i.continues ?? SHARED[i.role];
+  const want = i.models[family];
+  const refused = !i.gptOn
+    ? "GPT is off in the band"
+    : i.gpt === undefined
+      ? "Codex is not available here"
+      : shareRefusal(i.gpt, i.claude ?? {}, i.now, runCost(i.role, family));
+  if (!refused && want) return onGpt(i.role, want);
+  return onClaude(
+    i.role,
+    `${refused ?? `no ${family} model in Codex's catalog`}: ${here}`,
+  );
+}
+
 export function route(i: RouteInput): Route {
+  const full = (family: Family) =>
+    i.gpt && gptRefusal(i.gpt, i.now, runCost(i.role, family));
   if (i.family) {
     const m = i.models[i.family];
-    return m
-      ? onGpt(i.role, m)
-      : {
-          provider: "none",
-          reason: `no ${i.family} model in Codex's catalog: do it here`,
-        };
-  }
-  if (i.role === "search" && i.band === "claude-safe")
-    return onClaude("search", "Claude has the room");
-  const want = i.models[GPT[i.role].family];
-  const gptOk = i.gptOn && i.gpt !== undefined && !gptTight(i.gpt) && want;
-  if (i.role === "review" && i.author === "gpt")
-    return onClaude("review", "a review needs another family");
-  if (!gptOk) {
-    const why = !i.gptOn
-      ? "GPT is off in the band"
-      : i.gpt === undefined
-        ? "Codex is not available here"
-        : "ChatGPT has no room or no model for this";
-    // A second Claude review would not be another family, so the work stays open.
-    if (i.role === "review")
+    if (!m)
       return {
         provider: "none",
-        reason: `${why}; the task stays open until it has a review or the user waives it`,
+        reason: `no ${i.family} model in Codex's catalog: do it here`,
       };
-    return onClaude(
-      i.role,
-      `${why}: ${i.role === "plan" ? "plan" : "build it"} here`,
-    );
+    const unread = !i.gpt?.five_hour && !i.gpt?.seven_day;
+    const why = !i.strict
+      ? undefined
+      : unread
+        ? "ChatGPT's limits could not be read"
+        : full(i.family);
+    return why
+      ? { provider: "none", reason: `${why}: do it here` }
+      : onGpt(i.role, m);
   }
-  return onGpt(i.role, want);
+  if (i.role === "review" && i.author === "gpt")
+    return onClaude("review", "a review needs another family");
+  // A follow-up that writes is a build: GPT's only where it shares the work.
+  const writes = WRITE_ROLES.includes(i.role);
+  // On Pro a follow-up of shared work stays within the share (shared() below).
+  const other =
+    OTHER_FAMILY.includes(i.role) ||
+    (i.plan !== "pro" && i.continues !== undefined && !writes);
+  const here = i.role === "plan" ? "plan here" : "do it here";
+  if (!other)
+    return i.plan === "pro"
+      ? shared(i, here)
+      : onClaude(
+          i.role,
+          `Claude does this itself; GPT is for a review, a second plan or a model you name: ${here}`,
+        );
+  const fits = (f: Family) => i.models[f] !== undefined && !full(f);
+  const family =
+    i.continues ?? (i.prefer && fits(i.prefer) ? i.prefer : "sol");
+  const want = i.models[family];
+  const unread = i.gpt && !i.gpt.five_hour && !i.gpt.seven_day;
+  const refused = unread ? "ChatGPT's limits could not be read" : full(family);
+  if (i.gptOn && i.gpt !== undefined && !refused && want)
+    return onGpt(i.role, want);
+  const why = !i.gptOn
+    ? "GPT is off in the band"
+    : i.gpt === undefined
+      ? "Codex is not available here"
+      : (refused ?? `no ${family} model in Codex's catalog`);
+  // A second Claude review would not be another family, so the work stays open.
+  if (i.role === "review")
+    return {
+      provider: "none",
+      reason: `${why}; the task stays open until it has a review or the user waives it`,
+    };
+  return onClaude(i.role, `${why}: ${here}`);
 }
 
 // Gemini through the Antigravity CLI (agy): only on request (provider "gemini"), never by the

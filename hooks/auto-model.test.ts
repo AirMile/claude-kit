@@ -279,3 +279,122 @@ for (const route of ["off", "fork", "custom", "picked"]) {
     });
   });
 }
+
+test("a Max login offers Fable for heavy work", async ($, on) => {
+  const w = world(on, {
+    model: "claude-sonnet-5-5",
+    label: HEAVY,
+    login: "claude_max",
+  });
+  await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
+  expect(w.asked[0]).toContain("Fable 5.2");
+});
+
+test("/mode plan pro overrides a Max login; auto reads it again", async ($, on) => {
+  const w = world(on, {
+    model: "claude-sonnet-5-5",
+    label: HEAVY,
+    login: "claude_max",
+  });
+  const set = await $.command.run({ command: "mode", args: "plan pro" });
+  expect(set.text).toBe("kit plan: Pro.");
+  expect(w.store.plan).toBe("pro");
+  await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
+  expect(w.asked[0]).toContain("Opus 5.5");
+  expect(w.offered[0]).not.toContain("Fable");
+  const auto = await $.command.run({ command: "mode", args: "plan auto" });
+  expect(auto.text).toBe("kit plan: Max (auto).");
+});
+
+const FABLE_SWITCH = {
+  switches: { s1: { chosen: "claude-fable-5-2", base: "claude-sonnet-5-5" } },
+};
+for (const [login, shown] of [
+  ["claude_pro", "Sonnet 5.5"],
+  ["claude_max", "Fable 5.2"],
+] as const)
+  test(`a stored Fable switch applies on Max only (${login})`, async ($, on) => {
+    world(on, {
+      model: "claude-sonnet-5-5",
+      label: QUESTION,
+      drawn: true,
+      login,
+      store: FABLE_SWITCH,
+    });
+    const ui = await band($, on);
+    expect(await runText(ui)).toBe(shown);
+  });
+
+test("the login is read again in a new chat, not within one", async ($, on) => {
+  const opts = {
+    model: "claude-sonnet-5-5",
+    label: QUESTION,
+    login: "claude_pro",
+  };
+  world(on, opts);
+  const plan = async () =>
+    (await $.command.run({ command: "mode", args: "plan" })).text ?? "";
+  expect(await plan()).toContain("kit plan: Pro (auto).");
+  opts.login = "claude_max";
+  expect(await plan()).toContain("kit plan: Pro (auto).");
+  await $.classic.SessionStart({ source: "clear" });
+  expect(await plan()).toContain("kit plan: Max (auto).");
+});
+
+test("CLAUDE_CONFIG_DIR holds the login's config when set", async ($, on) => {
+  const w = world(on, {
+    model: "claude-sonnet-5-5",
+    label: QUESTION,
+    login: "claude_max",
+    configDir: "/cfg",
+  });
+  await $.command.run({ command: "mode", args: "plan" });
+  expect(w.read).toContain("/cfg/.claude.json");
+  expect(w.read).not.toContain("/home/u/.claude.json");
+});
+
+test("a plan set by hand holds over the login in a later session", async ($, on) => {
+  world(on, {
+    model: "claude-sonnet-5-5",
+    label: QUESTION,
+    login: "claude_pro",
+    store: { plan: "max" },
+  });
+  const ran = await $.command.run({ command: "mode", args: "plan" });
+  expect(ran.text).toContain("kit plan: Max.");
+});
+
+test("an unreadable login counts as Pro and says so", async ($, on) => {
+  world(on, { model: "claude-sonnet-5-5", label: QUESTION });
+  const ran = await $.command.run({ command: "mode", args: "plan" });
+  expect(ran.text).toContain("kit plan: Pro (auto, login config not read).");
+});
+
+for (const [login, model] of [
+  ["claude_pro", "claude-opus-5-5"],
+  ["claude_max", "claude-fable-5-2"],
+] as const)
+  test(`a heavy subagent gets the plan's strongest pick (${login})`, async ($, on) => {
+    world(on, { model: "claude-sonnet-5-5", label: HEAVY, login });
+    const spawned: (string | undefined)[] = [];
+    on("agent.spawn", async (_$, e) => {
+      spawned.push(e.model);
+      return { model: e.model ?? "sonnet", agentId: "a1" };
+    });
+    await $.agent.spawn({
+      subagentType: "general-purpose",
+      prompt: "refactor the auth layer",
+      provider: { plugin: "engine" },
+    } as never);
+    expect(spawned).toEqual([model]);
+  });
+
+test("a session model outside the plan can still be kept", async ($, on) => {
+  const w = world(on, {
+    model: "claude-fable-5-2",
+    label: HEAVY,
+    login: "claude_pro",
+  });
+  await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
+  expect(w.offered[0]).toContain("Stay on Fable 5.2");
+});

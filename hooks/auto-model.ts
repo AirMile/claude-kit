@@ -34,6 +34,7 @@ import {
   running,
   switchTo,
 } from "./model-switch";
+import { forgetPlan, getPlan, planCommand, planName } from "./plan";
 import { notePrompt } from "./auto-compact";
 import { noteAgent } from "./chat-facts";
 import { flowPrompt, flowSpawned } from "./flow";
@@ -48,13 +49,13 @@ import { flowPrompt, flowSpawned } from "./flow";
 // - a subagent the engine defines gets its own model and effort for its task, unless its Agent
 //   call asked for an effort (agent-effort.ts).
 // The profile (lean, balanced, quality, off) is kept in $.store across sessions, a switch per
-// session id, so a mod reload or restart keeps it.
+// session id, so a mod reload or restart keeps it. The Claude plan (plan.ts) bounds the models.
 
 export const modeCommand: CommandSpec = {
   name: "mode",
   description:
-    "Pick kit's model/effort profile: lean, balanced, quality or off",
-  argumentHint: "[lean|balanced|quality|off]",
+    "Pick kit's model/effort profile (lean, balanced, quality, off) or Claude plan",
+  argumentHint: "[lean|balanced|quality|off | plan auto|pro|max]",
   immediate: true,
 };
 
@@ -217,7 +218,7 @@ async function profilePick(
   // A command's kind is explicit; a thin reply keeps the work's kind.
   const ran = commandKind(text) ? kind : carry(kind, lastKind, text);
   lastKind = ran;
-  const p = pick(profile, ran);
+  const p = pick(await getPlan($), profile, ran);
   if (await restoreSwitch($)) decided = true; // a reload kept the switch
   let asked = false;
   if (!decided && !replay) {
@@ -241,6 +242,7 @@ export function autoModel(on: On) {
     async ($, e, next) => {
       const started = await next(e);
       if (e.agent_type) return started;
+      forgetPlan();
       decided = false;
       kept = undefined;
       dropSwitch(true); // a new chat: nothing stored to pick up
@@ -330,7 +332,7 @@ export function autoModel(on: On) {
       return started;
     }
     const kind = known ?? (await kindOf($, e.prompt)) ?? "routine";
-    const p = pick(now, kind);
+    const p = pick(await getPlan($), now, kind);
     const spawned = await next(
       isEngine && !e.model ? { ...e, model: p.model } : e,
     );
@@ -345,13 +347,15 @@ export function autoModel(on: On) {
 
   on("command.run", { command: "mode" }, async ($, e) => {
     const arg = e.args.trim().toLowerCase();
+    const [head, value = ""] = arg.split(/\s+/);
+    if (head === "plan") return { text: await planCommand($, value) };
     if (isMode(arg)) {
       await setMode($, arg);
       return { text: `kit profile: ${profileName(arg)}.` };
     }
     const now = await getMode($);
     return {
-      text: `kit profile: ${profileName(now)}. Pick one: /mode ${[...PROFILES, "off"].join("|")}`,
+      text: `kit profile: ${profileName(now)}, plan ${await planName($)}. Pick one: /mode ${[...PROFILES, "off"].join("|")}, or /mode plan auto|pro|max`,
     };
   });
 }

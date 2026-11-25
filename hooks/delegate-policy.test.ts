@@ -1,16 +1,7 @@
 import { expect, test } from "claude-code/testing";
 
-import {
-  ahead,
-  band,
-  claudeTight,
-  gptTight,
-  lean,
-  LEAN,
-  newest,
-  route,
-  type RouteInput,
-} from "./delegate-policy";
+import { newest, route, type RouteInput } from "./delegate-policy";
+import { gptRefusal, runCost } from "./gpt-limits";
 
 // Codex's catalog as `codex app-server` listed it (2026-10-27), hidden models already left out.
 const CATALOG = [
@@ -33,10 +24,8 @@ const ROOM = {
 
 const at = (over: Partial<RouteInput>): RouteInput => ({
   role: "build",
-  band: "balanced",
   gptOn: true,
   models: newest(CATALOG),
-  claude: { five_hour: { pct: 20, resetsAt: in_(3) } },
   gpt: ROOM,
   now: NOW,
   ...over,
@@ -58,21 +47,60 @@ test("the newest version per family wins, a pin holds, a family never stands in 
   expect(newest([...CATALOG, { id: "gpt-6.2-sol" }]).sol?.name).toBe("Sol 6.2");
 });
 
-test("a plan is tight by its 5h meter or by running ahead of its week", async () => {
-  // Two days into the week (120h left of 168) is 29% gone: 40% used is 11 ahead.
-  const week = { pct: 40, resetsAt: in_(120) };
-  expect(Math.round(ahead(week, "seven_day", NOW))).toBe(11);
-  expect(claudeTight({ seven_day: week }, NOW)).toBe(true);
-  expect(claudeTight({ seven_day: { pct: 30, resetsAt: in_(120) } }, NOW)).toBe(
-    false,
+test("a run needs room in both ChatGPT windows; a reset window counts as empty", async () => {
+  const five = (pct: number, hours = 3) => ({
+    five_hour: { pct, resetsAt: in_(hours) },
+  });
+  expect(gptRefusal(five(90), NOW, 5)).toBe(undefined);
+  expect(gptRefusal(five(91), NOW, 5)).toBe(
+    "ChatGPT's 5h window is at 91% (resets in 3h 0m)",
   );
-  expect(claudeTight({ five_hour: { pct: 70 } }, NOW)).toBe(true);
-  expect(gptTight({ five_hour: { pct: 80 } })).toBe(true);
-  expect(gptTight({ seven_day: { pct: 89 } })).toBe(false);
+  expect(gptRefusal(five(99, -1), NOW, 5)).toBe(undefined);
+  expect(gptRefusal({ seven_day: { pct: 94 } }, NOW, 5)).toBe(undefined);
+  expect(
+    gptRefusal({ seven_day: { pct: 95, resetsAt: in_(50) } }, NOW, 5),
+  ).toBe("ChatGPT's week is at 95% (resets in 2d 2h)");
 });
 
-test("with room on both, building goes to Terra and searching to Luna", async () => {
-  expect(route(at({ role: "build" }))).toEqual({
+test("a large build and Astra need more room than a Sol review", async () => {
+  expect(runCost("review", "sol")).toBe(5);
+  expect(runCost("build+", "sol")).toBe(20);
+  expect(runCost("plan", "astra")).toBe(18);
+  expect(runCost("build", "astra")).toBe(25);
+});
+
+test("Claude searches, researches and builds; GPT gives the review and the second plan", async () => {
+  expect(route(at({ role: "search" }))).toMatchObject({
+    provider: "claude",
+    model: "sonnet",
+    subagentType: "Explore",
+  });
+  expect(route(at({ role: "research" }))).toMatchObject({
+    provider: "claude",
+    model: "sonnet",
+  });
+  for (const role of ["build", "build+"] as const)
+    expect(route(at({ role }))).toEqual({
+      provider: "none",
+      reason:
+        "Claude does this itself; GPT is for a review, a second plan or a model you name: do it here",
+    });
+  expect(route(at({ role: "review" }))).toEqual({
+    provider: "gpt",
+    model: "gpt-6.1-sol",
+    name: "Sol 6.1",
+    effort: "high",
+    sandbox: "read-only",
+    review: true,
+  });
+  expect(route(at({ role: "plan" }))).toMatchObject({
+    model: "gpt-6.1-sol",
+    sandbox: "read-only",
+  });
+});
+
+test("a named model runs any role", async () => {
+  expect(route(at({ role: "build", family: "terra" }))).toEqual({
     provider: "gpt",
     model: "gpt-6.1-terra",
     name: "Terra 6.1",
@@ -80,73 +108,80 @@ test("with room on both, building goes to Terra and searching to Luna", async ()
     sandbox: "workspace-write",
     review: false,
   });
-  expect(route(at({ role: "build+" }))).toMatchObject({
+  expect(route(at({ role: "build+", family: "sol" }))).toMatchObject({
     model: "gpt-6.1-sol",
     effort: "high",
   });
-  expect(route(at({ role: "research" }))).toMatchObject({
-    model: "gpt-6.1-sol",
-    sandbox: "read-only",
-  });
-  expect(route(at({ role: "search" }))).toMatchObject({
-    provider: "gpt",
+  expect(route(at({ role: "search", family: "luna" }))).toMatchObject({
     model: "gpt-6-luna",
-    sandbox: "read-only",
     effort: "low",
+    sandbox: "read-only",
   });
 });
 
-test("a tight Claude plan also searches on Luna; without GPT, changes are built here", async () => {
-  const tight = { five_hour: { pct: 85 } };
-  expect(route(at({ role: "search", claude: tight }))).toMatchObject({
-    provider: "gpt",
-    model: "gpt-6-luna",
-  });
-  const full = { five_hour: { pct: 90 } };
-  expect(route(at({ role: "build", gpt: full }))).toEqual({
+test("a named model runs past the limit unless the caller is strict", async () => {
+  const gpt = { five_hour: { pct: 90, resetsAt: in_(3) } };
+  const large = { role: "build+", family: "sol", gpt } as const;
+  expect(route(at(large)).provider).toBe("gpt");
+  expect(route(at({ ...large, strict: true }))).toEqual({
     provider: "none",
-    reason: "ChatGPT has no room or no model for this: build it here",
+    reason: "ChatGPT's 5h window is at 90% (resets in 3h 0m): do it here",
   });
-  expect(route(at({ role: "build+", gpt: full })).provider).toBe("none");
-  expect(route(at({ role: "research", gpt: full }))).toMatchObject({
-    provider: "claude",
-    model: "sonnet",
-  });
-  expect(route(at({ role: "plan", gpt: full }))).toMatchObject({
-    reason: "ChatGPT has no room or no model for this: plan here",
-  });
-  expect(route(at({ role: "build", gpt: undefined }))).toMatchObject({
-    reason: "Codex is not available here: build it here",
-  });
-});
-
-test("search falls back to Sonnet Explore with GPT off, missing, tight or without Luna", async () => {
-  for (const over of [
-    { gptOn: false },
-    { gpt: undefined },
-    { gpt: { five_hour: { pct: 80 } } },
-    { gpt: { seven_day: { pct: 90 } } },
-    { models: newest([{ id: "gpt-6.1-sol" }]) },
-  ])
-    expect(route(at({ role: "search", ...over }))).toMatchObject({
-      provider: "claude",
-      model: "sonnet",
-      subagentType: "Explore",
+  expect(
+    route(at({ role: "build", family: "terra", gpt, strict: true })).provider,
+  ).toBe("gpt");
+  // A failed meter read leaves no room to count on.
+  for (const unread of [undefined, {}])
+    expect(route(at({ ...large, gpt: unread, strict: true }))).toEqual({
+      provider: "none",
+      reason: "ChatGPT's limits could not be read: do it here",
     });
 });
 
-test("lean compares weekly pace, including reset dates and missing windows", async () => {
-  const week = (pct: number, hours = 120) => ({
-    seven_day: { pct, resetsAt: in_(hours) },
+test("a full window leaves the review open and plans here", async () => {
+  const gpt = { five_hour: { pct: 93, resetsAt: in_(2) } };
+  const full = "ChatGPT's 5h window is at 93% (resets in 2h 0m)";
+  expect(route(at({ role: "review", gpt }))).toEqual({
+    provider: "none",
+    reason: `${full}; the task stays open until it has a review or the user waives it`,
   });
-  expect(lean(week(40), week(30), NOW)).toBe(LEAN);
-  expect(lean(week(39), week(30), NOW) >= LEAN).toBe(false);
-  expect(lean(week(30), week(40), NOW)).toBe(-10);
-  expect(Math.round(lean(week(40, 120), week(40, 144), NOW))).toBe(-14);
-  expect(lean({}, undefined, NOW)).toBe(0);
-  expect(lean({ seven_day: { pct: 80 } }, {}, NOW)).toBe(0);
-  expect(lean(week(10, 168), undefined, NOW)).toBe(LEAN);
-  expect(lean({}, week(10, 168), NOW)).toBe(-LEAN);
+  expect(route(at({ role: "plan", gpt }))).toEqual({
+    provider: "none",
+    reason: `${full}: plan here`,
+  });
+  expect(route(at({ role: "plan", gpt: undefined }))).toMatchObject({
+    reason: "Codex is not available here: plan here",
+  });
+  expect(
+    route(at({ role: "plan", models: newest([{ id: "gpt-6-luna" }]) })),
+  ).toMatchObject({ reason: "no sol model in Codex's catalog: plan here" });
+});
+
+test("a follow-up stays on its GPT thread within the limits and never becomes a build", async () => {
+  const follow = { role: "research", continues: "sol" } as const;
+  expect(route(at(follow))).toMatchObject({
+    model: "gpt-6.1-sol",
+    sandbox: "read-only",
+  });
+  expect(route(at({ role: "build", continues: "sol" })).provider).toBe("none");
+  expect(
+    route(at({ ...follow, gpt: { five_hour: { pct: 93 } } })).provider,
+  ).toBe("claude");
+  expect(route(at({ ...follow, gptOn: false })).provider).toBe("claude");
+});
+
+test("the riskiest review takes Astra when it fits, otherwise Sol", async () => {
+  const deep = { role: "review", prefer: "astra" } as const;
+  expect(route(at(deep))).toMatchObject({
+    model: "gpt-6-astra",
+    sandbox: "read-only",
+  });
+  expect(
+    route(at({ ...deep, gpt: { five_hour: { pct: 80 } } })),
+  ).toMatchObject({ model: "gpt-6.1-sol" });
+  expect(
+    route(at({ ...deep, models: newest([{ id: "gpt-6.1-sol" }]) })),
+  ).toMatchObject({ model: "gpt-6.1-sol" });
 });
 
 test("a review goes to the family that did not write it", async () => {
@@ -163,7 +198,7 @@ test("a review goes to the family that did not write it", async () => {
   });
 });
 
-test("a family asked for by name wins; Astra runs only that way", async () => {
+test("without a name or the riskiest review, nothing runs on Astra", async () => {
   for (const role of [
     "search",
     "research",
@@ -198,35 +233,72 @@ test("with GPT off nothing goes to GPT unless a family is named; no Claude revie
   });
 });
 
-test("balance bands use hysteresis on both sides", async () => {
-  expect(band("balanced", 10)).toBe("gpt-heavy");
-  expect(band("gpt-heavy", 7)).toBe("gpt-heavy");
-  expect(band("gpt-heavy", 5)).toBe("gpt-heavy");
-  expect(band("gpt-heavy", 4)).toBe("balanced");
-  expect(band("balanced", -10)).toBe("claude-safe");
-  expect(band("claude-safe", -7)).toBe("claude-safe");
-  expect(band("claude-safe", -5)).toBe("claude-safe");
-  expect(band("claude-safe", -4)).toBe("balanced");
-  expect(band("gpt-heavy", -12)).toBe("claude-safe");
-  expect(band("claude-safe", 12)).toBe("gpt-heavy");
+const pro = (over: Partial<RouteInput>) => at({ plan: "pro", ...over });
+
+test("on Claude Pro GPT also searches, researches and builds while its share has room", async () => {
+  for (const [role, model] of [
+    ["search", "gpt-6-luna"],
+    ["research", "gpt-6.1-sol"],
+    ["build", "gpt-6.1-terra"],
+    ["build+", "gpt-6.1-sol"],
+  ] as const)
+    expect(route(pro({ role }))).toMatchObject({ provider: "gpt", model });
+  expect(route(pro({ role: "build", continues: "sol" }))).toMatchObject({
+    model: "gpt-6.1-sol",
+  });
+  // A follow-up stays inside the share too: it may not eat the reviews' part.
+  const gpt = { five_hour: { pct: 80 } };
+  expect(
+    route(pro({ role: "research", continues: "sol", gpt })).provider,
+  ).toBe("claude");
 });
 
-test("only search changes with the balance band", async () => {
-  for (const b of ["balanced", "gpt-heavy"] as const)
-    expect(route(at({ role: "search", band: b }))).toMatchObject({
-      provider: "gpt",
-      model: "gpt-6-luna",
-    });
-  expect(route(at({ role: "search", band: "claude-safe" }))).toMatchObject({
-    provider: "claude",
-    model: "sonnet",
-    subagentType: "Explore",
+test("on Pro the last part of each window is kept for reviews", async () => {
+  const five = { five_hour: { pct: 66, resetsAt: in_(3) } };
+  expect(route(pro({ role: "build", gpt: five }))).toEqual({
+    provider: "none",
+    reason:
+      "ChatGPT's 5h window is at 66%, the rest is kept for reviews: do it here",
   });
-  expect(route(at({ role: "build", band: "claude-safe" }))).toMatchObject({
-    provider: "gpt",
-    model: "gpt-6.1-terra",
+  expect(route(pro({ role: "build", gpt: { five_hour: { pct: 65 } } })).provider).toBe("gpt");
+  expect(route(pro({ role: "review", gpt: five })).provider).toBe("gpt");
+  const week = { seven_day: { pct: 76, resetsAt: in_(10) } };
+  expect(route(pro({ role: "research", gpt: week }))).toMatchObject({
+    provider: "claude",
+    why: "ChatGPT's week is at 76%, the rest is kept for reviews: do it here",
+  });
+});
+
+test("on Pro the plan further behind on its week takes the work", async () => {
+  // 100h left of 168 is 40% gone: 60% used is 20 ahead.
+  const used = (pct: number) => ({
+    seven_day: { pct, resetsAt: in_(100) },
+  });
+  const gpt = used(60);
+  expect(
+    route(pro({ role: "research", gpt, claude: used(45) })),
+  ).toMatchObject({
+    provider: "claude",
+    why: "ChatGPT's week is further used than Claude's: do it here",
   });
   expect(
-    route(at({ role: "search", band: "claude-safe", family: "luna" })),
-  ).toMatchObject({ provider: "gpt" });
+    route(pro({ role: "research", gpt, claude: used(55) })).provider,
+  ).toBe("gpt");
+});
+
+test("on Pro without GPT the work stays on Claude", async () => {
+  expect(route(pro({ role: "build", gptOn: false }))).toMatchObject({
+    reason: "GPT is off in the band: do it here",
+  });
+  expect(route(pro({ role: "search", gpt: undefined })).provider).toBe("claude");
+  expect(route(pro({ role: "build", gpt: {} })).provider).toBe("none");
+});
+
+test("no run kit picks starts without any ChatGPT meter", async () => {
+  expect(route(at({ role: "review", gpt: {} }))).toMatchObject({
+    provider: "none",
+    reason:
+      "ChatGPT's limits could not be read; the task stays open until it has a review or the user waives it",
+  });
+  expect(route(at({ role: "plan", gpt: {} })).provider).toBe("none");
 });

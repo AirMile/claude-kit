@@ -1,6 +1,7 @@
 // Which model and effort a prompt or subagent gets (auto-model.ts applies it). Pure: no `$`.
 // A prompt is sorted into one of four kinds of work; the profile the user picked (the band's
-// buttons, /mode) maps each kind to a model and an effort.
+// buttons, /mode) maps each kind to a model and an effort, within what the Claude plan includes
+// (plan.ts).
 
 export type Kind = "question" | "routine" | "planning" | "heavy";
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
@@ -23,12 +24,40 @@ export const DEFAULT_MODE: Profile = "balanced";
 
 const SONNET = "claude-sonnet-5-5";
 const OPUS = "claude-opus-5-5";
+const FABLE = "claude-fable-5-2";
+
+export type Plan = "pro" | "max";
+export type PlanChoice = Plan | "auto";
+export const PLAN_CHOICES: readonly PlanChoice[] = ["auto", "pro", "max"];
+export const isPlanChoice = (v: unknown): v is PlanChoice =>
+  PLAN_CHOICES.includes(v as PlanChoice);
+
+// The plan the login's global config (~/.claude.json) names. Not an official format: anything
+// but a Max organization, an unreadable file included, counts as Pro, where kit never picks Fable.
+export function planOfConfig(text: string): Plan {
+  try {
+    const config = JSON.parse(text) as {
+      oauthAccount?: { organizationType?: unknown };
+    } | null;
+    return config?.oauthAccount?.organizationType === "claude_max"
+      ? "max"
+      : "pro";
+  } catch {
+    return "pro";
+  }
+}
 
 // Every model the engine can switch to, cheapest first. No Haiku (too weak for the main chat; only
-// the classifier uses it) and no Fable: the user's Pro plan lacks it.
-export const MODELS: readonly string[] = [SONNET, OPUS];
+// the classifier uses it). Fable only on Max: on Pro it runs on paid usage credits.
+const MODELS: Record<Plan, readonly string[]> = {
+  pro: [SONNET, OPUS],
+  max: [SONNET, OPUS, FABLE],
+};
+export const modelsFor = (plan: Plan): readonly string[] => MODELS[plan];
+export const included = (plan: Plan, model: string): boolean =>
+  plan === "max" || family(model) !== "fable";
 
-const TABLE: Record<Profile, Record<Kind, Pick>> = {
+const PRO: Record<Profile, Record<Kind, Pick>> = {
   lean: {
     question: { model: SONNET, effort: "low" },
     routine: { model: SONNET, effort: "medium" },
@@ -49,8 +78,34 @@ const TABLE: Record<Profile, Record<Kind, Pick>> = {
   },
 };
 
-export const pick = (profile: Profile, kind: Kind): Pick =>
-  TABLE[profile][kind];
+const MAX: Record<Profile, Record<Kind, Pick>> = {
+  lean: {
+    question: { model: SONNET, effort: "low" },
+    routine: { model: SONNET, effort: "medium" },
+    planning: { model: OPUS, effort: "high" },
+    heavy: { model: OPUS, effort: "xhigh" },
+  },
+  balanced: {
+    question: { model: SONNET, effort: "low" },
+    routine: { model: OPUS, effort: "medium" },
+    planning: { model: OPUS, effort: "high" },
+    heavy: { model: FABLE, effort: "high" },
+  },
+  quality: {
+    question: { model: SONNET, effort: "medium" },
+    routine: { model: OPUS, effort: "high" },
+    planning: { model: FABLE, effort: "high" },
+    heavy: { model: FABLE, effort: "xhigh" },
+  },
+};
+
+const TABLES: Record<Plan, Record<Profile, Record<Kind, Pick>>> = {
+  pro: PRO,
+  max: MAX,
+};
+
+export const pick = (plan: Plan, profile: Profile, kind: Kind): Pick =>
+  TABLES[plan][profile][kind];
 
 // The classifier sees only these labels, so each says what it covers.
 export const LABELS: Record<Kind, string> = {
@@ -127,7 +182,7 @@ export function family(model: string): string | undefined {
 }
 
 // Model tiers, weakest first: how far the model a prompt needs is above the one running.
-const TIERS = ["haiku", "sonnet", "opus"];
+const TIERS = ["haiku", "sonnet", "opus", "fable"];
 
 // Below this share of the context window a switch costs little: the new model reads the whole
 // conversation again without the cache, so a fuller chat is offered a clear or compact first.

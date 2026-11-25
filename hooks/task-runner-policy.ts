@@ -1,5 +1,7 @@
 // Task runner, pure: input, repair decisions and bounded results. The caller runs GPT and checks.
 
+import { FAMILIES, type Family } from "./delegate-policy";
+
 export const FIX_ROUNDS = 2;
 export const TAIL_LINES = 60;
 export const MAX_RESULT = 4000;
@@ -12,12 +14,18 @@ export type RunInput = {
   brief: string;
   checks: string[][];
   role: "build" | "build+";
+  family?: Family; // the GPT model the user asked for
 };
 
 export function readRunInput(e: unknown): RunInput | string {
   if (!e || typeof e !== "object" || Array.isArray(e))
     return "Not run: input must be an object.";
-  const { brief, checks, role = "build" } = e as Record<string, unknown>;
+  const {
+    brief,
+    checks,
+    role = "build",
+    family,
+  } = e as Record<string, unknown>;
   if (typeof brief !== "string") return "Not run: the brief must be a string.";
   if (!brief.trim()) return "Not run: the brief is empty.";
   if (
@@ -34,7 +42,14 @@ export function readRunInput(e: unknown): RunInput | string {
     return `Not run: checks must be 1 to ${MAX_CHECKS} commands, each an argv array of strings.`;
   if (role !== "build" && role !== "build+")
     return "Not run: role must be build or build+.";
-  return { brief: brief.trim(), checks, role };
+  if (family !== undefined && !FAMILIES.includes(family as Family))
+    return `Not run: family must be one of ${FAMILIES.join(", ")}.`;
+  return {
+    brief: brief.trim(),
+    checks,
+    role,
+    ...(family ? { family: family as Family } : {}),
+  };
 }
 
 export function tail(output: string, n = TAIL_LINES): string {

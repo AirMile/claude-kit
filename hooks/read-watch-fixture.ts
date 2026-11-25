@@ -10,11 +10,18 @@ export function world(
     explore?: boolean;
     change?: boolean;
     off?: boolean;
+    pro?: boolean; // Claude Pro
+    heavy?: boolean; // the change classifier answers heavy
+    fivePct?: number; // ChatGPT's 5h window
     delegate?: "ok" | "claude" | "failed" | "partial" | "none";
     runTask?: "pass" | "failing" | "stopped" | "not run";
   } = {},
 ) {
-  const store: Record<string, unknown> = { mode: "off", gpt: !opts.off };
+  const store: Record<string, unknown> = {
+    mode: "off",
+    gpt: !opts.off,
+    plan: opts.pro ? "pro" : "max",
+  };
   const prompts: { context?: readonly string[] }[] = [];
   const classified: {
     text: string;
@@ -56,7 +63,11 @@ export function world(
   on("model.complete", async (_$, e) => {
     completed.push({ prompt: String(e.prompt), model: e.model });
     return labelAnswer(e.prompt, {
-      change: opts.change ? CHANGE_LABELS.medium : CHANGE_LABELS.none,
+      change: opts.heavy
+        ? CHANGE_LABELS.heavy
+        : opts.change
+          ? CHANGE_LABELS.medium
+          : CHANGE_LABELS.none,
       explore: opts.explore,
     });
   });
@@ -81,7 +92,7 @@ export function world(
                     ? [{ id: "gpt-6-luna" }]
                     : [],
                 limits: {
-                  five_hour: { pct: 10 },
+                  five_hour: { pct: opts.fivePct ?? 10 },
                   seven_day: { pct: gptPct, resetsAt },
                 },
               }),

@@ -112,21 +112,21 @@ test("a thin reply keeps the task's levels; growth and the first failing check r
   const ask = (text: string) =>
     $.prompt.submit({ text, origin: { kind: "composer" } });
   await ask("Change the retry handling in src/a.ts");
-  expect(String(sent[0])).toContain("kit task: D1 E0 V1."); // no GPT here: E0
+  expect(String(sent[0])).toContain("kit task: D1 E1 V1.");
   await ask("ja");
   expect(String(sent[1] ?? "")).not.toContain("kit task");
   const failed = (await bash($, "npm test fail")) as { context?: string[] };
-  expect(String(failed.context)).toContain("kit task: D1 E0 V2.");
+  expect(String(failed.context)).toContain("kit task: D1 E2 V2.");
   await bash($, "npm test fail"); // the same work: no second raise
-  expect(levels()).toEqual(["decision D1 E0 V1", "levels D1 E0 V2"]);
+  expect(levels()).toEqual(["decision D1 E1 V1", "levels D1 E2 V2"]);
   for (const f of ["a", "b", "c"]) await write($, `/p/app/src/${f}.ts`);
   const grown = (await write($, "/p/app/src/d.ts")) as { context?: string[] };
   expect(String(grown.context)).toContain("grew from light to medium");
-  expect(String(grown.context)).toContain("kit task: D1 E0 V3.");
-  expect(levels().at(-1)).toBe("levels D1 E0 V3");
+  expect(String(grown.context)).toContain("kit task: D1 E3 V3.");
+  expect(levels().at(-1)).toBe("levels D1 E3 V3");
   const out = await $.command.run({ command: "flow", args: "" } as never);
   expect(String((out as { text?: string }).text)).toContain(
-    "E1+ decisions with a GPT run: 0 of 0",
+    "E1+ decisions with a GPT run: 0 of 1",
   );
 });
 
@@ -146,12 +146,12 @@ test("an answer that grows the task raises E and V; one that raises nothing gets
   const ask = (text: string) =>
     $.prompt.submit({ text, origin: { kind: "composer" } });
   await ask("Change the retry handling in src/a.ts");
-  expect(String(sent.at(-1))).toContain("kit task: D1 E0 V1.");
+  expect(String(sent.at(-1))).toContain("kit task: D1 E1 V1.");
   await stop($, "Shall I make the timeout configurable too?");
   change = CHANGE_LABELS.medium;
   await ask("Yes, and pass it through every module that retries");
   expect(String(sent.at(-1))).toContain("grew from light to medium");
-  expect(String(sent.at(-1))).toContain("kit task: D1 E0 V2.");
+  expect(String(sent.at(-1))).toContain("kit task: D1 E2 V2.");
   await stop($, "Anything else?");
   change = CHANGE_LABELS.light;
   await ask("No, keep the default at three retries");
@@ -160,7 +160,7 @@ test("an answer that grows the task raises E and V; one that raises nothing gets
   change = CHANGE_LABELS.heavy;
   verify = VERIFY_LABELS.risky;
   await ask("/kit:task-readiness auth-migration");
-  expect(String(sent.at(-1))).toContain("kit task: D2 E0 V3.");
+  expect(String(sent.at(-1))).toContain("kit task: D2 E2 V3.");
 });
 
 test("Bash keeps failed tests open after lint and closes them after tests", async ($, on) => {
@@ -206,6 +206,7 @@ test("run_task records the same check kinds as Bash", async ($, on) => {
   const w = runnerWorld(on, { flow: true, codes: [1, 0, 1, 0, 1, 0] });
   await $.tool.call({
     tool: "mcp__kit__run_task",
+    family: "terra",
     brief: "Fix the form.",
     checks: [
       ["ng", "test"],

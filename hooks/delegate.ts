@@ -29,13 +29,13 @@ import {
 
 export { gptCommand } from "./gpt-command";
 
-// mcp__kit__delegate: this chat hands a self-contained piece of work to whichever plan has room
-// (delegate-policy.ts picks Claude or GPT, and the model). A GPT route runs here through the
-// Codex CLI and returns only Codex's final message and the files that changed: its whole run
-// (every command and its output) stays in Codex's own session file. A Claude route returns how
-// to run it with the Agent tool (a mod could start it and read its answer from turn.complete;
-// not done yet). The Codex side
-// (its catalog, the ChatGPT meters, a run) is codex-run.ts.
+// mcp__kit__delegate: this chat hands a self-contained piece of work to GPT (a review, a second
+// plan, a model the user names, and on Claude Pro the rest too) or to a Claude subagent
+// (delegate-policy.ts picks). A GPT route runs here through the Codex CLI and returns
+// only Codex's final message and the files that changed: its whole run (every command and its
+// output) stays in Codex's own session file. A Claude route returns how to run it with the Agent
+// tool (a mod could start it and read its answer from turn.complete; not done yet). The Codex
+// side (its catalog, the ChatGPT meters, a run) is codex-run.ts.
 
 const TOOL = "mcp__kit__delegate";
 const MAX_ANSWER = 6000;
@@ -45,15 +45,15 @@ const WRITES: readonly Role[] = ["build", "build+"];
 export const delegateTool: ToolSpec = {
   name: "delegate",
   description:
-    "kit: hand a self-contained piece of work to Claude (a subagent), GPT (Codex) or, on request, " +
-    "Gemini (agy, the Antigravity CLI), on " +
-    "whichever plan has room and the newest model for its role. Roles: search (find code), " +
-    "research (read and weigh, read-only), build (a change you can describe up front), build+ " +
-    "(a hard change), review (the uncommitted changes; author: who wrote them), plan (a blind " +
-    "second plan: never include your own). The brief stands alone: goal, constraints, files, " +
-    "checks to run. family: a GPT model the user asked for by name (sol, terra, luna, astra), or " +
-    "a Gemini one (flash, pro; naming one sets provider gemini). provider: gemini when the user " +
-    "asks for Gemini, agy or Antigravity; it never runs unasked and shows no meters. " +
+    "kit: hand a self-contained piece of work to another model family or a Claude subagent. GPT " +
+    "(Codex) takes a review (the uncommitted changes; author: who wrote them) and a plan (a blind " +
+    "second plan: never include your own), when ChatGPT's limits have room. search (find code), " +
+    "research (read and weigh) and build go to GPT only on Claude Pro, to spare Claude's limits; " +
+    "on Max they stay on Claude (for build: make the change here). The brief stands alone: goal, " +
+    "constraints, files, checks to run. family: a GPT model the user asked for by name (sol, " +
+    "terra, luna, astra), which then runs any role, or a Gemini one (flash, pro; naming one sets " +
+    "provider gemini). provider: gemini when the user asks for Gemini, agy or Antigravity; it " +
+    "never runs unasked and shows no meters. " +
     "A brief states the decision you need, facts already known, files in scope and when to stop. " +
     "dirs: Gemini only, absolute folders besides the project that agy may read (goes through the permission check). " +
     "thread: continue an earlier GPT or Gemini run with a follow-up brief. A run returns its final " +

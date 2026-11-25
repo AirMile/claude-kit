@@ -20,7 +20,7 @@ const ask = (over: Partial<Parameters<typeof decide>[0]> = {}) =>
     verify: "behaviour",
     explore: false,
     council: false,
-    room: { gpt: true, astra: true },
+    room: { astra: true },
     ...over,
   });
 
@@ -68,14 +68,13 @@ test("heavy, explore, planning and council set define", () => {
   expect(ask({ council: true }).levels.d).toBe(3);
 });
 
-test("budget caps execute and council, never verification", () => {
+test("without room for Astra only a council is lowered, never execute or verification", () => {
   const limited = ask({
     council: true,
     verify: "risky",
-    room: { gpt: false, astra: false },
+    room: { astra: false },
   });
-  expect(limited.levels).toEqual({ d: 2, e: 0, v: 3, r: 0 });
-  expect(limited.reasons.join(" ")).toContain("E0");
+  expect(limited.levels).toEqual({ d: 2, e: 1, v: 3, r: 0 });
   expect(limited.reasons.join(" ")).toContain("D2");
   expect(limited.reasons.join(" ")).toContain("Astra");
   expect(decisionNote(limited)).toContain(limited.reasons[0]);
@@ -92,11 +91,11 @@ test("continuations keep E and V, but define and refactor are fresh", () => {
   expect(
     ask({ change: "heavy", prev: { d: 0, e: 1, v: 1, r: 0 } }).levels,
   ).toEqual({ d: 2, e: 2, v: 2, r: 0 });
-  expect(ask({ prev, room: { gpt: false, astra: false } }).levels.v).toBe(3);
+  expect(ask({ prev, room: { astra: false } }).levels.v).toBe(3);
 });
 
 test("escalation raises E and V, caps them and respects budget", () => {
-  const room = { gpt: true, astra: true };
+  const room = { astra: true };
   expect(escalate({ d: 1, e: 1, v: 1, r: 1 }, room).levels).toEqual({
     d: 1,
     e: 2,
@@ -111,27 +110,17 @@ test("escalation raises E and V, caps them and respects budget", () => {
   });
   const tight = escalate(
     { d: 1, e: 0, v: 2, r: 0 },
-    { gpt: false, astra: false },
+    { astra: false },
   );
-  expect(tight.levels).toEqual({ d: 1, e: 0, v: 3, r: 0 });
-  expect(tight.reasons.join(" ")).toContain("E0");
+  expect(tight.levels).toEqual({ d: 1, e: 1, v: 3, r: 0 });
 });
 
 test("meter thresholds require room for Astra", () => {
   expect(ASTRA_COST).toBe(18);
-  expect(roomOf(true, { five_hour: { pct: 61 } })).toEqual({
-    gpt: true,
-    astra: true,
-  });
-  expect(roomOf(true, { five_hour: { pct: 62 } })).toEqual({
-    gpt: true,
-    astra: false,
-  });
-  expect(roomOf(false, { five_hour: { pct: 0 } })).toEqual({
-    gpt: false,
-    astra: false,
-  });
-  expect(roomOf(true, {}).astra).toBe(false);
+  expect(roomOf(true, { five_hour: { pct: 77 } })).toEqual({ astra: true });
+  expect(roomOf(true, { five_hour: { pct: 78 } })).toEqual({ astra: false });
+  expect(roomOf(false, { five_hour: { pct: 0 } })).toEqual({ astra: false });
+  expect(roomOf(true, {})).toEqual({ astra: false });
 });
 
 test("council asks are explicit", () => {
@@ -166,9 +155,40 @@ test("display levels, notes and equality", () => {
   const note = decisionNote(ask());
   expect(note).toContain("kit task: D1 E1 V1");
   expect(note).toContain(
-    "Give one brief with its covering check to mcp__kit__run_task (role build); review its diff here.",
+    "Make it here, with its covering check.",
   );
+  expect(note).not.toContain("run_task");
   expect(decisionNote(ask({ change: "heavy" }))).toContain(
-    "Use mcp__kit__run_task (role build+) for briefs one at a time, each with its covering check; review each diff here.",
+    "Make it here in steps, each with its covering check.",
   );
+  expect(
+    decisionNote(ask({ change: "heavy", prev: { d: 2, e: 3, v: 2, r: 0 } })),
+  ).toContain("blind second plan from another model family");
+});
+
+test("with GPT sharing the work the note hands research and building to it", () => {
+  const room = { astra: true, share: true, large: true };
+  const note = decisionNote(ask({ room }));
+  expect(note).toContain("mcp__kit__run_task (role build)");
+  const heavy = decisionNote(ask({ room, change: "heavy" }));
+  expect(heavy).toContain("mcp__kit__run_task (role build+)");
+  expect(heavy).toContain("Have mcp__kit__delegate (role research)");
+  expect(decisionNote(ask({ change: "heavy" }))).not.toContain("run_task");
+  expect(roomOf(true, { five_hour: { pct: 0 } }, true)).toEqual({
+    astra: true,
+    share: true,
+  });
+});
+
+test("without room for a large build E2 stays here while E1 still goes to GPT", () => {
+  const room = { astra: true, share: true };
+  expect(decisionNote(ask({ room }))).toContain("run_task (role build)");
+  expect(decisionNote(ask({ room, change: "heavy" }))).toContain(
+    "Make it here in steps",
+  );
+  expect(roomOf(true, { five_hour: { pct: 0 } }, true, true)).toEqual({
+    astra: true,
+    share: true,
+    large: true,
+  });
 });
