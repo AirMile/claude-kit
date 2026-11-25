@@ -66,7 +66,8 @@ async function activeSpec(
     const state = parseSpec(
       await $.fs.read(inRoot(root, `docs/specs/${slug}.md`)),
     );
-    return state ? { slug, ...state } : null;
+    // A finished spec has nothing to resume, and its note would reselect it every time.
+    return state && state.status !== "done" ? { slug, ...state } : null;
   } catch {
     return null; // missing files or unavailable git must never block native compaction
   }

@@ -54,6 +54,7 @@ function world(
   opts: {
     branch?: string;
     spec?: string;
+    status?: string;
     skip?: boolean;
     unavailable?: boolean;
     logFails?: boolean;
@@ -88,7 +89,7 @@ function world(
     reads.push(e.path);
     if (!opts.spec || !e.path.endsWith(`/docs/specs/${opts.spec}.md`))
       throw new Error("missing");
-    return { value: SPEC };
+    return { value: SPEC.replace("building", opts.status ?? "building") };
   });
   let clock = 1000;
   on("clock.now", async () => ({ value: (clock += 250) }));
@@ -230,6 +231,33 @@ test("the newest task-readiness command wins and a missing spec never revives an
     expect(result).toEqual(NATIVE);
   }
   expect(w.reads).toEqual(["/p/app/docs/specs/missing.md"]);
+});
+
+test("a finished spec adds no priority line and no recovery note", async ($, on) => {
+  const w = world(on, { branch: "feat/login", spec: "login", status: "done" });
+  expect(await $.session.compact(input())).toEqual(NATIVE);
+  expect(w.reads).toEqual(["/p/app/docs/specs/login.md"]);
+  expect(w.seen[0]!.instructions).not.toContain("docs/specs/login.md");
+});
+
+test("an earlier recovery note stops repeating once its spec is done", async ($, on) => {
+  const w = world(on, { spec: "login", status: "done" });
+  for (const text of [
+    "kit: building login · Status: manual · criteria 2/2.",
+    "/task-readiness login",
+  ]) {
+    const result = await $.session.compact(
+      input("auto", [...HISTORY, { role: "user", text, toolUses: [] }]),
+    );
+    expect(result).toEqual(NATIVE);
+  }
+  expect(w.reads.length).toBe(2);
+});
+
+test("a spec awaiting manual verification keeps its recovery note", async ($, on) => {
+  world(on, { branch: "feat/login", spec: "login", status: "manual" });
+  const result = completed(await $.session.compact(input()));
+  expect(result.messages[1]!.text).toContain("Status: manual");
 });
 
 test("precompute receives the same instructions but installs no recovery note or diagnostic", async ($, on) => {
