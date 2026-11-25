@@ -3,6 +3,8 @@ import type { EngineInterface, On, SessionMessage } from "claude-code";
 import { recordCompaction } from "./auto-compact";
 import { noteCompact } from "./chat-facts";
 import { flowRecovery } from "./flow";
+import { isPinsNote, pinsNote } from "./pins";
+import { isRecentNote, recentNote } from "./recent";
 import { branchSlug, inRoot, parseSpec } from "./spec";
 
 // Add priorities to the native summarizer, never rebuild its input or its summary.
@@ -28,6 +30,8 @@ function requestedSpec(
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const message = messages[i];
     if (message?.role !== "user") continue;
+    // Our notes of quoted text are not commands.
+    if (isPinsNote(message) || isRecentNote(message)) continue;
     // The command may be gone after the first compaction on an unrelated branch.
     const recovery = /^kit: building ([a-z0-9][a-z0-9-]*) · Status:/.exec(
       message.text,
@@ -66,7 +70,8 @@ async function activeSpec(
     const state = parseSpec(
       await $.fs.read(inRoot(root, `docs/specs/${slug}.md`)),
     );
-    return state ? { slug, ...state } : null;
+    // A finished spec has nothing to resume, and its note would reselect it every time.
+    return state && state.status !== "done" ? { slug, ...state } : null;
   } catch {
     return null; // missing files or unavailable git must never block native compaction
   }
@@ -129,8 +134,20 @@ export function compaction(on: On) {
     // Flow's open task, which the summary may have lost (flow.ts).
     const open = flowRecovery();
     if (open) notes.push({ role: "user", toolUses: [], text: open });
-    return notes.length
-      ? { ...compacted, messages: [...compacted.messages, ...notes] }
+    // The user's pins (pins.ts) and latest messages (recent.ts), from disk. Once read, they
+    // replace any note core kept, so a removed pin stays removed.
+    const pinned = await pinsNote($);
+    const latest = await recentNote($, compacted.messages);
+    const kept = compacted.messages.filter(
+      (m) =>
+        !(pinned !== undefined && isPinsNote(m)) &&
+        !(latest !== undefined && isRecentNote(m)),
+    );
+    // Old requests go first, so what is still to do closes the context.
+    if (latest) notes.unshift({ role: "user", toolUses: [], text: latest });
+    if (pinned) notes.push({ role: "user", toolUses: [], text: pinned });
+    return notes.length || kept.length !== compacted.messages.length
+      ? { ...compacted, messages: [...kept, ...notes] }
       : compacted;
   });
 }

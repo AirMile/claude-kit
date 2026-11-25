@@ -810,8 +810,30 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   `/compact <instructions>` take priority. It does not prune history or call a second summarizer.
 - **After a compaction** (auto or `/compact`) it adds one line to the new context: slug,
   `Status`, criteria done, and "re-read the spec, `## Handoff` first". That line comes from
-  disk, not from the summary. Missing specs do not block compaction; subagents are left alone.
+  disk, not from the summary. A spec with `Status: done` is ignored: no priority line and no
+  note. Missing specs do not block compaction; subagents are left alone.
   Precompute receives the same priorities but appends no recovery note until compaction applies.
+- **Pins**: `/pin <text>` pins your own text, `/pin last` pins Claude's last answer. After
+  every main-chat compaction (not precompute, not subagents) all pins of the chat are appended
+  word for word, from disk, so they do not depend on the summary. `/pin list`,
+  `/pin remove <n>`, `/pin clear`; typed during a turn, `/pin` runs when it ends. At most
+  12,000 characters per chat (they cost context each time); text that does not fit is refused,
+  never cut. Per chat: `/clear` or a fork starts without pins, resuming finds them again. Pins
+  of a chat with no message, pin change or compaction for 30 days are removed when another chat
+  pins something, or at the first message of a new run or chat.
+- **Latest messages**: after every main-chat compaction your latest messages (at most 5, 8,000
+  characters in all, newest first to fit) are appended word for word, marked as already sent so
+  an old request or approval is not acted on again. A message over 4,000 characters keeps its
+  first 3,000 and last 1,000, and says how much is left out. Not repeated when compaction kept
+  the message itself. Noted as you send it (terminal, desktop app, Remote Control, SDK host),
+  without the blocks the app puts on their own lines around it (`system-reminder`, selected
+  element, annotation, artifact view). Not noted: tool results, the app's events and
+  notifications, commands without arguments, answers on a question card, and a prompt kit held (plan limit, model switch) and
+  sent itself. A prompt queued during a turn counts once queued, also if you then take it back.
+  After a message could not be saved, the note says the list may be behind (kept across a
+  restart once a later message was saved). A copy is kept in the plugin's store for the 20
+  latest chats; one idle for 30 days is never restored, and is removed at the first message of
+  a new run or of a new chat. `/clear` starts empty.
 - **Diagnostics**: the debug log records `kit compact:` with native token counts before/after,
   summarizer usage and duration when available. A reused precomputed summary may have no usage.
   These figures measure the integration, not summary quality or guaranteed dollar savings.

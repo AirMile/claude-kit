@@ -25,6 +25,8 @@ import {
 import { endsOnQuestion } from "./context-policy";
 import { noteFile, resetChat } from "./chat-facts";
 import { compaction } from "./compaction";
+import { pinCommand, pins } from "./pins";
+import { recent } from "./recent";
 import { bandCommand, bandUsage, kitBand } from "./kit-band";
 import { noteStop, warmCommand } from "./keep-warm";
 import { limitCommand } from "./limit-command";
@@ -38,6 +40,8 @@ import { syncWindows } from "./window-sync";
 
 // kit's context mod. Reads the active spec; never writes.
 // - Native compaction priorities and spec recovery (compaction.ts).
+// - /pin: the user's own text restored word for word after every compaction (pins).
+// - The user's latest messages, restored the same way (recent).
 // - Context and plan limits as the band's second line (kit-band.tsx).
 // - The roadmap and theme panes: tools the skills call with data (roadmap-view, theme-view);
 //   the roadmap pane also opens on /panel (roadmap-open) and the band's button (kit-band).
@@ -134,6 +138,8 @@ export const register: Register = (on) => {
   kitBand(on);
   compaction(on);
   autoCompact(on);
+  pins(on);
+  recent(on);
 
   on("session.start", async ($, e, next) => {
     const started = await next(e);
@@ -154,6 +160,10 @@ export const register: Register = (on) => {
     await $.command.register(guardCommand);
     await $.command.register(commitGateCommand);
     await $.command.register(autoCompactCommand);
+    // A generic name: another plugin holding /pin must not stop the rest of session start.
+    await $.command.register(pinCommand).catch((err) => {
+      $.ui.toast(`kit: could not register /pin (${String(err)})`);
+    });
     await refresh($);
     if (await gptOn($))
       void gptStatus($).then((st) => {
