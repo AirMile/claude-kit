@@ -13,8 +13,9 @@ Claude Code already loads at the right moment. No separate memory store.
 
 Write a lesson only when **all** hold:
 
-1. It is **not derivable** from the code, config or git history (no file lists, no architecture
-   summaries, no "X lives in Y" that a grep answers).
+1. Current code and config do **not convey** it (no file lists, no architecture summaries, no
+   "X lives in Y" that a grep answers). A rule whose reason is only in git history still
+   qualifies: sessions don't read `git log` first. Write the rule, point to the reason.
 2. It would **change what the next session does**: a pitfall, a non-obvious convention, a
    constraint with its reason, a command that must be run a certain way.
 3. It was **observed** this session (a bug, a failed attempt, a user correction), not guessed.
