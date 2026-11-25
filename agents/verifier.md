@@ -33,6 +33,8 @@ criterion fail).
   Check the console for errors on every page you visit.
 - In doubt whether something needs a human → it doesn't; automate it. Manual only for: real
   credentials, perception (feel, timing smoothness), physical device, audio, screen reader.
+- A check of a permission prompt: read the session's `permissionMode` first (in auto mode a
+  classifier answers the ask, so the test proves nothing); report it with the result.
 - Manual items: numbered steps a person who never saw the code can follow (which button, which
   input; only UI that exists: grep the label or route), plus an observable expected result (a
   number only after reading the code that writes it).
