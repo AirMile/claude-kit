@@ -14,6 +14,10 @@ const CATALOG = [
 
 const AGY_MODELS = [
   "Fetching available models...",
+  "gemini-4-hydrogen-high\tGemini 4 Hydrogen (High)",
+  "gemini-4-hydrogen-xhigh\tGemini 4 Hydrogen (XHigh)",
+  "gemini-4-hydrogen-medium\tGemini 4 Hydrogen (Medium)",
+  "gemini-4-hydrogen-low\tGemini 4 Hydrogen (Low)",
   "gemini-3.8-flash-high\tGemini 3.8 Flash (High)",
   "gemini-3.8-flash-medium\tGemini 3.8 Flash (Medium)",
   "gemini-3.8-flash-low\tGemini 3.8 Flash (Low)",

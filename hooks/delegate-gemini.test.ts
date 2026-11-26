@@ -8,7 +8,12 @@ const IDS = [
   "gemini-3.8-flash-high",
   "gemini-3.8-flash-medium",
   "gemini-3.8-flash-low",
-  "gemini-4-flash-high",
+  "gemini-3.8-hydrogen-high",
+  "gemini-4-hydrogen-high",
+  "gemini-4-hydrogen-xhigh",
+  "gemini-4-hydrogen-medium",
+  "gemini-4-hydrogen-low",
+  "gemini-5-flash-high",
   "claude-sonnet-4-6",
   "gpt-oss-120b-medium",
 ];
@@ -19,9 +24,12 @@ const ok = (response: string, id = "c-1") =>
 test("geminiRoute takes the newest Gemini at the role's effort and never another provider's model", () => {
   expect(geminiRoute("research", IDS)).toMatchObject({
     provider: "gemini",
-    model: "gemini-4-flash-high",
+    model: "gemini-4-hydrogen-high",
     effort: "high",
     writes: false,
+  });
+  expect(geminiRoute("research", IDS, "flash")).toMatchObject({
+    model: "gemini-5-flash-high",
   });
   expect(geminiRoute("search", IDS)).toMatchObject({ effort: "low" });
   expect(geminiRoute("build", IDS)).toMatchObject({
@@ -54,19 +62,20 @@ test("provider gemini runs read-only in plan mode and returns only the response"
   const argv = w.spawned[0]?.argv ?? [];
   expect(argv[0]).toBe("/bin/agy");
   expect(argv).toContain("plan");
-  expect(argv).toContain("gemini-3.8-flash-high");
+  expect(argv).toContain("gemini-4-hydrogen-high");
   expect(argv).toContain("json");
   expect(argv.at(-1)).toContain("--print=Weigh this.");
-  expect(out).toContain("Gemini 3.8 Flash (research, plan, read-only, effort high)");
+  expect(out).toContain("Gemini 4 Hydrogen (research, plan, read-only, effort high)");
   expect(out).toContain("Conclusion: fine.");
   expect(out).toContain('thread c-1');
   expect(w.spawned.some((s) => s.argv[0] === "/bin/codex")).toBe(false);
 });
 
-test("a family flash or pro implies Gemini; a GPT family stays on GPT", async ($, on) => {
+test("a Gemini family implies Gemini; a GPT family stays on GPT", async ($, on) => {
   const w = world(on, { agy: { json: ok("done") } });
   await delegate($, { role: "plan", brief: "Plan.", family: "flash" });
   expect(w.spawned[0]?.argv[0]).toBe("/bin/agy");
+  expect(w.spawned[0]?.argv).toContain("gemini-3.8-flash-high");
   const bad = await delegate($, {
     role: "plan",
     brief: "Plan.",
