@@ -262,7 +262,7 @@ export function route(i: RouteInput): Route {
 }
 
 // Gemini through the Antigravity CLI (agy): only on request (provider "gemini"), never by the
-// band: agy shows no meters, so there is nothing to balance. Ids read `gemini-<version>-<family>-
+// band: its meters are shown there (agy-usage.ts) but routing does not weigh them. Ids read `gemini-<version>-<family>-
 // <effort>`; the newest version of the asked family wins, Hydrogen when none is named, and the
 // other models agy lists (Claude, GPT-OSS) are never picked.
 export type Provider = "gpt" | "gemini";

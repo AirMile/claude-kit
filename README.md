@@ -601,7 +601,8 @@ Hands a task to a Gemini model through the Antigravity CLI (`agy`), the same way
 for GPT. Claude recognises "Gemini", "agy" and "Antigravity" like the GPT names ("vraag Gemini
 wat hij hiervan vindt"); "GPT en Gemini" runs both blind on the same brief and compares them.
 Runs read-only (`--mode plan`) unless you asked for an implementation. It uses no `mcp__kit__`
-tool for the hand route; with the kit mod `mcp__kit__delegate` runs it (`provider: "gemini"`): only the response and the changed files come back, a Gemini review counts as another family's review in flow, and a writing role asks first. No meters or balance: it runs only when you ask for it.
+tool for the hand route; with the kit mod `mcp__kit__delegate` runs it (`provider: "gemini"`): only the response and the changed files come back, a Gemini review counts as another family's review in flow, and a writing role asks first. No balance: it runs only when you ask for it (the
+band's rings show its meters).
 
 ### /launch
 
@@ -834,8 +835,7 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   `/kitcompact off|on` per project (`/autocompact` is Claude Code's own command). A compact that fails turns it off until `/clear`.
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
-- **The band** above the prompt, one line: usage at the left
-  (`114k  5h 55% · 2h 53m  weekly 12% · 4d 3h`, each limit with the time until it resets), then
+- **The band** above the prompt, one line: usage at the left (see **Usage** below), then
   the model with its effort, the profile, GPT, the limit button, `⎇` and `⌘`
   (the skills menu, with the dashboard's open and close). The context figure and `⎇` open a menu in its own block above the
   band (hover to peek, press to keep it open): **Compact** and **Clear**, run at once or when
@@ -1069,9 +1069,14 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   turn, sleep included; a ping's own turn does not reset them.
 
 - **`/band`** draws the band above the prompt again; folded (`[+]`)? `ctrl+x ctrl+a` unfolds it.
-- **Usage**: `114k  5h 55% · 2h 53m  weekly 75% · 4d 3h` at the band's left: context, then the
-  5-hour and 7-day limits, each with the time until it resets; updated after
-  every turn.
+- **Usage** at the band's left: the context, then the 5-hour and 7-day limits, updated after
+  every turn. On a terminal as text: `5h 55%·2% 2h53m`, Claude's share, ChatGPT's dim beside it
+  and Claude's time until reset. In the desktop app (and wherever the app draws pictures) as one
+  ring per window, `5h` and `wk`, each with three arcs: Claude outside, ChatGPT between, Gemini
+  inside, red from 90%. Claude's share and reset always stand beside the ring; pointing at the
+  rings shows all three plans in figures. Gemini's come from `agy --print=/usage` (no model
+  run, no tokens), read at most every 10 minutes while the rings are drawn; without agy or a
+  reading its arc stays empty.
 
 **Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
 columns, above the prompt otherwise):

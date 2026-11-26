@@ -2,7 +2,7 @@ import type { CommandSpec, EngineInterface, On } from "claude-code";
 
 import { getMode, runState, setMode } from "./auto-model";
 import { type Menu, menuBody } from "./band-menus";
-import { meterLine, meterRows } from "./band-meters";
+import { meterLine, meterRings, meterRows, usageTable } from "./band-meters";
 import { gptOn, setGptOn } from "./codex-run";
 import { warmInfo } from "./keep-warm";
 import {
@@ -29,8 +29,9 @@ import { PANE, type Usage } from "./panel-parts";
 
 // The band above the prompt, one line that never wraps, an open menu (a bordered
 // block) above it: shown while the pointer rests on its button, kept open by a press. Left:
-// context and plan usage, Claude's share with ChatGPT's beside it and Claude's reset
-// (band-meters.tsx; register.tsx measures it after each turn); the context figure is a button opening Compact and Clear, run just after the press.
+// context and plan usage (band-meters.tsx: text on a terminal, elsewhere a 5h and a week ring
+// of all three plans; register.tsx measures after each turn); the context figure is a button
+// opening Compact and Clear, run just after the press.
 // Right: the model with the profile's effort, or with the profile off the effort between ‹
 // and ›, a step down or up (below low: the session's own); then switches a press cycles: the
 // profile (◔ ◑ ● for Lean, Balanced, Quality from auto-model.ts, ○ dim for off), GPT (on or off, codex-run.ts), the
@@ -132,9 +133,13 @@ export function kitBand(on: On) {
     // Each menu is drawn: the pressed one open, the others hidden until the pointer rests on
     // their button (or on the menu itself), which shares its hover scope. A press still opens
     // it for the keyboard.
-    const MENUS: Menu[] = ["ctx", "git", "skills"];
+    const MENUS: Menu[] = ["usage", "ctx", "git", "skills"];
     const menus = MENUS.map((m) => {
-      const body = menuBody($, m, state);
+      // "usage" is the rings' figures: only where rings are drawn.
+      const body =
+        m === "usage"
+          ? e.surface !== "terminal" && usageTable(ui, rows)
+          : menuBody($, m, state);
       if (!body) return null;
       const open = menu === m;
       // The blank line below the block belongs to the hovered Box (padding, not margin), so the
@@ -144,7 +149,7 @@ export function kitBand(on: On) {
         <Box
           key={`kit-menu-${m}`}
           flexDirection="column"
-          alignItems={m === "ctx" ? "flex-start" : "flex-end"}
+          alignItems={m === "ctx" || m === "usage" ? "flex-start" : "flex-end"}
           paddingBottom={1}
           display={open ? "flex" : "none"}
           hover={open ? undefined : { scope: `kit-${m}`, display: "flex" }}
@@ -156,6 +161,13 @@ export function kitBand(on: On) {
         </Box>
       );
     });
+    const meters = (
+      <Box key="kit-meters" gap={2}>
+        {e.surface === "terminal"
+          ? meterLine(ui, rows)
+          : meterRings($.ui.resolve(e), rows)}
+      </Box>
+    );
     // A trigger button in a Box that joins its menu's hover scope.
     const trigger = (m: Menu, button: unknown) => (
       <Box
@@ -179,9 +191,7 @@ export function kitBand(on: On) {
                 onPress={() => unfold($, "ctx")}
               />,
             )}
-            <Box key="kit-meters" gap={2}>
-              {meterLine(ui, rows)}
-            </Box>
+            {e.surface === "terminal" ? meters : trigger("usage", meters)}
           </Box>
           <Box key="kit-actions" gap={1} flexShrink={0}>
             {run.auto ? null : (

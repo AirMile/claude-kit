@@ -1,5 +1,6 @@
 import type { EngineInterface, Register, SessionUsage } from "claude-code";
 
+import { geminiCached, readGemini } from "./agy-usage";
 import { autoModel, modeCommand } from "./auto-model";
 import { freshStart, freshTool } from "./fresh-start";
 import { codexHint, gptCached, gptOn, gptStatus } from "./codex-run";
@@ -42,7 +43,8 @@ import { syncWindows } from "./window-sync";
 // - Native compaction priorities and spec recovery (compaction.ts).
 // - /pin: the user's own text restored word for word after every compaction (pins).
 // - The user's latest messages, restored the same way (recent).
-// - Context and plan limits as the band's second line (kit-band.tsx).
+// - Context and plan limits as the band's second line (kit-band.tsx); Gemini's from agy's
+//   /usage (agy-usage).
 // - The panes: the dashboard on /panel (panel-open, panel-view) and the band's button
 //   (kit-band), and the theme pane, whose tool the theme skill calls with data (theme-view).
 // - Model and effort picked per prompt and per subagent from a profile (auto-model), chosen
@@ -103,22 +105,34 @@ async function refresh($: EngineInterface, figures?: Figures) {
   }
   // ChatGPT's windows, as Codex last reported them, while GPT is on; read again at most every
   // 10 minutes.
+  // Gemini's, as agy's /usage last reported them (agy-usage.ts).
   const on = await gptOn($);
   const gpt = on ? gptCached() : undefined;
-  for (const [kind, label] of [
-    ["five_hour", "gpt 5h"],
-    ["seven_day", "gpt wk"],
-  ] as const) {
-    const w = gpt?.error ? undefined : gpt?.limits[kind];
-    if (w)
-      meters.push({
-        label,
-        value: `${Math.round(w.pct)}%`,
-        pct: w.pct,
-        note: untilReset(w.resetsAt, now),
-      });
-  }
+  for (const [plan, windows] of [
+    ["gpt", gpt?.error ? undefined : gpt?.limits],
+    ["gem", geminiCached()],
+  ] as const)
+    for (const [kind, label] of [
+      ["five_hour", "5h"],
+      ["seven_day", "wk"],
+    ] as const) {
+      const w = windows?.[kind];
+      if (w)
+        meters.push({
+          label: `${plan} ${label}`,
+          value: `${Math.round(w.pct)}%`,
+          pct: w.pct,
+          note: untilReset(w.resetsAt, now),
+        });
+    }
   if (on) void gptStatus($);
+  // Only rings show Gemini, so agy is asked only where a surface draws them; in the
+  // background, and a new reading is drawn as it arrives.
+  const surfaces = await $.session.surfaces().catch(() => []);
+  if (surfaces.some((s) => s !== "terminal"))
+    void readGemini($)
+      .then((read) => (read ? refresh($) : undefined))
+      .catch(() => {});
   bandUsage(meters);
   $.ui.invalidate("ui.render");
 }
