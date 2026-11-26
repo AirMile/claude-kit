@@ -57,6 +57,7 @@ test("an agy that answers /usage with anything else is not asked again", async (
   expect(w.asked).toHaveLength(1);
   const ui = await mountBand($, "desktop");
   expect(await ui.findAll({ type: "Svg" })).toHaveLength(2);
-  expect(await ui.find({ type: "Text", text: "● Gemini" })).toBeUndefined();
+  // its line stays for the switch, without figures
+  expect(await ui.find({ type: "Text", text: "wk –" })).toBeDefined();
   await ui.unmount();
 });

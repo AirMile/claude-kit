@@ -150,6 +150,7 @@ test("a review runs read-only with the brief and asks for ranked findings", asyn
 
 test("without Codex a plan is made here and research stays on Claude", async ($, on) => {
   const w = world(on, {
+    store: { gemini: false },
     status: {
       argv: null,
       state: "missing",
@@ -329,7 +330,7 @@ test("without GPT room a heavy task's review goes to a fresh Claude reviewer", a
   const w = world(on, {
     events: EVENTS,
     fullAfter: 0,
-    store: { flowTasks: { s1: newTask(now, "heavy") } },
+    store: { gemini: false, flowTasks: { s1: newTask(now, "heavy") } },
   });
   const out = await delegate($, {
     role: "review",

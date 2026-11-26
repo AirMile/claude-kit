@@ -36,7 +36,6 @@ import {
 } from "./model-switch";
 import { forgetPlan, getPlan, planCommand, planName } from "./plan";
 import { notePrompt } from "./auto-compact";
-import { noteAgent } from "./chat-facts";
 import { flowPrompt } from "./flow";
 import { spawnRecorded } from "./spawn-record";
 
@@ -315,7 +314,6 @@ export function autoModel(on: On) {
   });
 
   on("agent.spawn", async ($, e, next) => {
-    noteAgent(e.subagentType);
     const now = await getMode($);
     if (now === "off" || e.fork) return spawnRecorded($, e, await next(e));
     const isEngine = e.provider.plugin === "engine";

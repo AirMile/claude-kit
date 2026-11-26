@@ -154,11 +154,21 @@ test("a full window leaves the review open and plans here", async () => {
   expect(route(at({ role: "review", gpt, risky: true }))).toEqual({
     provider: "none",
     reason: `${full}; a V3 task needs another family: it stays open until it has a review or the user waives it`,
+    gptOut: full,
   });
   expect(route(at({ role: "plan", gpt }))).toEqual({
     provider: "none",
     reason: `${full}: plan here`,
+    gptOut: full,
   });
+  // Gemini may stand in only for a review or plan GPT cannot take, not for GPT's own code or
+  // a follow-up on a GPT thread.
+  for (const other of [
+    route(at({ role: "review", gpt, author: "gpt" })),
+    route(at({ role: "review", gpt, continues: "sol" })),
+    route(at({ role: "research", gptOn: false })),
+  ])
+    expect("gptOut" in other).toBe(false);
   expect(route(at({ role: "plan", gpt: undefined }))).toMatchObject({
     reason: "Codex is not available here: plan here",
   });

@@ -52,7 +52,7 @@ as it says.
   project's AGENTS.md", and a short final report (what it found or changed, checks with their
   result, open points).
 - **Sandbox**: read-only for opinions, reviews, research and plans. Writing only when the user
-  asked for an implementation, or the band's GPT switch is on (its standing request).
+  asked for an implementation, or kit's GPT switch is on (its standing request).
   Codex commits, pushes and deploys nothing.
 - **Long runs**: wait for the end; don't poll. Edit none of the files Codex works on meanwhile;
   one writing run at a time.

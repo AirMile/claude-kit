@@ -1,9 +1,11 @@
 import type { EngineInterface, Register, SessionUsage } from "claude-code";
 
-import { geminiCached, readGemini } from "./agy-usage";
+import { readGemini } from "./agy-usage";
+import { geminiCommand } from "./gemini-command";
+import { geminiOn } from "./gemini-switch";
 import { autoModel, modeCommand } from "./auto-model";
 import { freshStart, freshTool } from "./fresh-start";
-import { codexHint, gptCached, gptOn, gptStatus } from "./codex-run";
+import { codexHint, gptOn, gptStatus } from "./codex-run";
 import { delegateTool, delegation, gptCommand } from "./delegate";
 import { runTaskTool, taskRunner } from "./task-runner";
 import { noteClaudeLimits } from "./delegate-balance";
@@ -24,7 +26,6 @@ import {
   resetAutoCompact,
 } from "./auto-compact";
 import { endsOnQuestion } from "./context-policy";
-import { noteFile, resetChat } from "./chat-facts";
 import { compaction } from "./compaction";
 import { pinCommand, pins } from "./pins";
 import { recent } from "./recent";
@@ -32,9 +33,7 @@ import { bandCommand, bandUsage, kitBand } from "./kit-band";
 import { noteStop, warmCommand } from "./keep-warm";
 import { limitCommand } from "./limit-command";
 import { leavePause, limitCommandWatch, noteLimits } from "./limit-guard";
-import { panelCommand, panelOpen } from "./panel-open";
-import { panelView } from "./panel-view";
-import type { Usage } from "./panel-parts";
+import { untilReset, type Usage } from "./band-meters";
 import { themeTool, themeView } from "./theme-view";
 import { readWatch } from "./read-watch";
 import { syncWindows } from "./window-sync";
@@ -45,8 +44,7 @@ import { syncWindows } from "./window-sync";
 // - The user's latest messages, restored the same way (recent).
 // - Context and plan limits as the band's second line (kit-band.tsx); Gemini's from agy's
 //   /usage (agy-usage).
-// - The panes: the dashboard on /panel (panel-open, panel-view) and the band's button
-//   (kit-band), and the theme pane, whose tool the theme skill calls with data (theme-view).
+// - The theme pane, whose tool the theme skill calls with data (theme-view).
 // - Model and effort picked per prompt and per subagent from a profile (auto-model), chosen
 //   in the band above the prompt or with /mode.
 // - A pause before the plan limit runs out (limit-guard), and the cache kept warm while work
@@ -65,18 +63,6 @@ type Meter = Usage;
 const SPEC_PATH = /docs\/specs\/[^/]+\.md$/;
 
 let meters: Meter[] = [];
-
-function untilReset(iso: string | undefined, now: number): string {
-  const min = iso
-    ? Math.max(0, Math.round((Date.parse(iso) - now) / 60000))
-    : 0;
-  const [d, h, m] = [
-    Math.floor(min / 1440),
-    Math.floor(min / 60) % 24,
-    min % 60,
-  ];
-  return d ? `${d}d${h}h` : h ? `${h}h${m}m` : `${m}m`;
-}
 
 async function refresh($: EngineInterface, figures?: Figures) {
   const usage = figures ?? (await $.session.usage());
@@ -103,33 +89,13 @@ async function refresh($: EngineInterface, figures?: Figures) {
         note: untilReset(rl.resetsAt, now),
       });
   }
-  // ChatGPT's windows, as Codex last reported them, while GPT is on; read again at most every
-  // 10 minutes.
-  // Gemini's, as agy's /usage last reported them (agy-usage.ts).
-  const on = await gptOn($);
-  const gpt = on ? gptCached() : undefined;
-  for (const [plan, windows] of [
-    ["gpt", gpt?.error ? undefined : gpt?.limits],
-    ["gem", geminiCached()],
-  ] as const)
-    for (const [kind, label] of [
-      ["five_hour", "5h"],
-      ["seven_day", "wk"],
-    ] as const) {
-      const w = windows?.[kind];
-      if (w)
-        meters.push({
-          label: `${plan} ${label}`,
-          value: `${Math.round(w.pct)}%`,
-          pct: w.pct,
-          note: untilReset(w.resetsAt, now),
-        });
-    }
-  if (on) void gptStatus($);
+  // The other plans' windows are drawn by the band from what was last read (kit-band.tsx):
+  // here they are only read again when old, while their switch is on.
+  if (await gptOn($)) void gptStatus($);
   // Only rings show Gemini, so agy is asked only where a surface draws them; in the
   // background, and a new reading is drawn as it arrives.
   const surfaces = await $.session.surfaces().catch(() => []);
-  if (surfaces.some((s) => s !== "terminal"))
+  if (surfaces.some((s) => s !== "terminal") && (await geminiOn($)))
     void readGemini($)
       .then((read) => (read ? refresh($) : undefined))
       .catch(() => {});
@@ -138,8 +104,6 @@ async function refresh($: EngineInterface, figures?: Figures) {
 }
 
 export const register: Register = (on) => {
-  panelView(on);
-  panelOpen(on);
   themeView(on);
   freshStart(on);
   readWatch(on);
@@ -161,7 +125,6 @@ export const register: Register = (on) => {
     await $.tool.register(freshTool);
     await $.tool.register(delegateTool);
     await $.tool.register(runTaskTool);
-    await $.command.register(panelCommand);
     await $.command.register(modeCommand);
     await $.command.register(warmCommand);
     await $.command.register(limitCommand).catch((err) => {
@@ -169,6 +132,10 @@ export const register: Register = (on) => {
     });
     await $.command.register(bandCommand);
     await $.command.register(gptCommand);
+    // A generic name, like /pin: another plugin holding it must not stop session start.
+    await $.command.register(geminiCommand).catch((err) => {
+      $.ui.toast(`kit: could not register /gemini (${String(err)})`);
+    });
     await $.command.register(flowCommand);
     await $.command.register(guardCommand);
     await $.command.register(commitGateCommand);
@@ -188,11 +155,10 @@ export const register: Register = (on) => {
   });
 
   // A /clear fires no session.start or measure until the next turn: drop the old context
-  // figure now, or the dashboard keeps showing it in the fresh chat.
+  // figure now, or the band keeps showing it in the fresh chat.
   on("session.end", async ($, e, next) => {
     if (e.reason === "clear" || e.reason === "resume") leavePause($);
     if (e.reason === "clear") {
-      resetChat();
       resetAutoCompact();
       await resetFlow($);
       meters = meters.filter((m) => m.label !== "ctx");
@@ -236,7 +202,6 @@ export const register: Register = (on) => {
 
   on("tool.call", { tool: ["Edit", "Write"] }, async ($, e, next) => {
     const ran = await next(e);
-    if (!e.agentId) noteFile(e.file_path);
     if (SPEC_PATH.test(e.file_path.replace(/\\/g, "/"))) await refresh($);
     if (ran.deny !== undefined || ran.isError) return ran;
     // Flow: the change counts for the open task, a subagent's too; a note rides along when the

@@ -123,7 +123,6 @@ export async function runText(ui: {
 
 // The band as the terminal draws it; a press acts as a click does.
 export function band($: Parameters<TestBody>[0], on: On) {
-  on("ui.panes", async () => ({ value: [] }));
   on("clock.every", () => new Promise<never>(() => {}));
   return $.ui.mount({
     plugin: "kit",

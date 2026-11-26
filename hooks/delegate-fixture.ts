@@ -36,6 +36,10 @@ export function world(
     fullAfter?: number; // ChatGPT's 5h window reads full after this many runs
     usage?: { fails: boolean }; // Claude's week reads 0% used, until the read fails
     agyJsons?: string[]; // one stdout per agy run, in order (a retry gets the second)
+    noAgy?: boolean; // agy is not installed
+    brokenKey?: string; // reading this store key fails
+    brokenWrite?: string; // writing this store key fails
+    offDuring?: "diff" | "status" | "agy"; // the Gemini switch is turned off during that run
   } = {},
 ) {
   const spawned: { argv: readonly string[]; input?: string }[] = [];
@@ -45,8 +49,12 @@ export function world(
   on("session.root", async () => ({ value: "/p/app" }));
   on("ui.notice", async () => ({ value: undefined }));
   on("clock.now", async () => ({ value: NOW }));
-  on("store.get", async (_$, e) => ({ value: store[e.key] }));
+  on("store.get", async (_$, e) => {
+    if (e.key === opts.brokenKey) throw new Error("store broke");
+    return { value: store[e.key] };
+  });
   on("store.set", async (_$, e) => {
+    if (e.key === opts.brokenWrite) throw new Error("store broke");
     store[e.key] = e.value;
     return { value: undefined };
   });
@@ -97,7 +105,7 @@ export function world(
           exitCode: 0,
           isStdoutTruncated: false,
           isStderrTruncated: false,
-          stdout: "/bin/agy\n",
+          stdout: opts.noAgy ? "" : "/bin/agy\n",
           stderr: "",
         },
       };
@@ -112,6 +120,8 @@ export function world(
         },
       };
     if (e.argv[1] === "status") gitCalls++;
+    if (opts.offDuring && e.argv.includes(opts.offDuring))
+      store.gemini = false;
     return {
       value: {
         exitCode: 0,
@@ -130,6 +140,7 @@ export function world(
   on("process.spawn", async function* (_$, e) {
     spawned.push({ argv: e.argv, input: e.input });
     if (e.argv[0] === "/bin/agy") {
+      if (opts.offDuring === "agy") store.gemini = false;
       const next = opts.agyJsons ? opts.agyJsons.shift() : undefined;
       yield { stream: "stdout" as const, text: next ?? opts.agy?.json ?? "" };
       return { value: { code: opts.agy?.code ?? 0, signal: null } };

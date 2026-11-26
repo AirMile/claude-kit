@@ -67,6 +67,12 @@ export async function flowGateLevel($: EngineInterface): Promise<number> {
   return state.task ? gateLevel(state.task) : 0;
 }
 
+// Whether Gemini wrote source in the open task: it may then not review it.
+export async function flowGeminiWrote($: EngineInterface): Promise<boolean> {
+  await load($);
+  return !!state.task?.geminiWrote;
+}
+
 // A check counts for the worktree it started on, whoever ran it (a subagent's too).
 export async function flowCheckStart(
   $: EngineInterface,

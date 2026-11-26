@@ -13,8 +13,8 @@ and judges it. `agy` shares no context with this chat.
 Same recognition as `/codex`: the names `Gemini`, `agy` and `Antigravity` all mean this skill,
 the way `GPT`, `Sol`, `Astra`, `Luna` and `Terra` mean `/codex`. "GPT en Gemini" / "GPT en agy" /
 "alle modellen" → run both, blind to each other (briefs identical, neither sees the other's
-answer), then compare. Never let one provider stand in for the other, and never report a name
-you cannot run as "no access" before checking `which agy`.
+answer), then compare. A provider the user named is never replaced by the other, and never report
+a name you cannot run as "no access" before checking `which agy`.
 
 ## With `mcp__kit__delegate` (the usual way)
 
@@ -22,9 +22,10 @@ Call it with `provider: "gemini"` (or `family: "hydrogen"` / `"flash"` / `"pro"`
 for GPT: it runs `agy` here, keeps its log out of this chat and returns the response, the
 changed files and a `thread` for a follow-up (also `provider: "gemini"`). A review by Gemini
 counts as another family's review for code Claude or GPT wrote, with `author` set to who wrote
-it; Gemini never reviews its own code (`author: "gemini"`). It runs only when asked for: no
-balance (the band's rings show its meters, routing does not weigh them). A writing role asks
-the user first, as the band's GPT switch does not cover it. A brief over 200000 characters is refused.
+it; Gemini never reviews its own code (`author: "gemini"`). Unasked it only takes a review or
+plan GPT cannot (switched off or no room) while kit's Gemini switch is on, and the answer says
+so (a review sends the whole uncommitted diff); routing does not weigh its meters. A writing role asks the user first, as the GPT switch
+does not cover it. A brief over 200000 characters is refused.
 
 Headless `agy` ends the whole run with no answer at the first denied tool call (a shell command, or
 a file outside the workspace). The tool reads which one from agy's JSON, retries once in the same

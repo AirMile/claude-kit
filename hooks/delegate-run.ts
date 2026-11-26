@@ -215,6 +215,7 @@ export async function runGemini(
   conversation?: string,
   deadlineMs?: number,
   dirs: readonly string[] = [],
+  allowed?: () => Promise<boolean>, // asked right before agy starts
 ): Promise<{ run: AgyRun; files: string[] }> {
   const root = await $.session.root();
   const before = await changed($, root);
@@ -224,12 +225,14 @@ export async function runGemini(
     if (t - last < 2000) return;
     last = t;
     try {
-      $.ui.notice(toolUseId, `Gemini ${r.name} · ${role} · ${line}`);
+      $.ui.notice(toolUseId, `${r.name} · ${role} · ${line}`);
     } catch {
       // the call's dialog is gone: nothing to show it under
     }
   };
   const go = async (text: string, thread?: string): Promise<AgyRun> => {
+    if (allowed && !(await allowed()))
+      return { answer: "", error: "agy was not started" };
     try {
       return await runAgy(
         $,
