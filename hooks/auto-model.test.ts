@@ -201,47 +201,12 @@ test("clear behind the band's context figure clears just after the press", async
   expect(w.cleared).toEqual(["clear"]);
 });
 
-test("Commit, first in the band's Git menu, starts /kit:commit", async ($, on) => {
+test("the band offers no Git button, skills menu or dashboard", async ($, on) => {
   world(on, { model: "claude-haiku-5-5", label: QUESTION, drawn: true });
-  const ran: string[] = [];
-  on("command.run", { command: "kit:commit" }, async () => {
-    ran.push("kit:commit");
-    return { text: "" };
-  });
   const ui = await band($, on);
-  await ui.press({ key: "kit-git" });
-  await ui.press({ key: "kit-git-Commit" });
-  expect(ran).toEqual(["kit:commit"]);
-});
-
-test("the band's Git menu sends its item as a prompt", async ($, on) => {
-  const w = world(on, {
-    model: "claude-haiku-5-5",
-    label: QUESTION,
-    drawn: true,
-  });
-  const ui = await band($, on);
-  await ui.press({ key: "kit-git" });
-  await ui.press({ key: "kit-git-Push" });
-  expect(w.sent.map((m) => m.text)).toEqual([
-    "Push the current branch to origin.",
-  ]);
-});
-
-test("the band's GPT switch turns GPT off with a press", async ($, on) => {
-  const w = world(on, {
-    model: "claude-opus-5-5",
-    label: ROUTINE,
-    turns: 5,
-    drawn: true,
-  });
-  const ui = await band($, on);
-  await $.prompt.submit({ text: "add a submit button", origin: TYPED });
-  expect((await ui.find({ key: "kit-gpt" }))?.text).toBe("GPT");
-  await ui.press({ key: "kit-gpt" });
-  expect(w.store.gpt).toBe(false);
-  expect((await ui.find({ key: "kit-gpt" }))?.text).toBe("GPT off");
-  expect(await ui.find({ key: "kit-opinion" })).toBeFalsy();
+  expect(await ui.find({ key: "kit-ctx" })).toBeDefined();
+  for (const key of ["kit-git", "kit-git-Commit", "kit-skills", "kit-dashboard"])
+    expect(await ui.find({ key })).toBeFalsy();
 });
 
 for (const route of ["off", "fork", "custom", "picked"]) {

@@ -32,23 +32,25 @@ export type GptStatus = {
 };
 
 let status: GptStatus | undefined;
-let gpt: boolean | undefined; // the band's GPT switch, read from $.store on first use
+let gpt: boolean | undefined; // the GPT switch as last read from $.store
 let loading: Promise<GptStatus> | undefined;
 
-// The band's GPT switch (on unless turned off, kept across sessions): off, no GPT model is used
-// unless the user names one, Codex is not read and the band shows no ChatGPT meters.
+// The GPT switch (on unless turned off, kept across chats; the rings' table and /gpt): off, no
+// GPT model is used unless the user names one, Codex is not read and the band shows no ChatGPT
+// meters. Read from the store each time, so a switch flipped in another chat holds here too.
 export async function gptOn($: EngineInterface): Promise<boolean> {
-  if (gpt === undefined) {
-    gpt = (await $.store.get(GPT_KEY).catch(() => undefined)) !== false;
+  const next = (await $.store.get(GPT_KEY).catch(() => undefined)) !== false;
+  if (next !== gpt) {
+    gpt = next;
     await refreshBalance($);
   }
-  return gpt;
+  return next;
 }
 
 export async function setGptOn($: EngineInterface, next: boolean) {
+  await $.store.set(GPT_KEY, next).catch(() => {});
   gpt = next;
   await refreshBalance($);
-  await $.store.set(GPT_KEY, next).catch(() => {});
 }
 
 async function refreshBalance($: EngineInterface) {

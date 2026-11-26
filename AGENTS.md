@@ -15,14 +15,13 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   `/kitcompact` (`hooks/auto-compact.ts` on the pure `hooks/context-policy.ts`), `/pin` text that
   survives compaction word for word (`hooks/pins.ts`), the user's latest messages restored the
   same way (`hooks/recent.ts`; per-chat storage in `hooks/chat-store.ts`), usage figures, the tool
-  `mcp__kit__theme_view` (`hooks/theme-view.tsx`) that `/theme` calls to open its pane, the
-  dashboard pane on `/panel` and the band's button (`hooks/panel-open.ts`, `hooks/panel-view.tsx`,
-  drawn by the pure `panel-tabs.tsx` on `panel-parts.tsx`; the Session tab's facts in
-  `hooks/chat-facts.ts`), the band
+  `mcp__kit__theme_view` (`hooks/theme-view.tsx`) that `/theme` calls to open its pane, the band
   above the prompt (`hooks/kit-band.tsx`: one line of usage, switches a press
-  cycles (the profile, GPT on or off, the limit button (Off (default), Warm, Limit: pause + warm while work is open; per chat)), the effort with ‹ › when the profile is off, git, dashboard; the menus in
+  cycles (the profile, the limit button (Off (default), Warm, Limit: pause + warm while work is open; per chat)), the effort with ‹ › when the profile is off; the context menu in
   `hooks/band-menus.tsx`, the plan meters in `hooks/band-meters.tsx`: text on a terminal, elsewhere a 5h and a
-  week ring of Claude, ChatGPT and Gemini (the pure `hooks/band-rings.ts`), Gemini's figures from
+  week ring of Claude, ChatGPT and Gemini (the pure `hooks/band-rings.ts`) with the GPT and
+  Gemini switches in their hover table (`hooks/gemini-switch.ts`, `/gemini` in
+  `hooks/gemini-command.ts`), Gemini's figures from
   `agy --print=/usage` in `hooks/agy-usage.ts`), model/effort per prompt and subagent
   (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, switches kept by `hooks/model-switch.ts`, the Claude plan in `hooks/plan.ts`, `/mode`; every started subagent noted and logged by `hooks/spawn-record.ts`), flow (`hooks/flow.ts` on the pure `hooks/flow-policy.ts`, `hooks/flow-check.ts` and
   `hooks/flow-log.ts`, review and verifier glue in `hooks/flow-agents.ts`, evidence in
@@ -35,11 +34,12 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   `hooks/commit-gate-policy.ts`: `git commit` is denied while the open medium or heavy task is unverified, by the
   Stop gate's own evidence, `/commitgate off` per project),
   `mcp__kit__delegate` (`hooks/delegate.ts` on the pure `hooks/delegate-policy.ts`: review,
-  second plan and a named model to GPT, on Claude Pro research and building too, within
+  second plan and a named model to GPT (Gemini stands in for a review or plan GPT cannot
+  take), on Claude Pro research and building too, within
   ChatGPT's limits (`hooks/gpt-limits.ts`), the newest GPT model per family; the
   Codex side, its catalog, the ChatGPT meters, the GPT switch and a run, in `hooks/codex-run.ts`;
   `/gpt` command in `hooks/gpt-command.ts`; its GPT run, route and writer lock in
-  `hooks/delegate-run.ts`), `mcp__kit__run_task` (`hooks/task-runner.ts` on the pure
+  `hooks/delegate-run.ts`, the Gemini side in `hooks/delegate-gemini.ts`), `mcp__kit__run_task` (`hooks/task-runner.ts` on the pure
   `hooks/task-runner-policy.ts`: one GPT change, the chat's checks run by the mod, fixes on the
   same thread), ChatGPT's 5h window started with a new Claude one
   (`hooks/window-sync.ts` on the pure `hooks/window-sync-policy.ts`), GPT readiness and both plans' meters (`hooks/balance.ts`, `hooks/delegate-balance.ts`),
@@ -98,8 +98,9 @@ product and `§ Backlog`, `setup` for AGENTS/decisions, `task-readiness/referenc
   plus `organizationType` from the login's `~/.claude.json` (`hooks/plan.ts`); it writes only
   `$.store` (pins among it). It starts Codex only for `mcp__kit__delegate`,
   `mcp__kit__run_task` and the window-sync ping: what a writing run changes is Codex's work, in
-  Codex's sandbox, reviewed by the chat. It starts agy only for `mcp__kit__delegate` and, where
-  the band draws rings, read-only for `/usage` (no model run). The only other commands it runs for the chat are the
+  Codex's sandbox, reviewed by the chat. It starts agy only for `mcp__kit__delegate` (also in
+  place of GPT for a review or plan, read-only, while the Gemini switch is on) and read-only for
+  `/usage` (no model run) where the band draws rings or `/gemini` asks. The only other commands it runs for the chat are the
   check argvs the chat passes to `run_task` (as the user, after the permission prompt). Flow reads the
   chat's own tool calls (Edit/Write, Bash), subagents' answers and read-only git state (`ls-files`,
   diff, `hash-object` without `-w`), and holds a turn's end; it writes only `$.store` (its
@@ -131,7 +132,9 @@ product and `§ Backlog`, `setup` for AGENTS/decisions, `task-readiness/referenc
   (shellcheck on `evals/*/fixture.sh`; skips when `shellcheck` isn't installed). The install is a cached copy per version: to
   use edits, bump `version` in both `plugin.json` files, then
   `claude plugin marketplace update airmile && claude plugin update kit@airmile` (or test with
-  `claude --plugin-dir .`).
+  `claude --plugin-dir .`). The desktop app can load the claude.ai copy (marketplace
+  `claude-kit`, from GitHub) instead: after a push the user presses **Check for updates** there
+  (claude.ai › Add › Manage marketplaces) and starts a new session.
 
 ## Evals
 

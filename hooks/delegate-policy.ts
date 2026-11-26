@@ -1,9 +1,9 @@
 import { gptRefusal, runCost, shareRefusal } from "./gpt-limits";
 import type { Effort, Plan } from "./model-policy";
 
-// Where a delegated piece of work runs: Claude, or GPT through Codex. GPT always takes what only
+// Where a delegated piece of work runs: Claude, or GPT through Codex. GPT takes what only
 // another model family can give: a review of this chat's work and a blind second plan (Sol; Astra
-// for the riskiest review), and any role on a model the user names. On Claude Pro it also takes
+// for the riskiest review; Gemini stands in when GPT cannot), and any role on a model the user names. On Claude Pro it also takes
 // searching (Luna), research (Sol) and building (Terra, Sol) while ChatGPT has its share of room,
 // to spare Claude's limits; on Max those stay on Claude. Pure: delegate.ts feeds it ChatGPT's meters and Codex's catalog. GPT models are
 // named by family and the newest version wins, so a new release is used without a code change; a
@@ -51,8 +51,9 @@ export type Route =
       subagentType: "Explore" | "general-purpose";
       writes: boolean;
       why: string;
+      gptOut?: string; // why GPT cannot take this review or plan: Gemini may stand in
     }
-  | { provider: "none"; reason: string };
+  | { provider: "none"; reason: string; gptOut?: string };
 
 const ID = /^gpt-(\d+(?:\.\d+)*)-([a-z]+)$/;
 
@@ -158,7 +159,7 @@ export type RouteInput = {
   strict?: boolean; // a named family must fit the limits too (run_task: it writes)
   continues?: Family; // a follow-up on a run kit picked the model for
   risky?: boolean; // a V3 task's review: Astra when it fits, and only another family
-  gptOn: boolean; // the band's GPT switch
+  gptOn: boolean; // the GPT switch
   models: Partial<Record<Family, GptModel>>;
   gpt: Meters | undefined; // undefined: Codex is missing or not logged in
   plan?: Plan; // the Claude plan; Max when absent
@@ -249,21 +250,29 @@ export function route(i: RouteInput): Route {
     : i.gpt === undefined
       ? "Codex is not available here"
       : (refused ?? `no ${family} model in Codex's catalog`);
+  // A follow-up stays with its thread's family.
+  const gptOut =
+    OTHER_FAMILY.includes(i.role) && i.continues === undefined
+      ? why
+      : undefined;
   if (i.role === "review") {
     // Risky work takes no Claude review of Claude's code, so it stays open.
-    return i.risky
+    const picked: Route = i.risky
       ? {
           provider: "none",
           reason: `${why}; a V3 task needs another family: it stays open until it has a review or the user waives it`,
         }
       : reviewer(i, `${why}: a fresh Claude reviewer stands in`);
+    return { ...picked, ...(gptOut ? { gptOut } : {}) } as Route;
   }
-  return onClaude(i.role, `${why}: ${here}`);
+  const picked = onClaude(i.role, `${why}: ${here}`);
+  return { ...picked, ...(gptOut ? { gptOut } : {}) } as Route;
 }
 
-// Gemini through the Antigravity CLI (agy): only on request (provider "gemini"), never by the
-// band: its meters are shown there (agy-usage.ts) but routing does not weigh them. Ids read `gemini-<version>-<family>-
-// <effort>`; the newest version of the asked family wins, Hydrogen when none is named, and the
+// Gemini through the Antigravity CLI (agy): on request (provider "gemini"), and in place of GPT
+// for a review or second plan GPT cannot take while the Gemini switch is on (delegate.ts). Its
+// meters are shown in the band (agy-usage.ts) but routing does not weigh them. Ids read
+// `gemini-<version>-<family>-<effort>`; the newest version of the asked family wins, Hydrogen when none is named, and the
 // other models agy lists (Claude, GPT-OSS) are never picked.
 export type Provider = "gpt" | "gemini";
 export const PROVIDERS: readonly Provider[] = ["gpt", "gemini"];

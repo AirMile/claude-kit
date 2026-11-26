@@ -677,6 +677,21 @@ test("no Claude run, in any order, displaces another family's fail on this code"
   }
 });
 
+test("a Gemini run may not displace GPT's fail on this code; GPT may displace Gemini's", async () => {
+  const fail = (family: "gpt" | "gemini") =>
+    onReview(work(), review({ family, outcome: "fail", at: 7 }));
+  const after = onReview(fail("gpt"), review({ family: "gemini", at: 9 }));
+  expect(after.review?.family).toBe("gpt");
+  expect(reviewProblem(after, "p1")).toContain("P0/P1");
+  const fixed = onReview(
+    fail("gpt"),
+    review({ family: "gemini", print: "p2", at: 9 }),
+  );
+  expect(fixed.review?.family).toBe("gemini"); // changed code is a new round
+  const gpt = onReview(fail("gemini"), review({ family: "gpt", at: 9 }));
+  expect(gpt.review?.family).toBe("gpt");
+});
+
 test("a hold for code this chat never edited names the other session", async () => {
   const note = "if another session changed this checkout, say so and stop";
   const bare = work({ files: [] });
