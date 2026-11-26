@@ -119,18 +119,19 @@ stuck           Opus, then GPT     GPT, then ask user
 
 ## Handoff
 
-2026-11-26: criterion 1, the spawn log, is built and verified; uncommitted on `main`. The user
-accepted the table changes the same day. All other criteria are open; the GPT room criteria are
-unreviewed. No GPT plan (ChatGPT limit full).
+2026-11-26: criterion 1, the spawn log, is built and verified; committed on `main` (3fa628f).
+The user accepted the table changes the same day. All other criteria are open; the GPT room
+criteria are unreviewed. No GPT plan (ChatGPT limit full).
 
 - `hooks/spawn-record.ts` logs every started subagent: type, resolved model, parent model (not
   shown) and `resume`. `/flow` counts them by type and model, resumed runs apart. Spawns have
   their own 2000 entries in the log; `log` (`flow-store.ts`) has one writer at a time.
-- No baseline yet: the installed plugin is a cached copy per version, so collecting starts
-  after a version bump and a plugin update.
+- Baseline: 0.17.1 is installed for the CLI (`kit@airmile`, this folder). Desktop sessions
+  loaded the claude.ai copy (0.16.7 on 2026-11-26), which needs an update there after the
+  push; until then they log no spawns.
 - Today, seen live: a Haiku chat's `Explore` spawn ran on `claude-sonnet-5-5`.
 
-Next: release, collect a baseline, then `Explore` on Haiku with its gate.
+Next: update the desktop copy, collect a baseline, then `Explore` on Haiku with its gate.
 
 Limits of the log (accepted, from two reviews):
 - Not logged: a forked skill (it raises no `agent.spawn`), a spawn where kit's hook fails
@@ -155,4 +156,5 @@ files identical to `main`. `wc -l`: `auto-model.ts` 350, `flow.ts` 351. Two fres
 (no GPT room): the first passed with three P2s, fixed; the second passed with P3s only (the
 limits above). Live, headless `claude -p --plugin-dir .`: the debug log shows
 `{"event":"spawn","text":"Explore","model":"claude-sonnet-5-5","parent":"claude-haiku-5-5"}`
-and the entry is in the dev plugin's store.
+and the entry is in the `kit_inline` store (likely the one desktop sessions use too: one test
+entry in the baseline).
