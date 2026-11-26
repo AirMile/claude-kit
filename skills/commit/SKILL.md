@@ -2,7 +2,7 @@
 name: commit
 description: Stage safely and write a conventional commit message, optionally push. Use with /commit, or when the user asks to commit; never on its own initiative.
 argument-hint: "[extra context | feature=<slug>]"
-allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/scripts/staging-check.js)
+allowed-tools: Bash(node "${CLAUDE_SKILL_DIR}/scripts/staging-check.js")
 ---
 
 # Commit
@@ -23,7 +23,7 @@ stat plus targeted reads.
 
 ## 2. Staging safety (always, before staging anything)
 
-Run `node ${CLAUDE_SKILL_DIR}/scripts/staging-check.js` (from anywhere in the repo). Exit 0 →
+Run `node "${CLAUDE_SKILL_DIR}/scripts/staging-check.js"` (from anywhere in the repo). Exit 0 →
 nothing to handle. Exit 1 → act on each line:
 
 - `BLOCK <path>` (secret file) → never stage it; tell the user. Already in history (`git log -1
@@ -39,9 +39,10 @@ separate `chore:` commit).
 
 ## 3. Branch and group
 
-`AGENTS.md § Git` says `branches` (or nothing), you are on the default branch and it has a commit
-(`git rev-parse HEAD`) → AskUserQuestion first: New branch `<type>/<scope>` (Recommended) / Commit
-on <default>. New branch → `git switch -c` before staging. No commit yet → the default branch.
+On the default branch with a commit (`git rev-parse HEAD`): `AGENTS.md § Git` says `branches`,
+or has no `Workflow` line and most of the last 20 `--first-parent` commits are merges or end in
+`(#n)` → AskUserQuestion first: New branch `<type>/<scope>` (Recommended; `git switch -c`
+first) / Commit on <default>. Anything else → commit on the default branch without asking.
 
 Group changed paths by concern (directory + kind of change). Don't read diffs for this.
 
@@ -53,8 +54,7 @@ Group changed paths by concern (directory + kind of change). Don't read diffs fo
 - **A file carries two concerns** → its groups become one commit, the body names both; other
   groups still split. Don't hand-split hunks.
 
-`feature=<slug>` mode: one commit with the code, the spec and the roadmap line; skip the split
-question.
+`feature=<slug>` mode: one commit with the code and the spec; skip the split question.
 
 Staging when nothing is staged: stage the group(s) directly; the user asked to commit. This
 session wrote some changes and other changed paths it never touched (a peer session, the
@@ -76,12 +76,12 @@ Conventional format:
 <body: why, not what>
 ```
 
-- Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert.
+- Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert. A breaking
+  change → `!` and a `BREAKING CHANGE:` footer.
 - Scope: the module, or the slug in `feature=<slug>` mode.
 - Header ≤ 72 chars, lowercase start, imperative, no period, no emoji. English always.
 - Body unless the change is self-evident: why it exists, the alternative rejected and why, any
   constraint a future reader would trip over. Later sessions find it with `git log`, not by default.
-- Breaking change → `!` and a `BREAKING CHANGE:` footer.
 - Branch name contains `ABC-123` → use it per the repo's style.
 
 ## 5. Confirm and commit
@@ -101,10 +101,8 @@ EOF
 ```
 
 **Hook failure** → show the output; fix the cause and create a **new** commit (never amend after
-a failed commit). Skipping hooks (`--no-verify`) only when the user chooses it.
-
-Amend only when the user asks **and** the last commit is unpushed **and** it was made in this
-session.
+a failed commit). Skipping hooks (`--no-verify`) only when the user chooses it. Amend only when
+the user asks **and** the last commit is unpushed **and** it was made in this session.
 
 ## 6. Push
 
@@ -117,17 +115,19 @@ in this request, or answers yes now.
   AskUserQuestion (Merge into <default> + push / Push + PR), then write `- Land: <merge | pr>`
   under `## Git` so the next run doesn't ask.
   - `merge`, feature branch: `git fetch`; merge `origin/<default>` into the branch (conflicts:
-    roadmap/decisions/AGENTS.md keep compatible additions of both sides, drop duplicates and
-    what a `Superseded by:` or newer rule replaces, never leave two contradicting rules (ask
-    only if the choice is open; a roadmap item both sides changed keeps the later state), and
-    skim the merged diff of those files even without conflict; lockfiles/generated take
-    `<default>`'s side then reinstall/regenerate, others resolve or stop; it brought commits →
-    install when a lockfile changed, run the suite again); `git push origin HEAD:<default>`. In the main checkout also
-    `git switch <default>`, `git merge --ff-only <branch>`, `git branch -d <branch>`.
+    decisions/AGENTS.md keep compatible additions of both sides, drop duplicates and what a
+    `Superseded by:` or newer rule replaces, never leave two contradicting rules (ask only if
+    the choice is open), and skim the merged diff of those files even without conflict;
+    lockfiles/generated take `<default>`'s side then reinstall/regenerate, others resolve or
+    stop; it brought commits → install when a lockfile changed, run the suite again);
+    `git push origin HEAD:<default>`. In the main checkout also `git switch <default>`,
+    `git merge --ff-only <branch>`, `git branch -d <branch>`.
   - `merge`, default branch (trunk): push it.
   - `pr`: push the branch, then `gh pr create` with a title from the commit(s) and the spec's
     Goal and criteria as the body (a PR is open already → the push updates it). No `gh` → push
     only and say so.
+- **Asked to push to the default branch from a feature branch**, no `feature=`: the `merge`
+  steps above without `git branch -d`; remove no branch or worktree unasked (`.env` goes too).
 - **Feature branch, plain `/commit`**: Push + open PR / Push only / Not now (`Land: pr` →
   recommend the PR, `merge` → Push only).
 - **Default branch, plain `/commit`**: Not now / Push, no recommendation (the user decides). On a

@@ -1,6 +1,6 @@
 ---
 name: seo
-description: Plan search terms and pages from the intake and real search data, onto the roadmap. Use with /seo.
+description: Plan search terms and pages from the intake and real search data, onto the backlog. Use with /seo.
 disable-model-invocation: true
 argument-hint: "[nothing | path to a keyword or Search Console CSV]"
 ---
@@ -8,7 +8,7 @@ argument-hint: "[nothing | path to a keyword or Search Console CSV]"
 # SEO
 
 Turns the intake and real search data into a plan: which terms matter, which page answers each,
-and what goes on the roadmap for `/task-readiness`. Rerun it any time (quarterly, a new service): it
+and what goes on the backlog for `/task-readiness`. Rerun it any time (quarterly, a new service): it
 never repeats the intake, and it reads the measurements to see what to improve first.
 
 Order for a client: `/scan` (baseline) → `/intake` (once) → `/seo` → `/task-readiness` per page →
@@ -17,7 +17,7 @@ plan decides which pages and URLs get built.
 
 ## 0. Preconditions
 
-- Not a kit project, or no `docs/roadmap.md` → stop: `/setup` (and `/product` for a new site).
+- Not a kit project (no `AGENTS.md`) → stop: `/setup` (and `/product` for a new site).
 - No `docs/seo.md`, or `## Intake` without answers → stop: `/intake` first.
 - Goal, main services or region still `open` → stop and name them. Other open answers become
   assumptions, marked `(assumed)` where they are used.
@@ -64,11 +64,11 @@ the plan then ranks by intent and the client's priorities, and the report says s
 
 1. `docs/seo.md` (format below): replace `## Competitors`, `## Keywords` and `## Pages` entirely, leave
    `## Intake` and `## Measurements` as they are. Write it without asking: the plan is the file.
-2. Roadmap: one item per new page (`- [ ] **<slug>** · SEO page for "<main term>"`) and per
-   existing page that needs rework (`· rework for "<term>"`), in the first phase with open
-   items. An open item for that page already exists → append ` (seo: <term>)` to its
-   description instead. Never touch `[x]` items or items in progress (spec link). Show the diff,
-   one confirmation (Apply (Recommended) / Adjust), write.
+2. Backlog (the place `AGENTS.md § Backlog` names): one item per new page (`<slug> · SEO page
+   for "<main term>"`) and per existing page that needs rework (`<slug> · rework for "<term>"`).
+   An open item for that page exists → add `(seo: <term>)` to it instead. Never touch done items
+   or items in progress. Show the changes, one confirmation (Apply (Recommended) / Adjust),
+   write. No backlog or unreachable → list the items in the report.
 
 ## Rerun
 
@@ -122,6 +122,6 @@ SEO · <first plan | rerun>
 terms      <n> · with volume <n> (<source>) · unknown <n>
 competitors <recurring domains | —>
 pages      <n> existing · <n> new · <n> rework
-roadmap    <n> items added · next: /task-readiness <slug>
+backlog    <n> items <added | listed here> · next: /task-readiness <slug>
 assumed    <open intake answers used as assumptions | —>
 ```

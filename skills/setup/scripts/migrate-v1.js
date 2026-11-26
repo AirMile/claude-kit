@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Read a claude-config v1 `.project/` folder and print migration material as markdown:
- * roadmap lines (from backlog.json), the product source, and learnings grouped by the
+ * open backlog items (from backlog.json), the product source, and learnings grouped by the
  * directory they belong to. Read-only: it writes nothing. The setup skill decides what to keep.
  *
  * Usage: node migrate-v1.js [projectDir]
@@ -50,17 +50,17 @@ if (!fs.existsSync(dir)) {
 
 const out = [];
 
-// Roadmap
+// Backlog
 const backlog = readJson("backlog.json");
 const features = backlog?.features || [];
 const open = features.filter(
   (f) => !["DONE", "shipped"].includes(f.status) && !f.shipped,
 );
 const done = features.filter((f) => f.status === "DONE" || f.shipped);
-out.push("## Roadmap (from backlog.json, board order)", "");
+out.push("## Backlog (from backlog.json, board order)", "");
 for (const f of open) {
   const note = f.status === "DOING" ? " (was in progress in v1)" : "";
-  out.push(`- [ ] **${f.name}** · ${oneLine(f.description)}${note}`);
+  out.push(`- ${f.name} · ${oneLine(f.description)}${note}`);
 }
 if (!open.length) out.push("(no open items)");
 out.push(

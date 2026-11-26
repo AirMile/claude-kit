@@ -1,6 +1,6 @@
 import type { EngineInterface } from "claude-code";
 
-import type { Usage } from "./roadmap-parts";
+import type { Usage } from "./panel-parts";
 
 // The band's plan meters: per window Claude's share, ChatGPT's dim beside it and Claude's time
 // until reset (`5h 30%·2% 3h29m`). With GPT off: Claude's share only. The 5h windows reset

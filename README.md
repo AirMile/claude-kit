@@ -1,7 +1,7 @@
 # kit
 
 A small Claude Code plugin for building software with Claude. It covers the whole loop: shape an
-idea, turn it into a roadmap, build features one at a time (spec → code → independent verify →
+idea, turn it into a backlog, build features one at a time (spec → code → independent verify →
 commit), fix bugs with discipline, and convert designs into code.
 
 kit is the successor to `claude-config` v1. v1 grew to 42 skills, ~15k lines of shared
@@ -127,7 +127,7 @@ codex plugin add kit@airmile
 - **What differs**: the skills are worded for Claude Code. At session start a hook adds
   `hooks/codex-context.md`, which maps the Claude terms: questions become numbered options in
   chat, plan-mode approval becomes "plan shown, wait for your OK", the verifier runs as a
-  subagent reading `agents/verifier.md`. No panes: `/product` prints the roadmap, `/theme`
+  subagent reading `agents/verifier.md`. No panes: `/theme`
   shows its table. Resume a spec with `/task-readiness <slug>`. The frontend
   rule is read from `rules/frontend.md` on UI work.
 - **Projects are shared**: `AGENTS.md` and `docs/` are the same for both tools, so a spec
@@ -156,14 +156,14 @@ No access → the point is shown in chat with a note that it wasn't saved.
 /setup a habit tracker for people who quit after a week
                   → /product interview, scaffold, AGENTS.md
                     (started outside a project? it makes the folder first)
-/task-readiness <slug>      → work on a roadmap item
+/task-readiness <item>      → work on a backlog item
 ```
 
 **An existing repo**
 
 ```
 /setup            → reads the repo, writes AGENTS.md + docs/
-/product             → writes docs/product.md and the roadmap from a short interview
+/product             → writes docs/product.md and the backlog from a short interview
 /task-readiness <slug>
 ```
 
@@ -226,7 +226,6 @@ your-project/
 ├── src/payments/AGENTS.md module-specific pitfalls, loaded only when Claude works there
 └── docs/
     ├── product.md            what, for whom, why, non-goals, stack
-    ├── roadmap.md         ordered features = the backlog
     ├── decisions.md       decisions + the alternative that was rejected
     ├── seo.md             intake answers, search terms, page plan, measurements (SEO work)
     └── specs/
@@ -238,7 +237,6 @@ your-project/
 | `AGENTS.md` (root)     | `/setup`, `lessons`           | every session                                  | always, at session start                     |
 | `<dir>/AGENTS.md`      | `lessons`                     | every session                                  | lazily, when Claude reads a file in that dir |
 | `docs/product.md`      | `/product`                    | `/task-readiness`, `/convert`, `/setup`        | on demand                                    |
-| `docs/roadmap.md`      | `/product`, `/task-readiness` | `/task-readiness`                              | on demand                                    |
 | `docs/specs/<slug>.md` | `/task-readiness`             | `/task-readiness`, verifier                    | on demand                                    |
 | `docs/decisions.md`    | `/task-readiness`, `/setup`   | `/task-readiness`                              | on demand                                    |
 | `docs/seo.md`          | `/scan`, `/intake`, `/seo`    | `/seo`, `/task-readiness`, `/audit`, `/launch` | on demand                                    |
@@ -268,6 +266,11 @@ Habit tracker PWA for people who drop habits after a week.
 
 - Service worker caches /api in dev too: hard-reload after changing API responses.
 
+## Backlog
+
+- The backlog is the Todoist project `Habits`. Do not keep a list in the repo.
+- Add items only after the user confirms; complete one only after the user confirms.
+
 ## Git
 
 - Workflow: branches
@@ -275,7 +278,7 @@ Habit tracker PWA for people who drop habits after a week.
 
 ## Docs
 
-- Product intent: `docs/product.md` · roadmap: `docs/roadmap.md` · specs: `docs/specs/`
+- Product intent: `docs/product.md` · specs: `docs/specs/`
 - Decisions and why: `docs/decisions.md`
 ```
 
@@ -291,41 +294,23 @@ Product intent, under ~60 lines. Sections: **What**, **For whom**, **Why now**, 
 experience**, **Non-goals**, **Stack**, **Open questions**. `/task-readiness` reads the non-goals before
 defining a feature, so scope creep is caught early.
 
-### docs/roadmap.md
+### The backlog
 
-The backlog. One line per item, order = priority:
-
-```markdown
-# Roadmap
-
-- [x] **scaffold** · project skeleton, dev server, test runner · spec: docs/specs/scaffold.md
-- [ ] **habit-crud** · create, edit, delete habits · spec: docs/specs/habit-crud.md
-- [ ] **streaks** · show current and best streak per habit
-- [ ] **reminders** · daily push reminder at a chosen time
-
-## Later
-
-- sharing streaks with a friend
-```
-
-The three states are encoded in the line itself:
-
-| Line                                                      | Meaning                       |
-| --------------------------------------------------------- | ----------------------------- |
-| `- [ ] **slug** · description`                            | open, not started             |
-| `- [ ] **slug** · description · spec: docs/specs/slug.md` | **in progress** (spec exists) |
-| `- [x] **slug** · description · spec: …`                  | done                          |
-
-`## Later` holds unordered ideas that are not in the flow yet.
+The backlog is not a file. `AGENTS.md § Backlog` names where it lives (a Todoist project, an
+issue tracker) and its rules; `/product`, `/setup`, `/audit`, `/scan` and `/seo` read and write
+it there with that tool, each write after your confirmation. Without a backlog, or when the
+session can't reach it (no connector, e.g. in Codex), they list the items in the chat and say
+they were not saved. A repo that still has `docs/roadmap.md` is offered a one-time move.
 
 ### docs/specs/\<slug\>.md
 
-Used by `/task-readiness` for work spanning chats or on the roadmap. It is both the contract and the resume point:
+Used by `/task-readiness` for work spanning chats; it names its backlog item. It is both the contract and the resume point:
 
 ```markdown
 # habit-crud
 
 Status: building
+Backlog: habit-crud
 Design: —
 
 ## Goal
@@ -387,39 +372,39 @@ it is.
 
 ### /product
 
-Turn an idea into `docs/product.md` + `docs/roadmap.md`, or update them later.
+Turn an idea into `docs/product.md` + a backlog, or update them later.
 
 ```
 /product <idea>          new project (when docs/product.md doesn't exist)
-/product add <item>      update: add, reorder, remove or reword roadmap items
-/product critique        stress-test product.md and the roadmap, then offer edits
-/product brainstorm      find new features, then pick which go on the roadmap
+/product add <item>      update: add, reorder, remove or reword backlog items
+/product critique        stress-test product.md and the backlog, then offer edits
+/product brainstorm      find new features, then pick which go on the backlog
 ```
 
 **New**
 
 1. Takes your idea (or asks one open question).
-2. Shows the draft product.md and roadmap in the chat: that is what you approve.
+2. Shows the draft product.md and the backlog items in the chat: that is what you approve.
 3. Runs 1–3 rounds of clickable questions (audience, MVP size, core experience, stack, then
    gaps). Vision and naming are asked as open questions; visual choices are shown as small
    mocks; competing designs get a trade-off table first.
-4. Shows both files in the plan, and the draft roadmap in the [roadmap pane](#kit-mod).
-   **Accept** writes them; **reject** revises.
+4. **Accept** writes `docs/product.md` and adds the items to the backlog; **Revise** shows it
+   again.
 
-Roadmap rules: every item is a user-visible capability buildable in one `/task-readiness` run (≤ ~6
+Item rules: every item is a user-visible capability buildable in one `/task-readiness` run (≤ ~6
 acceptance criteria, otherwise split); dependencies first, then value; greenfield projects start
-with a `scaffold` item; 5–15 items for an MVP, the rest under `## Later`.
+with a `scaffold` item; 5–15 items for an MVP, the rest in the backlog's ideas section.
 
 **Update** finds the right position for a new item, checks it against the product's non-goals
 (conflict → asks whether the non-goal changes or the item is dropped), never touches done or
-in-progress items, and shows a diff before writing.
+in-progress items, and shows the changes before writing.
 
 **Critique** and **Brainstorm** run one technique at a time as a dialogue. You pick a technique
 from 2-3 ranked for this product (critique: pre-mortem, assumption test, smaller version,
 audience, core loop, ...; brainstorm: what if, reversal, SCAMPER, role play, journey gaps, ...).
-Each round asks 4-6 questions anchored in your product.md and roadmap, plus concrete starting
+Each round asks 4-6 questions anchored in your product.md and backlog, plus concrete starting
 points; a summary follows, then another technique or the finish. Critique ends with edits to
-product.md and the roadmap, Brainstorm with a pick list of new items (phase or `## Later`); both
+product.md and the backlog, Brainstorm with a pick list of new items (next or ideas); both
 apply through Update, so nothing changes without your OK.
 
 ### /setup
@@ -433,7 +418,7 @@ It detects one of five situations:
 | Not in a project (home folder, or a folder of projects) | **New folder**: asks the name, creates the folder + `git init`, moves the session there; send `/setup` again    |
 | Empty folder, no docs/product.md                        | **Product first**: runs the `/product` interview, then scaffolds                                                |
 | Empty folder, `docs/product.md` exists                  | **Scaffold**: runs the stack's official generator, adds a test runner, boots the dev server once, then onboards |
-| A v1 project (`.project/`, no `docs/roadmap.md` yet)    | **Migrate** (below)                                                                                             |
+| A v1 project (`.project/`, not migrated yet)            | **Migrate** (below)                                                                                             |
 | Any other existing code                                 | **Onboard**                                                                                                     |
 
 **Onboard** reads the manifest, scripts, test/lint config and recent git history, then:
@@ -441,7 +426,7 @@ It detects one of five situations:
 - writes `AGENTS.md` from the template, with only verified facts (no placeholders);
 - moves useful content from an existing `CLAUDE.md` into `AGENTS.md` and removes the `CLAUDE.md`
   (otherwise `AGENTS.md` wouldn't load);
-- creates `docs/roadmap.md` and `docs/decisions.md` with their format headers (never overwrites);
+- creates `docs/decisions.md` with its format header (never overwrites) and fills `AGENTS.md § Backlog`;
 - makes sure `AGENTS.md` and `docs/` are not in `.gitignore`, and ignores `.claude/worktrees/`;
 - asks the git mode and prepares parallel sessions (`.worktreeinclude`, `autoPort`, database line).
 
@@ -453,7 +438,7 @@ you can delete it when satisfied:
 | Generated `CLAUDE.md`                            | real rules/runbooks/pitfalls → `AGENTS.md`; template sections dropped |
 | `AGENTS.md` symlinked to `CLAUDE.md`             | replaced by a real file                                               |
 | `.project/project-seed.md`                       | `docs/product.md`                                                     |
-| `.project/backlog.json` (unshipped, board order) | `docs/roadmap.md`                                                     |
+| `.project/backlog.json` (unshipped, board order) | the backlog named in `AGENTS.md § Backlog`                            |
 | `.project/project-context.json` learnings        | ≤ ~15 non-derivable ones → root or nested `AGENTS.md`                 |
 
 You get a preview and one confirmation before anything is written. `/setup` never commits; it
@@ -468,7 +453,7 @@ It chooses how to work, checks the result and asks the fresh-context verifier to
 assess the criteria. Human-only checks remain pending.
 
 Use `/task-readiness <task>` to start or `/task-readiness <slug>` to resume a
-spec in `docs/specs/`. Work spanning chats or on the roadmap keeps a spec; small
+spec in `docs/specs/`. Work spanning chats keeps a spec; small
 obvious edits need no skill. GPT gives reviews and second plans; on Claude Pro it also
 takes research and builds (see Delegation). Commit only
 when requested or allowed by the flow note.
@@ -666,8 +651,8 @@ Every page is opened in the browser at desktop and mobile width and checked with
 links, horizontal overflow, accessibility violations, missing title/description/og:image,
 images without alt or far larger than shown, unlabeled inputs, and (when Lighthouse is
 available) speed. Findings are grouped across pages as blocker / should fix / nice. You pick
-which groups to fix now (the small safe ones are recommended); the rest goes under `## Later` in
-the roadmap. The report can be saved as `docs/audits/<date>.md` to show a client what was
+which groups to fix now (the small safe ones are recommended); the rest becomes backlog items
+after your confirmation. The report can be saved as `docs/audits/<date>.md` to show a client what was
 checked. With a `docs/seo.md` it also checks each planned SEO page: its main term in title or
 h1, the page in the sitemap, its schema types.
 
@@ -687,7 +672,7 @@ Profile (looked up in Google Maps, address included), and an AI check: three pro
 would type, run in Perplexity in the browser (ChatGPT by hand, it needs a login), and whether the
 business was named. A prospect gets `seo-scan-<domain>-<date>.md`: what works, the three
 biggest opportunities (what is missing, not how to fix it), and what a plan would deliver. A
-measurement is compared with the previous one; up to two points go on the roadmap.
+measurement is compared with the previous one; up to two points go on the backlog.
 
 ### /intake
 
@@ -705,7 +690,7 @@ competitors; volumes from a connected SEO tool or a CSV you export (Keyword Plan
 Console), otherwise `unknown`: it never makes up a number. Terms are grouped by intent into one
 page each (no page per place name without real work there), each with the questions it answers,
 its schema types and its links. `docs/seo.md` gets the keyword table and the page plan; new
-pages and rework go on the roadmap after one confirmation, for `/task-readiness`. Rerun it quarterly: it
+pages and rework go on the backlog after one confirmation, for `/task-readiness`. Rerun it quarterly: it
 starts from the pages closest to page one.
 
 ### /explain
@@ -851,8 +836,8 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt, one line: usage at the left
   (`114k  5h 55% · 2h 53m  weekly 12% · 4d 3h`, each limit with the time until it resets), then
-  the model with its effort, the profile, GPT, the limit button, `⎇` and `▤`
-  (the dashboard; `▤ Close` closes it). The context figure and `⎇` open a menu in its own block above the
+  the model with its effort, the profile, GPT, the limit button, `⎇` and `⌘`
+  (the skills menu, with the dashboard's open and close). The context figure and `⎇` open a menu in its own block above the
   band (hover to peek, press to keep it open): **Compact** and **Clear**, run at once or when
   the running turn ends; **Commit** (runs `/kit:commit`), Diff, Pull, Push, PR, Branch. The
   rest are switches a press cycles, none depending on another:
@@ -956,7 +941,7 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   answer to the question the last turn ended on keeps the task; a new change request folds into
   unverified work, which stays open until verified or waived. Code
   changed outside any task (an edit, a shell command, a subagent) starts a light one. No
-  roadmap needed.
+  backlog needed.
 
   **The verify gate**: a turn that ends with changed code (not docs) is held until a passing
   check ran on the code as it is now. Flow judges by what it sees itself: git's fingerprint
@@ -1045,8 +1030,8 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   back as "run this as an Agent subagent on model X".
 
 - **Task runner**: for a change GPT builds (on Pro by itself, on Max when you ask).
-  `mcp__kit__run_task` takes one change brief, a model only if you named one, and 1-3 covering
-  checks (each an argv, e.g.
+  `mcp__kit__run_task` takes one change brief, a model only when you asked for GPT (the one you
+  named, else Sol), and 1-3 covering checks (each an argv, e.g.
   `["claude", "plugin", "test", "."]`), runs GPT's build once, then runs the checks itself at
   the session root (no shell, 10 minutes each). A failing check goes back to the same Codex
   thread with its argv and last 60 output lines, and all checks run again: at most 2 fix
@@ -1090,42 +1075,24 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
 **Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
 columns, above the prompt otherwise):
 
-- **Dashboard**: titled with the product's name (`Dashboard` without `docs/product.md`), in three tabs (a row of
-  buttons on top, the shown one at full strength): **▤ Roadmap** (below), **◈ Messages** (this chat's latest messages, each with
-  **Remember**, which asks the model to keep it as a project lesson through `kit:lessons`:
-  only what a later session could not learn from the code ends up in `AGENTS.md`) and **◎ Session** (model
-  and effort, turns, how long, cost where the host reports it, compactions, the context by
-  category as a bar like `/context`, the files this chat wrote or edited and the subagents it
-  ran, counted since the mod loaded; a `/clear` starts over). A draft
-  (before approval) shows the roadmap alone. It never
-  opens by itself: the band's **▤** button opens it (in any project), `/product`
-  opens it too, and so does `/panel`. The Roadmap tab shows `docs/roadmap.md` live (below), or
-  **Make a roadmap** (`/product`) without one. At the bottom of the pane, under every tab, in
-  its own block, the **pad** (docked, at the bottom of the screen while the tab is shorter;
-  a longer tab pushes it down): kit's skills by
-  stage, side by side, each stage name above its buttons. **Plan**: **Setup** (only when
-  `AGENTS.md` is missing), **Brainstorm**, **Critique**, **Theme**.
-  **Make**: **Convert**, **Explain**, **Lessons**. **Client**: **Intake**, **SEO**, **Audit**, **Scan**. Commit, git, compact, clear and
-  usage are in the band. One click on a button runs its command at once (a second click within
-  2 seconds counts as a double click and is ignored; if running fails, the command lands in
-  your prompt box); a done feature's **Explain** runs `/explain <slug>`. On the desktop app a
-  click also counts when the pane didn't have focus yet; the catch is that Tab onto a button there presses it. The roadmap: `docs/roadmap.md` live, grouped by phase (a release: `v1 · MVP`, `v1.1 · Sharing`; any `##` heading works, shown as written): a
-  card per feature with its state, and for one in progress its step (define → build → verify, with the criteria count while verifying). **Pick
-  up** (open), **Build** (spec ready), **Resume** (building) or **Verify** (ready to verify)
-  clears the chat and runs `/task-readiness <slug>` in the fresh one, which continues at that step. A feature not started has **▶** (Pick up), on the desktop app **↗** (starts `/task-readiness <slug>` at once in a session of its own worktree, linked to this chat so it reports back here; when the app refuses that, a chip you click instead; the card then says "sent to worktree", later "runs on <branch>" once that session commits the spec, and pressing ↗ again asks "Again?") and **⋯**, a row of buttons that
-  move it to another phase or to `## Later`, or remove it; a phase heading folds its
-  cards (a folded heading turns dim), finished phases wait behind one "✓ v1 · MVP, …" line, and in an unfinished one the done features fold into one "✓ n done" line; **Remove** asks once ("Remove?") before it acts; **+ Add** in a phase heading adds one, and **+ Add** in the Later heading adds an idea there; a Later idea's ⋯ restores it. Done and in-progress features can't
-  be edited there (their state is `/task-readiness`'s). The whole heading text folds a phase, or Later. In plan
-  mode it shows the draft, read-only, without the dashboard.
+- **Dashboard**: titled with the product's name (`Dashboard` without `docs/product.md`), in two
+  tabs (a row of buttons on top, the shown one at full strength): **◈ Messages** (this chat's
+  latest messages, each with **Remember**, which asks the model to keep it as a project lesson
+  through `kit:lessons`: only what a later session could not learn from the code ends up in
+  `AGENTS.md`) and **◎ Session** (model and effort, turns, how long, cost where the host reports
+  it, compactions, the context by category as a bar like `/context`, the files this chat wrote
+  or edited and the subagents it ran, counted since the mod loaded; a `/clear` starts over). It
+  never opens by itself: the band's skills menu (**Open dashboard**) or `/panel` opens it. On
+  the desktop app a click also counts when the pane didn't have focus yet; the catch is that
+  Tab onto a button there presses it.
 - **Theme**: `/theme` shows its proposal before you approve it: colors for light and dark
   with contrast ratios, a sample card and button, the type scale in the real fonts, spacing,
   radius and shadow. Google Fonts are fetched as a small glyph subset and embedded (needs
   network and Node 18+); offline the system font is used. The terminal gets swatches and
   text. Contrast is computed by the mod and returned to Claude, which fixes failing pairs.
 
-The skills pass their data to the panes as tool calls (`mcp__kit__roadmap_view`,
-`mcp__kit__theme_view`); those are display-only and allowed without a prompt. So is
-`mcp__kit__fresh_start` for clearing and resuming a chat.
+`/theme` passes its data to its pane as a tool call (`mcp__kit__theme_view`): display-only and
+allowed without a prompt. So is `mcp__kit__fresh_start` for clearing and resuming a chat.
 
 Trunk mode or no matching spec → the context part shows nothing. To turn every mod off, set
 `"disableAllHooks": true` (this also stops push-guard and format-on-save).
@@ -1160,7 +1127,7 @@ small changes; use `/task-readiness` once it's a feature.
 | ------------------------- | ------------------------------------------------------------------------------------------ |
 | New idea                  | `/setup <idea>` (folder, interview, scaffold) → `/task-readiness <task>`                   |
 | Existing repo, no kit yet | `/setup` → `/product` → `/task-readiness <slug>`                                           |
-| v1 project                | `/setup` (migrate) → check the roadmap → `/task-readiness <slug>`                          |
+| v1 project                | `/setup` (migrate) → check the backlog → `/task-readiness <slug>`                          |
 | Interrupted work          | new chat → `/task-readiness <slug>`                                                        |
 | Bug in a finished feature | `/task-readiness "fix: …"` → reproduce, fix and verify                                     |
 | Small tweak               | just ask in chat, then `/commit`                                                           |
@@ -1171,7 +1138,7 @@ small changes; use `/task-readiness` once it's a feature.
 | SEO for a client          | `/scan` → `/intake` (once) → `/seo` → `/task-readiness` per page → `/audit` → `/launch`    |
 | Monthly SEO               | `/scan` → `/task-readiness` the points it adds; `/seo` again each quarter                  |
 | Understand what was built | `/explain` (last change), `/explain <slug>` or `/explain <file>`                           |
-| New idea mid-project      | `/product add <idea>`; verifier notes are also offered as roadmap items                    |
+| New idea mid-project      | `/product add <idea>`; verifier notes are also offered as backlog items                    |
 | Rethink the plan          | `/product critique`                                                                        |
 | Design → code             | `/convert <source>`, or put the source in a spec's `Design:` and `/task-readiness`         |
 | Visual foundation         | `/theme` before the first UI work, or `/theme from-code` to clean up                       |
@@ -1228,7 +1195,7 @@ re-runs it with `KIT_PUSH_OK=1`.
 
 **The verifier says "manual" for something it could test.** It's instructed to automate when in
 doubt; a manual item should only cover credentials, perception, devices or audio. Answer it,
-then add the test as a roadmap item if it matters.
+then add the test as a backlog item if it matters.
 
 **A spec and the code disagree after a crash.** `/task-readiness <slug>` compares the spec with
 `git status` on resume and tells you what it found. Correct the spec's `Status` by hand if needed.
@@ -1304,7 +1271,7 @@ Rules (also in `AGENTS.md`):
   template in the skill that owns that file.
 - **Scripts only for deterministic checks or conversions** (Node, cross-platform), referenced as
   `${CLAUDE_SKILL_DIR}/scripts/…` and listed in the skill's `allowed-tools` so they run without
-  a permission prompt. Never for reading or editing roadmap/spec files.
+  a permission prompt. Never for reading or editing spec files.
 - Hooks and scripts must also work on Windows.
 - A rule that needs a paragraph of exceptions should be cut, not extended.
 - Skill and agent files are written in English; runtime output follows the user's language.

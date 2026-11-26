@@ -7,7 +7,7 @@ import { hasKept } from "./limit-queue";
 
 // /task-readiness's safe point, automated: the model calls fresh_start after the user picked
 // "Fresh start"; when that turn ends, the chat clears and /kit:task-readiness <slug> resumes from the
-// spec in the fresh one. Same chain as the roadmap pane's Pick up, but run from turn.complete.
+// spec in the fresh one. Run from turn.complete.
 
 // Clearing a paused chat, or one that still keeps prompts, would drop them (limit-guard.ts).
 function blocked(): string {

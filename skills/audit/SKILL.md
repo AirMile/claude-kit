@@ -9,7 +9,7 @@ argument-hint: "[url | nothing for the local app]"
 
 A sweep over every page of a site, for the moments a feature-level verify doesn't cover:
 before delivering to a client, before a launch, or after a big change. Small findings get fixed,
-the rest lands on the roadmap.
+the rest lands on the backlog.
 
 ## 0. Target and pages
 
@@ -74,8 +74,9 @@ AskUserQuestion (multiSelect): which groups to fix now. Recommend the small, saf
 texts written from context, meta via the framework's metadata API, labels, image sizes/formats.
 Fix them, then re-check only the affected pages.
 
-The rest → one line per group under `## Later` in `docs/roadmap.md` (or a normal roadmap item
-when it's a blocker the user chose not to fix now).
+The rest → one backlog item per group (the place `AGENTS.md § Backlog` names), after one
+confirmation: ideas, or near the top for a blocker the user chose not to fix now. No backlog or
+unreachable → list them in the report; never create a file for them.
 
 ## Report
 
@@ -84,7 +85,7 @@ AUDIT · <target> · <n> pages
 blocker    <n> (<fixed n>)
 should     <n> (<fixed n>)
 nice       <n>
-parked     <n> lines in docs/roadmap.md
+parked     <n> items in <backlog | the report>
 mobile     <ok | n pages with issues>
 speed      <score or —>
 code       <n findings | —>

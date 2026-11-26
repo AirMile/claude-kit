@@ -1,15 +1,14 @@
 ---
 name: task-readiness
-description: Prepare and execute a code change: establish the goal, required tools, acceptance checks and approval points. Use before adding a capability, changing a shared interface, migrating data, or starting work with unclear scope or verification; also use to assess task readiness or resume a spec by slug (`/task-readiness <slug>`). Skip small, obvious local edits and routine bounded fixes with clear checks. For readiness-only requests, assess without implementing.
+description: Prepare and execute a code change: establish the goal, required tools, acceptance checks and approval points. Use before adding a capability, changing a shared interface, migrating data, or starting work with unclear scope or verification; also use to assess task readiness or resume a spec by slug (`/task-readiness SLUG`). Skip small, obvious local edits and routine bounded fixes with clear checks. For readiness-only requests, assess without implementing.
 argument-hint: "[task or slug]"
 ---
 
 # Task readiness
 
-Make the goal and the infrastructure right, then let the model work. No fixed procedure after
-the readiness block: how it gets there is the model's call. Look in the repo first; ask the user
-only what it cannot tell you. kit's flow (the mod) holds the turn's end until the checks of the
-latest code pass, so a check is the only thing that closes a task.
+Make the goal and the infrastructure right, then let the model work: after the readiness block
+the route is the model's call. Look in the repo first; ask only what it cannot tell you. kit's
+flow (the mod) holds the turn's end until the checks of the latest code pass.
 
 ## 1. Goal
 
@@ -40,12 +39,13 @@ One exact check per criterion, from `AGENTS.md § Commands` first (`Test`, `Lint
   list it, never fix it as part of this task. `Security`/`Quality` output now = the baseline;
   only new findings count.
 - A new check must be seen failing on the wrong state (a bug: reproduce it first; a repro that
-  passes before the fix proves nothing). A criterion with no check → building that check comes
-  first.
+  passes before the fix proves nothing). A criterion with no check → build that check first.
 - A green check proves only what it measures: green lint says nothing about failing tests. No
   pipes that hide an exit code (`npm test | tail`).
 - No commands in `AGENTS.md` → say so and suggest `/setup` (it runs `detect-tools.js`).
 - Only a human can judge it (looks, feel, a real device) → report it as pending until they have.
+- Work outside the repo (a vault note, an external tool) → check it on that target; a review
+  brief names those paths and excludes the repo's changes; a few lines of config need none.
 
 ## 4. Approval points
 
@@ -90,12 +90,13 @@ reason. Check as you go, not only at the end. Library API you are unsure of → 
   `DBG` line is gone.
 - **Verify before you finish:** a heavy task gets a review (`mcp__kit__delegate` role
   `review`): its P0/P1 findings are fails. Without GPT room it answers with a fresh Claude
-  reviewer, which counts below V3. A V3 task without room → ask once: wait / "skip verify".
-  The `kit:verifier` agent (fresh context; give it the criteria, changed files and baseline)
-  is needed only at V3, when no test run passed on the final code, or when no reviewer could run. Fix, re-run the failing checks and the full
-  suite; evidence is tied to the code, so the flow's hold names what must run again (a
-  docs-only fix reopens nothing). A finding outside the agreed criteria → write it down as a
-  limit (docs, out of scope), not another round.
+  reviewer, which counts below V3; V3 without room → ask once: wait, or the exact words
+  "skip verify" (the gate reads only fixed phrases). The `kit:verifier` agent (fresh context;
+  criteria, changed files, baseline) is needed only at V3, without a test run passed on the
+  final code, or without a reviewer. After a fix re-run the failing checks and the full suite;
+  the flow's hold names what else must run again (a docs-only fix reopens nothing). A
+  re-review covers only the fix diff, the verifier only the criteria it touched. A finding
+  outside the agreed criteria → write it down as a limit, not another round.
 - **A live peer session edits this checkout** (changed files you didn't write) → propose a
   worktree. Staying → edit only your own lines; checks on HEAD (`git worktree add --detach`)
   plus your files; no `run_task`; review only your paths; note it in the Handoff.
@@ -103,18 +104,17 @@ reason. Check as you go, not only at the end. Library API you are unsure of → 
 
 ## Spec file (only for work that outlives this chat)
 
-Work that spans chats or sits on the roadmap keeps `docs/specs/<slug>.md`
+Work that spans chats keeps `docs/specs/<slug>.md`, naming its backlog item
 ([template](references/spec-template.md)): goal, criteria with their check, out of scope, a
 rewritten Handoff. `/task-readiness <slug>` resumes from it: read `Status`, `Handoff`, the open
-criteria and `git status`, say in one line where you pick up. Set `Status` as the work moves
-(`defined` → `building` → `verifying` → `manual` → `done`) and rewrite Handoff at each change.
-A slug whose spec is committed on another branch (`git log --all --not HEAD --oneline -1 --
-docs/specs/<slug>.md` prints a commit) is in progress there: say which branch, don't restart it. Everything
-else needs no file.
+criteria and `git status`, say where you pick up. Move `Status` along (`defined` → `building`
+→ `verifying` → `manual` → `done`) and rewrite Handoff at each change. A slug with a spec on
+another branch (`git log --all --not HEAD --oneline -1 -- docs/specs/<slug>.md` prints a
+commit) is in progress there: say which branch, don't restart it.
 
 ## Finish
 
-Criteria `[x]` only once the verifier or you saw the check pass; `Status: done` and the roadmap
-line `[x]` only when all are. A surprising lesson → the
-`lessons` skill; a roadmap line → `[x]`. Commit via the `commit` skill only when the user asks
-(or the flow note allows it); never push without the user's OK. Versions and tags are `/launch`.
+Criteria `[x]` only once you or the verifier saw the check pass; `Status: done` only when all
+are. A backlog item (`AGENTS.md § Backlog`): follow that section, complete it only on the
+user's yes. A surprising lesson → the `lessons` skill. Commit (`commit` skill) only when the
+user asks or the flow note allows it; never push without their OK. Versions: `/launch`.

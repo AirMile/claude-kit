@@ -1,11 +1,11 @@
 # Critique
 
-Stress-test `docs/product.md` and the roadmap one technique at a time, in dialogue, then turn
+Stress-test `docs/product.md` and the backlog one technique at a time, in dialogue, then turn
 the findings into concrete edits. Nothing is written until the user applies them at the end.
 
 ## 1. Read and aim
 
-Read product.md, the roadmap, and (when there is code) the README and what is built. Done and
+Read product.md, the backlog, and (when there is code) the README and what is built. Done and
 in-progress items are facts to critique _against_, not assumptions to challenge: aim at the open
 remainder. Classify the product: **product** (app, service, tool), **creative** (game, story,
 interactive piece), or **both**.
@@ -22,7 +22,7 @@ fits _this_ product (name the item or line it targets).
 | Pre-mortem        | all      | A year after launch it failed: tell that story. Single most likely cause? Which warning signs got ignored?       |
 | Devil's advocate  | all      | Strongest case against it. Weakest point. Which obstacle is everyone hoping won't show up?                       |
 | Assumption test   | all      | What must be true (users, tech, market)? Risk per assumption H/M/L. Cheapest test of the riskiest, before build. |
-| Smaller version   | all      | The one hypothesis it stands on. Smallest roadmap that tests it. What is in there because it's fun, not needed?  |
+| Smaller version   | all      | The one hypothesis it stands on. Smallest backlog that tests it.  What is in there because it's fun, not needed?  |
 | Alternatives      | all      | 3 other ways to the same goal (simpler, cheaper, an existing tool). Why does this one win?                       |
 | Ethics & misuse   | all      | Who could be harmed or excluded? Misuse cases. Privacy and fairness.                                             |
 | Audience          | product  | Who exactly, in what situation? Their current workaround. What makes them switch, what stops them?               |
@@ -43,7 +43,7 @@ Present (in the user's language):
 <1-2 sentences: what it does, why here>
 
 Questions:
-1. <4-6 questions, each anchored in a concrete line of product.md or a roadmap item>
+1. <4-6 questions, each anchored in a concrete line of product.md or a backlog item>
 
 Points of attention:
 1. <3 concrete weaknesses you already see, with the item they hit>
@@ -76,6 +76,6 @@ remaining techniques (after two, returns usually drop). Nothing relevant left â†
 
 Collect the findings from all applied techniques into concrete changes: product.md (sharper
 **For whom**, a new **Non-goal**, an **Open question** that needs a real-world test) and the
-roadmap (cut, split, reorder, move to `## Later`, add a missing item). Apply them through
+backlog (cut, split, reorder, move to ideas, add a missing item). Apply them through
 **Update** steps 2-4 of `SKILL.md` (diff, show, one confirmation). The user may also keep
 everything as is; the critique then stays in the conversation only.

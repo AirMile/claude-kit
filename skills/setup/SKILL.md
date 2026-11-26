@@ -3,7 +3,7 @@ name: setup
 description: Set up or migrate a project for kit (AGENTS.md, docs/, scaffold). Use with /setup.
 disable-model-invocation: true
 argument-hint: "[nothing | idea for a new project]"
-allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/scripts/migrate-v1.js *), Bash(node ${CLAUDE_SKILL_DIR}/scripts/detect-tools.js *)
+allowed-tools: Bash(node "${CLAUDE_SKILL_DIR}/scripts/migrate-v1.js" *), Bash(node "${CLAUDE_SKILL_DIR}/scripts/detect-tools.js" *)
 ---
 
 # Setup
@@ -24,7 +24,7 @@ subfolders hold a `.git` or a manifest.
 | No git, no manifest, and cwd is `$HOME`, `/` or a folder of projects | **N. New folder**    |
 | No source files, no `docs/product.md`                                | **P. Product first** |
 | No source files, `docs/product.md` exists                            | **A. Scaffold**      |
-| `.project/` exists and no `docs/roadmap.md` yet                      | **C. Migrate v1**    |
+| `.project/`, no `docs/product.md`, no `docs/roadmap.md`              | **C. Migrate v1**    |
 | Otherwise                                                            | **B. Onboard**       |
 
 ## N. New folder
@@ -40,7 +40,7 @@ subfolders hold a `.git` or a manifest.
 ## P. Product first
 
 Empty folder: invoke the `kit:product` skill (Skill tool) with the arg as the idea. It interviews,
-then writes `docs/product.md` and `docs/roadmap.md` with `scaffold` first. Cancelled → stop.
+then writes `docs/product.md` and the backlog with `scaffold` first. Cancelled → stop.
 Written → continue here with **A** (don't stop at its report).
 
 ## A. Scaffold (greenfield)
@@ -53,12 +53,12 @@ Written → continue here with **A** (don't stop at its report).
    the files in; never pass `--overwrite`/`--force`.
 4. Add the test runner the stack expects if the generator didn't (one, not a menu).
 5. Boot the dev server once to confirm it works; stop only the process you started.
-6. Mark the `scaffold` roadmap item `[x]`. Continue with **B**.
+6. A `scaffold` backlog item → complete it after the user confirms. Continue with **B**.
 
 ## B. Onboard
 
 1. Read the manifest(s), scripts, lint/format/test config, and `git log -15 --oneline`. Run
-   `node ${CLAUDE_SKILL_DIR}/scripts/detect-tools.js .` (read-only): its `Test`, `Lint / typecheck`,
+   `node "${CLAUDE_SKILL_DIR}/scripts/detect-tools.js" .` (read-only): its `Test`, `Lint / typecheck`,
    `Build`, `Security` and `Quality` lines are what the project evidently has; they fill
    `## Commands` and nothing is added that the output doesn't show. Existing lines stay; only
    missing keys are filled (a `Lint` or `Typecheck` line counts as `Lint / typecheck`). Several `##` blocks (a monorepo) → one line per key per folder.
@@ -68,8 +68,10 @@ Written → continue here with **A** (don't stop at its report).
    `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` exists. Move their durable content
    into `AGENTS.md`, then delete them (show what moves first). A symlink between the two → one
    real `AGENTS.md`.
-4. `docs/`: create what is missing: `roadmap.md` and `decisions.md` with their format headers
-   (below). Never overwrite existing content. `docs/specs/` is created by `/task-readiness` when needed.
+4. `docs/decisions.md` missing → create it with its format header (below); never overwrite.
+   `.project/backlog.json` with open items the backlog lacks (not saved earlier) → offer **C** 3.
+   `docs/specs/` is created by `/task-readiness`. **Backlog**: fill `AGENTS.md § Backlog` by
+   `${CLAUDE_PLUGIN_ROOT}/skills/product/SKILL.md` § The backlog (also its `docs/roadmap.md` offer).
 5. `.gitignore`: `AGENTS.md` and `docs/` must **not** be ignored; remove such lines (show them
    first). Add `.claude/worktrees/`.
 6. **Less to read**: checked-in generated or vendored code (`vendor/`, `*.generated.*`, a
@@ -87,9 +89,6 @@ Written → continue here with **A** (don't stop at its report).
 
 ### docs/ format headers
 
-`docs/roadmap.md`: the `product` skill owns this format; copy its header and an empty
-`# Roadmap` from `${CLAUDE_PLUGIN_ROOT}/skills/product/SKILL.md § Formats` when /product has not run.
-
 `docs/decisions.md`:
 
 ```markdown
@@ -102,8 +101,8 @@ Why: <reason> · Rejected: <alternative + why not> · Superseded by: <link or �
 
 ## C. Migrate v1
 
-First run `node ${CLAUDE_SKILL_DIR}/scripts/migrate-v1.js .` (read-only): it prints the open
-backlog as roadmap lines, the product source, learnings grouped by target `AGENTS.md`, and a
+First run `node "${CLAUDE_SKILL_DIR}/scripts/migrate-v1.js" .` (read-only): it prints the open
+backlog items, the product source, learnings grouped by target `AGENTS.md`, and a
 CLAUDE.md summary. Work from that output instead of reading the JSON yourself.
 
 1. **CLAUDE.md** → keep only content that is not derivable and not template (project rules,
@@ -111,8 +110,8 @@ CLAUDE.md summary. Work from that output instead of reading the JSON yourself.
 Context`, the GENERATED marker, `{{…}}` placeholders, `.project/` rules, Frontend Edit Rules.
 2. **Product** → `.project/project-seed.md` → `docs/product.md`, condensed to the product format
    (see `product` skill: What · For whom · Why · Non-goals · Stack).
-3. **Backlog** → the script's roadmap lines → `docs/roadmap.md`. Drop v1-only items (re-running
-   v1 manual tests, `.project`/worktree tooling).
+3. **Backlog** → the script's items go to the backlog of **B** step 4. Drop v1-only items
+   (re-running v1 manual tests, `.project`/worktree tooling).
 4. **Learnings** → at most ~15 that pass the `lessons` criteria, in the `AGENTS.md` the script
    grouped them under. Drop v1-pipeline ones; merge duplicates (often stored twice, two languages).
 5. **Old worktrees** (`git worktree list` beyond the main checkout, v1 made them): per worktree
@@ -121,7 +120,7 @@ Context`, the GENERATED marker, `{{…}}` placeholders, `.project/` rules, Front
 6. Then run **B** steps 2-9 with this material. Leave `.project/` untouched; tell the user it
    can be deleted once they are happy.
 
-Show the proposed `AGENTS.md` and roadmap as a preview and get one confirmation before writing
+Show the proposed `AGENTS.md` and backlog items as a preview and get one confirmation before writing
 (AskUserQuestion: Write (Recommended) / Adjust / Cancel).
 
 ## Report
@@ -130,11 +129,11 @@ Show the proposed `AGENTS.md` and roadmap as a preview and get one confirmation 
 SETUP · <route>
 AGENTS.md     <created | updated | unchanged> (<n> lines) · CLAUDE.md <removed | none>
 docs/         <files created>
-migrated      <n roadmap items, n lessons, worktrees kept/removed> (v1 only)
+migrated      <n backlog items, n lessons, worktrees kept/removed> (v1 only)
 git           <branches | trunk> · .worktreeinclude <files | —>
 context       deny <paths | —> · lsp <plugin to install | —>
 desktop       Settings → Claude Code: branch prefix (+ auto-archive after PR merge with Land: pr)
-next          /product (no roadmap) · /task-readiness (roadmap ready)
+next          /product (no product.md) · /task-readiness <item> (backlog ready)
 ```
 
 Do not commit; offer `/commit`.

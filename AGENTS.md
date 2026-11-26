@@ -14,9 +14,11 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   (`hooks/compaction.ts`), auto-compact at a task boundary with a compaction ledger and
   `/kitcompact` (`hooks/auto-compact.ts` on the pure `hooks/context-policy.ts`), `/pin` text that
   survives compaction word for word (`hooks/pins.ts`), the user's latest messages restored the
-  same way (`hooks/recent.ts`; per-chat storage in `hooks/chat-store.ts`), usage figures, and the tools
-  `mcp__kit__roadmap_view` / `mcp__kit__theme_view` (`hooks/roadmap-open.ts`,
-  `hooks/theme-view.tsx`) that `/product` and `/theme` call to open their panes (plus the `/panel` command), the band
+  same way (`hooks/recent.ts`; per-chat storage in `hooks/chat-store.ts`), usage figures, the tool
+  `mcp__kit__theme_view` (`hooks/theme-view.tsx`) that `/theme` calls to open its pane, the
+  dashboard pane on `/panel` and the band's button (`hooks/panel-open.ts`, `hooks/panel-view.tsx`,
+  drawn by the pure `panel-tabs.tsx` on `panel-parts.tsx`; the Session tab's facts in
+  `hooks/chat-facts.ts`), the band
   above the prompt (`hooks/kit-band.tsx`: one line of usage, switches a press
   cycles (the profile, GPT on or off, the limit button (Off (default), Warm, Limit: pause + warm while work is open; per chat)), the effort with ‹ › when the profile is off, git, dashboard; the menus in
   `hooks/band-menus.tsx`, the Claude·GPT meters in `hooks/band-meters.tsx`), model/effort per prompt and subagent
@@ -46,9 +48,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   read budgets (`hooks/read-budget.ts`, observed by `hooks/read-watch.ts`), a pause before the plan limit with
   cache keep-alive (`hooks/limit-guard.ts` on the pure `hooks/limit-policy.ts`, kept prompts and
   command replay in `hooks/limit-queue.ts`, text control with `/limit` in `hooks/limit-command.ts`), keep-alive forks by hand or
-  for the pause (`hooks/keep-warm.ts`, `/warm`), `/band` (the roadmap
-  pane draws through the pure `roadmap-{dashboard,tabs,phase,card,later}.tsx` on `roadmap-parts.tsx`, with
-  the Session tab's facts by `hooks/chat-facts.ts`),
+  for the pause (`hooks/keep-warm.ts`, `/warm`), `/band`,
   and `mcp__kit__fresh_start` (`hooks/fresh-start.ts`), for clearing and resuming. Only `register.tsx` registers events; `$` never crosses an import (the
   validator refuses it), so `hooks/spec.ts` stays pure
 - `hooks/codex-hooks.json` (declared in `.codex-plugin/plugin.json`) → `hooks/codex-hooks.cjs`: push
@@ -72,12 +72,14 @@ each file carries its own format in a `<!-- format: … -->` header:
 
 - `AGENTS.md` (root + nested per module): instructions and non-derivable lessons
 - no `CLAUDE.md`: its presence would stop Claude Code from reading `AGENTS.md`
-- `docs/product.md`, `docs/roadmap.md`, `docs/specs/<slug>.md`, `docs/decisions.md`
+- `docs/product.md`, `docs/specs/<slug>.md`, `docs/decisions.md`
+- `AGENTS.md § Backlog`: where the backlog lives (a Todoist project, a tracker) and its rules.
+  The backlog is never a file in the repo
 - `docs/seo.md`: intake, keywords, page plan, measurements (`scan`, `intake`, `seo` write it;
   `task-readiness`, `audit`, `launch` read it)
 
 Change a format → update the header template in the skill that writes it (`product` for
-product/roadmap, `setup` for AGENTS/decisions, `task-readiness/references/spec-template.md` for specs,
+product and `§ Backlog`, `setup` for AGENTS/decisions, `task-readiness/references/spec-template.md` for specs,
 `seo` for seo.md).
 
 ## Budgets (hard)
@@ -85,24 +87,21 @@ product/roadmap, `setup` for AGENTS/decisions, `task-readiness/references/spec-t
 - `SKILL.md` ≤ 150 lines (`task-readiness` ≤ 120); max 2 files in `references/`
 - No `shared/` directory, no JSON state files
 - Scripts only for deterministic checks or conversions with fixed output (Node, so they run on
-  macOS and Windows). Never for reading/editing roadmap or spec files: those are small and the
-  model handles them; a script there is how v1 regrew. One exception: the roadmap pane edits
-  open items of `docs/roadmap.md` (add, change phase, move to Later, remove, restore) via
-  `hooks/roadmap-file.ts`, which keeps untouched lines byte for byte and refuses done and
-  in-progress items (their state is managed by the task); `hooks/roadmap-file.test.ts` guards it
+  macOS and Windows). Never for reading/editing spec files: those are small and the
+  model handles them; a script there is how v1 regrew
 - Hooks and scripts must work on Windows too (e.g. `npx` is `npx.cmd` there)
 - The mod (`hooks/*.ts*`) costs no context (it runs as code), so no total line budget: one
   purpose per file, ≤ ~300 lines each (larger → split). It reads only specs (`Status` +
-  criteria), `AGENTS.md § Commands` (flow: which kinds of check a task must pass; guard: `Protected:` globs), `docs/roadmap.md` and read-only git state (spec commits and
-  worktrees on other branches), plus `organizationType` from the login's `~/.claude.json` (`hooks/plan.ts`); it writes only through `roadmap-file.ts` and
-  `$.store` (worktree marks, pins). It starts Codex only for `mcp__kit__delegate`,
+  criteria), `AGENTS.md § Commands` (flow: which kinds of check a task must pass; guard: `Protected:` globs), the title of `docs/product.md` and read-only git state,
+  plus `organizationType` from the login's `~/.claude.json` (`hooks/plan.ts`); it writes only
+  `$.store` (pins among it). It starts Codex only for `mcp__kit__delegate`,
   `mcp__kit__run_task` and the window-sync ping: what a writing run changes is Codex's work, in
   Codex's sandbox, reviewed by the chat. The only other commands it runs for the chat are the
   check argvs the chat passes to `run_task` (as the user, after the permission prompt). Flow reads the
   chat's own tool calls (Edit/Write, Bash), subagents' answers and read-only git state (`ls-files`,
   diff, `hash-object` without `-w`), and holds a turn's end; it writes only `$.store` (its
   open task per session, a 14-day log).
-  Schema or roadmap format change → update `roadmap-file.ts` + its skill. `claude plugin test .`
+  `claude plugin test .`
 - A rule that needs a second paragraph of exceptions is a sign to cut it, not to extend it
 - Check: `wc -l skills/*/SKILL.md`
 

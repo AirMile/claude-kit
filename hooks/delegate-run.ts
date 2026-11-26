@@ -56,7 +56,8 @@ export const FOOTER: Record<Role, string> = {
   plan: `Read only: change no files. Aim for 4000 characters or less. ${SHAPE}`,
   review:
     "Read only: change no files. Review the uncommitted changes (git status, git diff, new " +
-    "files too) against the brief above. List findings most severe first as [P0] to [P3] with " +
+    "files too) against the brief above; a brief that names its own scope (paths, a fix diff) " +
+    "limits the review to that. List findings most severe first as [P0] to [P3] with " +
     `file:line and why; no fixes. No findings → say so. For this review, ${REVIEW_MARK} (fail = any [P0] or [P1]), ` +
     "then a line `failure-paths: <the failure paths and integration points you checked>`. " +
     `Aim for 4000 characters or less. ${SHAPE}`,

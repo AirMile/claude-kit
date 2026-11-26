@@ -13,17 +13,6 @@ Habit tracker in plain JavaScript (no build step).
 
 - Test: `node --test`
 EOF
-cat > docs/roadmap.md <<"EOF"
-<!-- format: one line per item, order = priority.
-- [ ] **slug** · one-line description
-- [ ] **slug** · description · spec: docs/specs/slug.md   ← in progress (spec exists, not done)
-- [x] **slug** · description · spec: docs/specs/slug.md   ← done -->
-
-# Roadmap
-
-- [x] **scaffold** · project skeleton and test runner
-- [ ] **reminders** · daily push reminder at a time the user picks
-EOF
 cat > src/header.html <<"EOF"
 <header><h1>Welcom to Habits</h1></header>
 EOF

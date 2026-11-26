@@ -1,11 +1,11 @@
 # Brainstorm
 
 Explore new directions for the product one technique at a time, in dialogue, then pick which
-ideas land on the roadmap. Nothing is written until the user picks at the end.
+ideas land on the backlog. Nothing is written until the user picks at the end.
 
 ## 1. Read and aim
 
-Read product.md, the roadmap (incl. `## Later`) and, when there is code, what is built. Built
+Read product.md, the backlog (ideas included) and, when there is code, what is built. Built
 and planned items are known ground: look for the gaps around them. Every idea must serve **For
 whom** and **Core experience**; one that crosses a **Non-goal** is only worth raising as a
 deliberate challenge to that non-goal, labelled as such.
@@ -40,7 +40,7 @@ Present (in the user's language):
 <1-2 sentences: what it does, why here>
 
 Questions:
-1. <4-6 questions, each anchored in a concrete line of product.md or a roadmap item>
+1. <4-6 questions, each anchored in a concrete line of product.md or a backlog item>
 
 Ideas to start with:
 - <2-3 concrete, unexpected ideas this technique produces for this product>
@@ -70,9 +70,9 @@ remaining techniques (after two, returns usually drop). Nothing relevant left �
 
 ## 6. Pick and place
 
-Filter all ideas against the roadmap and `## Later` (no duplicates) and the roadmap rules in
-`SKILL.md` (one `/task-readiness` run each; too big → split). AskUserQuestion (multiSelect, max 4 per
-question, strongest first) which to add; per idea a description saying where it goes (phase or
-`## Later`) and why. An insight that changes product.md (a sharper **Core experience**, a
+Filter all ideas against the backlog (no duplicates) and the item rules in `SKILL.md` (one
+`/task-readiness` run each; too big → split). AskUserQuestion (multiSelect, max 4 per question,
+strongest first) which to add; per idea a description saying where it goes (next or ideas) and
+why. An insight that changes product.md (a sharper **Core experience**, a
 challenged **Non-goal**) is offered as its own option. Apply the picks through **Update** steps
 2-4 of `SKILL.md`.

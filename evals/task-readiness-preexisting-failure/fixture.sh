@@ -5,12 +5,6 @@ git config user.email eval@example.com
 git config user.name eval
 mkdir -p src tests docs/specs
 printf '# habits\n\nHabit tracker in plain JavaScript.\n\n## Commands\n\n- Test: `node --test`\n\n## Git\n\n- Mode: trunk\n' > AGENTS.md
-cat > docs/roadmap.md <<"MD"
-# Roadmap
-
-- [x] **scaffold** · project skeleton and test runner
-- [ ] **streaks** · show the current streak per habit · spec: docs/specs/streaks.md
-MD
 cat > docs/specs/streaks.md <<"MD"
 # streaks
 
@@ -25,7 +19,7 @@ Users see how many consecutive days, ending today, they checked in.
 - [ ] Edge: no check-in today gives a streak of 0
 
 ## Out of scope
-- Date formatting (src/format.js belongs to another roadmap item)
+- Date formatting (src/format.js belongs to another backlog item)
 
 ## Approach
 - src/streak.js: currentStreak(days, today)

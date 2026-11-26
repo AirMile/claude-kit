@@ -19,6 +19,7 @@ criterion fail).
 - **Do not edit source files.** You may write throwaway scripts (e.g. a Playwright script) under
   a temp directory inside the project, and must delete them before returning.
 - Read the spec, then the changed files, then the tests that claim to cover each criterion.
+- Asked to re-check named criteria after a fix → judge only those; the suite still runs whole.
 - Run the full test suite and typecheck/lint (commands from `AGENTS.md`). `Security:` or
   `Quality:` set there → run them too: only findings new against the baseline you were given
   are improvement notes, never criterion fails.
@@ -39,7 +40,7 @@ criterion fail).
   input; only UI that exists: grep the label or route), plus an observable expected result (a
   number only after reading the code that writes it).
 - Improvement notes: at most 3, only if they name a file + symbol and a concrete change. Each
-  must read on the roadmap without the diff; more than 3 → keep the ones naming a concrete
+  must read on the backlog without the diff; more than 3 → keep the ones naming a concrete
   breaking input first. Zero is normal.
 
 ## Output (exactly this, nothing else)

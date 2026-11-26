@@ -31,9 +31,9 @@ import { bandCommand, bandUsage, kitBand } from "./kit-band";
 import { noteStop, warmCommand } from "./keep-warm";
 import { limitCommand } from "./limit-command";
 import { leavePause, limitCommandWatch, noteLimits } from "./limit-guard";
-import { panelCommand, roadmapOpen, roadmapTool } from "./roadmap-open";
-import { roadmapEdited, roadmapStale, roadmapView } from "./roadmap-view";
-import type { Usage } from "./roadmap-parts";
+import { panelCommand, panelOpen } from "./panel-open";
+import { panelView } from "./panel-view";
+import type { Usage } from "./panel-parts";
 import { themeTool, themeView } from "./theme-view";
 import { readWatch } from "./read-watch";
 import { syncWindows } from "./window-sync";
@@ -43,8 +43,8 @@ import { syncWindows } from "./window-sync";
 // - /pin: the user's own text restored word for word after every compaction (pins).
 // - The user's latest messages, restored the same way (recent).
 // - Context and plan limits as the band's second line (kit-band.tsx).
-// - The roadmap and theme panes: tools the skills call with data (roadmap-view, theme-view);
-//   the roadmap pane also opens on /panel (roadmap-open) and the band's button (kit-band).
+// - The panes: the dashboard on /panel (panel-open, panel-view) and the band's button
+//   (kit-band), and the theme pane, whose tool the theme skill calls with data (theme-view).
 // - Model and effort picked per prompt and per subagent from a profile (auto-model), chosen
 //   in the band above the prompt or with /mode.
 // - A pause before the plan limit runs out (limit-guard), and the cache kept warm while work
@@ -124,8 +124,8 @@ async function refresh($: EngineInterface, figures?: Figures) {
 }
 
 export const register: Register = (on) => {
-  roadmapView(on);
-  roadmapOpen(on);
+  panelView(on);
+  panelOpen(on);
   themeView(on);
   freshStart(on);
   readWatch(on);
@@ -143,7 +143,6 @@ export const register: Register = (on) => {
 
   on("session.start", async ($, e, next) => {
     const started = await next(e);
-    await $.tool.register(roadmapTool);
     await $.tool.register(themeTool);
     await $.tool.register(freshTool);
     await $.tool.register(delegateTool);
@@ -193,7 +192,6 @@ export const register: Register = (on) => {
   on("command.run", async ($, e, next) => limitCommandWatch($, e, next));
 
   on("session.measure", async ($, e, next) => {
-    roadmapStale(); // the pane reloads git and specs on its next draw
     await refresh($, e);
     await noteLimits($, e.rateLimits);
     void syncWindows($, e.rateLimits); // in the background: the turn never waits on Codex
@@ -226,7 +224,6 @@ export const register: Register = (on) => {
     const ran = await next(e);
     if (!e.agentId) noteFile(e.file_path);
     if (SPEC_PATH.test(e.file_path.replace(/\\/g, "/"))) await refresh($);
-    if (roadmapEdited(e.file_path)) $.ui.invalidate("ui.render");
     if (ran.deny !== undefined || ran.isError) return ran;
     // Flow: the change counts for the open task, a subagent's too; a note rides along when the
     // task grew.

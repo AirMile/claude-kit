@@ -28,7 +28,7 @@ is a better skill, not a bigger one: kit stays small only if every refinement pa
 
 - The repo's `AGENTS.md` (budgets and rules).
 - The skill's `SKILL.md`, its `references/` and `scripts/` (or the agent/hook file).
-- Another skill only if an observation touches a shared file format (product/roadmap/spec/
+- Another skill only if an observation touches a shared file format (product/backlog/spec/
   decisions headers) or a hand-off (`task-readiness` → `commit`, `task-readiness` → `convert`).
 
 Note the current line count, then run the skill's **baseline evals**: the command in

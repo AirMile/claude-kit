@@ -32,10 +32,15 @@
   `build` and `start` on a free port (rebuild after each fix); say which.
 - Database: worktrees share the local one → <own `DATABASE_URL` per worktree | schema push off
   outside the main checkout>; migrations only from the main checkout.
-- Merge conflicts in docs/roadmap.md, docs/decisions.md or AGENTS.md: keep compatible additions of both sides,
+- Merge conflicts in docs/decisions.md or AGENTS.md: keep compatible additions of both sides,
   drop duplicates and superseded lines, never leave two contradicting rules.
+
+## Backlog
+
+- The backlog is <where: Todoist project `<name>` | tracker>. Do not keep a list in the repo.
+- Add items only after the user confirms; complete one only after the user confirms.
 
 ## Docs
 
-- Product intent: `docs/product.md` · roadmap: `docs/roadmap.md` · specs: `docs/specs/`
+- Product intent: `docs/product.md` · specs: `docs/specs/`
 - Decisions and why: `docs/decisions.md`

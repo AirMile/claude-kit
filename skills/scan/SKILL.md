@@ -3,7 +3,7 @@ name: scan
 description: Measure how findable a live site is: a free check for a prospect, or the monthly measurement. Use with /scan.
 disable-model-invocation: true
 argument-hint: "[url | nothing for the production URL]"
-allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/scripts/seo-facts.js *)
+allowed-tools: Bash(node "${CLAUDE_SKILL_DIR}/scripts/seo-facts.js" *)
 ---
 
 # Scan
@@ -26,7 +26,7 @@ Say the mode and URL in one line.
 
 ## 1. Technique
 
-`node ${CLAUDE_SKILL_DIR}/scripts/seo-facts.js <url>` prints JSON: robots.txt, every sitemap it
+`node "${CLAUDE_SKILL_DIR}/scripts/seo-facts.js" <url>` prints JSON: robots.txt, every sitemap it
 names (with URL count), and per page (sitemap first, max 10; no sitemap → home and its internal
 links): status, redirect, `inSitemap`, title, description, robots meta, `X-Robots-Tag`,
 canonical, h1 list, lang, JSON-LD types and parse errors. Read the JSON; don't re-fetch by hand.
@@ -77,9 +77,9 @@ as a shareable page.
 **Measure** → a new entry at the top of `## Measurements` in `docs/seo.md`: date, technique
 (counts per weight + the high ones by name), search data (key numbers + quick wins), local
 (reviews, score), AI (named n/3, competitors named), the prompts used. Compare with the previous
-entry: what moved, up or down. Up to 2 concrete points → one line each under `## Later` in
-`docs/roadmap.md`; a high finding → a normal roadmap item instead. No roadmap → list them in the
-report.
+entry: what moved, up or down. Up to 2 concrete points → one backlog item each (the place
+`AGENTS.md § Backlog` names), after one confirmation: ideas, or near the top for a high finding.
+No backlog or unreachable → list them in the report.
 
 ## Report
 
@@ -94,4 +94,4 @@ next       <send the report | /intake | /seo | /task-readiness <slug>>
 ```
 
 Next: prospect → send the report; measure with an empty `## Intake` → `/intake`; intake done but
-no `## Pages` → `/seo`; otherwise the first roadmap item this scan added.
+no `## Pages` → `/seo`; otherwise the first backlog item this scan added.

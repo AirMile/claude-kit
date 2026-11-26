@@ -1,13 +1,32 @@
-import type { Parts, Tab } from "./roadmap-parts";
+import type { Parts, Tab } from "./panel-parts";
 
-// The dashboard pane's tabs (no tab element exists: a row of buttons, the shown one at full
-// strength), and the Session and Messages tabs. Pure, like roadmap-parts.tsx.
+// The dashboard pane (its title is the product): a row of tab buttons (no tab element
+// exists; the shown one at full strength) over the Messages or the Session tab. The skills,
+// commit, compact and clear are in the band above the prompt (kit-band.tsx). Pure, like
+// panel-parts.tsx.
 
 const TABS: [Tab, string][] = [
-  ["roadmap", "▤ Roadmap"],
   ["messages", "◈ Messages"],
   ["chat", "◎ Session"],
 ];
+
+export function body(p: Parts) {
+  const { Box } = p.el;
+  return (
+    <Box
+      flexDirection="column"
+      gap={1}
+      paddingX={1}
+      paddingY={1}
+      minHeight={p.rows || undefined}
+    >
+      {tabRow(p)}
+      <Box flexDirection="column" flexGrow={1}>
+        {p.tab === "chat" ? chatTab(p) : messagesTab(p)}
+      </Box>
+    </Box>
+  );
+}
 
 export function tabRow(p: Parts) {
   const { Box, Button } = p.el;

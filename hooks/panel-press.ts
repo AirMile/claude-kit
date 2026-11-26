@@ -1,5 +1,7 @@
 import type { ElementTable, On, UiPressArgument } from "claude-code";
 
+import { PANE } from "./panel-parts";
+
 // The desktop drops a pane's first click: while the pane's focus ring sits elsewhere (on
 // nothing after open, or lost after a click in the chat), a click on a Button only moves the
 // ring there (ui.focus, origin person) and raises no ui.press. autoFocus and opening with
@@ -8,7 +10,6 @@ import type { ElementTable, On, UiPressArgument } from "claude-code";
 // same click may still raise is swallowed. The cost: on the desktop, Tab onto a Button
 // presses it.
 
-const PANE = "kit-roadmap"; // roadmap-view.tsx's pane
 const SAME_CLICK_MS = 250;
 const presses = new Map<string, (e: UiPressArgument) => void>();
 let surface = "";

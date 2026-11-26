@@ -18,18 +18,6 @@ cat > docs/product.md <<'MD'
 
 - A webshop.
 MD
-cat > docs/roadmap.md <<'MD'
-<!-- format: items under phase (release) headings, one line per item, order = priority.
-## v<version> · <name>
-- [ ] **slug** · one-line description -->
-
-# Roadmap
-
-## v1 · MVP
-
-- [x] **scaffold** · project skeleton
-- [ ] **contact-form** · quote request form
-MD
 cat > docs/seo.md <<'MD'
 <!-- format: seo. Each skill edits only its own section: Intake (/intake), Keywords and Pages
 (/seo), Measurements (/scan, newest first). Volumes come from a tool or a CSV, never an

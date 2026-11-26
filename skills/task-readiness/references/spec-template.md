@@ -1,6 +1,6 @@
 # Spec template
 
-For work that outlives one chat or sits on the roadmap: `docs/specs/<slug>.md`. Keep it under
+For work that outlives one chat or a backlog item too big for one: `docs/specs/<slug>.md`. Keep it under
 ~50 lines; add a section only when it helps the next reader.
 
 ```markdown
@@ -10,6 +10,7 @@ Criteria are checked [x] when built AND verified. -->
 # <slug>
 
 Status: defined
+Backlog: <the item's title or link, or —>
 Design: <Figma URL (or exported frame PNG), or —>
 
 ## Goal

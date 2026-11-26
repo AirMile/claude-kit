@@ -1,7 +1,7 @@
 ---
 name: codex
 description: Run a GPT model through the Codex CLI for an opinion, review, research or implementation. Use when the user asks for GPT (Sol, Astra, Luna, Terra), or when kit's delegation sends work to Codex. Gemini/agy/Antigravity is the `agy` skill; "GPT en Gemini" runs both.
-allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/scripts/codex-status.js), Bash(node ${CLAUDE_SKILL_DIR}/scripts/codex-window.js *)
+allowed-tools: Bash(node "${CLAUDE_SKILL_DIR}/scripts/codex-status.js"), Bash(node "${CLAUDE_SKILL_DIR}/scripts/codex-window.js" *)
 ---
 
 # Codex
@@ -23,14 +23,15 @@ runs for real and a Claude route does not stand in for it).
 
 Call it with a `role` (`search`, `research`, `build`, `build+`, `review`, `plan`) and a brief.
 The user asked for GPT → add `family` (the model they named: `sol`, `terra`, `luna`, `astra`;
-none → `sol`); without it only `review` and `plan` go to GPT. A follow-up on the same run →
+none → `sol`); without it only `review` and `plan` go to GPT. The same for a build through
+`mcp__kit__run_task`, which on Max refuses without `family`. A follow-up on the same run →
 `thread` from its answer. The tool runs Codex, keeps its log out of this chat and returns
 the final message and changed files. A Claude route in its answer → run it with the Agent tool
 as it says.
 
 ## Without the tool (Codex host, or an old kit)
 
-1. `node ${CLAUDE_SKILL_DIR}/scripts/codex-status.js`: prints `argv` (how to start Codex here),
+1. `node "${CLAUDE_SKILL_DIR}/scripts/codex-status.js"`: prints `argv` (how to start Codex here),
    the visible `models` and the ChatGPT `limits`. `error` → tell the user (install the Codex
    CLI, or `codex login` with ChatGPT; never read credentials, never fall back to an API key).
 2. Pick the newest `gpt-<version>-<family>` id of the family; write the brief to a temp file.
@@ -63,5 +64,5 @@ as it says.
 ## Scheduled window start
 
 A cloud routine that opens Claude's 5h window cannot reach Codex. For ChatGPT's window use
-`node ${CLAUDE_SKILL_DIR}/scripts/codex-window.js install HH:MM ...` (macOS launchd, same local
+`node "${CLAUDE_SKILL_DIR}/scripts/codex-window.js" install HH:MM ...` (macOS launchd, same local
 times as the routine; `ping`, `status`, `uninstall` also exist). Install only on the user's OK.

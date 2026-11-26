@@ -1,9 +1,9 @@
 import type { EngineInterface } from "claude-code";
 
 import { runState } from "./auto-model";
-import type { Chat, Excerpt } from "./roadmap-parts";
+import type { Chat, Excerpt } from "./panel-parts";
 
-// What the roadmap pane's Chat tab shows. register.tsx and auto-model.ts note what this chat
+// What the dashboard pane's Session tab shows. register.tsx and auto-model.ts note what this chat
 // touched (files written or edited, subagents, compactions) as it happens, so it counts from
 // when the mod loaded; a /clear starts over.
 

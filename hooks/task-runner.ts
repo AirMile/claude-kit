@@ -44,8 +44,9 @@ export const runTaskTool: ToolSpec = {
   name: "run_task",
   description:
     "kit: GPT builds, on Claude Pro when kit's note says so, on Max only when the user asks: " +
-    "hand one change brief plus its covering check argv(s), with family (sol, terra, luna, " +
-    "astra) only if the user named it. The mod runs GPT's build, " +
+    "hand one change brief plus its covering check argv(s). family (sol, terra, luna, astra) " +
+    "only when the user asked for GPT: the one they named, else sol; a kit note alone sends " +
+    "none. The mod runs GPT's build, " +
     "runs the checks itself as the host user (no shell, session root), feeds a failing check " +
     "back to the same Codex thread up to 2 times while ChatGPT's limits have room, and returns " +
     "one short result. Review the diff afterwards. role: build (default) or build+ for a hard " +

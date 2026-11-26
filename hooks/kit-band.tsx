@@ -23,10 +23,9 @@ import {
   effortLabel,
 } from "./model-policy";
 import { setEffortLock } from "./model-switch";
-import { openRoadmap } from "./roadmap-open";
+import { openPanel } from "./panel-open";
 import { inRoot } from "./spec";
-import type { Usage } from "./roadmap-parts";
-import { PANE } from "./roadmap-view";
+import { PANE, type Usage } from "./panel-parts";
 
 // The band above the prompt, one line that never wraps, an open menu (a bordered
 // block) above it: shown while the pointer rests on its button, kept open by a press. Left:
@@ -119,7 +118,7 @@ export function kitBand(on: On) {
       .exists(inRoot(root, "AGENTS.md"))
       .catch(() => true);
     const toggleDashboard = () => {
-      const toggle = isOpen ? $.ui.close({ id: PANE }) : openRoadmap($);
+      const toggle = isOpen ? $.ui.close({ id: PANE }) : openPanel($);
       void toggle.then(() => $.ui.invalidate("ui.render"));
     };
     const state = {
@@ -248,7 +247,7 @@ export function kitBand(on: On) {
             {trigger(
               "skills",
               <Button
-                key="kit-roadmap"
+                key="kit-skills"
                 label={isOpen ? "⌘ Close" : "⌘"}
                 onPress={toggleDashboard}
               />,

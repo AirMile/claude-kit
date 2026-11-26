@@ -67,7 +67,7 @@ function pane($: Parameters<Parameters<typeof test>[1]>[0]) {
     plugin: "kit",
     surface: "terminal",
     component: "Pane",
-    requestId: "kit-roadmap",
+    requestId: "kit-panel",
     props: {} as never,
   });
 }

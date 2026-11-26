@@ -263,7 +263,7 @@ export function autoModel(on: On) {
       return { drop: held };
     }
     const now = await getMode($);
-    // Typed, or started by kit on the user's own click (the roadmap pane, Fresh start).
+    // Typed, or started by kit on the user's own click (a band button, Fresh start).
     const typed =
       e.origin.kind === "composer" ||
       e.origin.kind === "bridge" ||
