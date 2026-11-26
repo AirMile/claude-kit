@@ -417,13 +417,13 @@ Make a project kit-ready. Idempotent: running it again only fills gaps.
 
 It detects one of five situations:
 
-| Situation                                               | What happens                                                                                                    |
-| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Not in a project (home folder, or a folder of projects) | **New folder**: asks the name, creates the folder + `git init`, moves the session there; send `/setup` again    |
-| Empty folder, no docs/product.md                        | **Product first**: runs the `/product` interview, then scaffolds                                                |
-| Empty folder, `docs/product.md` exists                  | **Scaffold**: runs the stack's official generator, adds a test runner, boots the dev server once, then onboards |
-| A v1 project (`.project/`, not migrated yet)            | **Migrate** (below)                                                                                             |
-| Any other existing code                                 | **Onboard**                                                                                                     |
+| Situation                                                       | What happens                                                                                                                                                 |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Not in a project (home or chat folder, or a folder of projects) | **New folder**: asks the name, creates the folder (from home or a chat folder under `~/Projects`) + `git init`, moves the session there; send `/setup` again |
+| Empty folder, no docs/product.md                                | **Product first**: runs the `/product` interview, then scaffolds                                                                                             |
+| Empty folder, `docs/product.md` exists                          | **Scaffold**: runs the stack's official generator, adds a test runner, starts the app once (dev server, or a native app's window), then onboards             |
+| A v1 project (`.project/`, not migrated or interrupted)         | **Migrate** (below)                                                                                                                                          |
+| Any other existing code                                         | **Onboard**                                                                                                                                                  |
 
 **Onboard** reads the manifest, scripts, test/lint config and recent git history, then:
 
@@ -447,8 +447,9 @@ you can delete it when satisfied:
 | `.project/conventions.md`                        | project rules → `AGENTS.md § Conventions`                             |
 | `.project/project-context.json` learnings        | ≤ ~15 non-derivable ones → root or nested `AGENTS.md`                 |
 
-You get a preview and one confirmation before anything is written. `/setup` never commits; it
-offers `/commit`.
+You get a preview and one confirmation before anything is written. A run that stops halfway
+leaves a `migrating from v1` line in `docs/decisions.md`, so the next `/setup` picks it up.
+`/setup` never commits; it offers `/commit`.
 
 ### /task-readiness
 

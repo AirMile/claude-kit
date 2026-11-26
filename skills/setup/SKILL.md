@@ -17,16 +17,16 @@ from a worktree session (it writes files every worktree needs).
 Check, in one Bash call: `pwd`, `git rev-parse --is-inside-work-tree`, `AGENTS.md`, `CLAUDE.md`,
 `.claude/CLAUDE.md`, `CLAUDE.local.md` (and symlinks; the three Claude files also in every
 parent directory, `~/.claude/CLAUDE.md` excluded), `docs/product.md`, `docs/roadmap.md`,
-`docs/decisions.md` (a `migrated from v1` line?), `.project/`, `git worktree list`, any source files /
-package manifest, `.gitignore`, and which subfolders hold a `.git` or a manifest.
+`docs/decisions.md` (a `migrating` or `migrated from v1` line?), `.project/`, `git worktree list`,
+any source files / package manifest, `.gitignore`, and which subfolders hold a `.git` or a manifest.
 
-| Situation                                                            | Route                |
-| -------------------------------------------------------------------- | -------------------- |
-| No git, no manifest; cwd is `$HOME`, `/`, a projects or chat folder  | **N. New folder**    |
-| No source files, no `docs/product.md`                                | **P. Product first** |
-| No source files, `docs/product.md` exists                            | **A. Scaffold**      |
-| `.project/`, not migrated: no product.md, roadmap.md or marker line  | **C. Migrate v1**    |
-| Otherwise                                                            | **B. Onboard**       |
+| Situation                                                                        | Route                |
+| -------------------------------------------------------------------------------- | -------------------- |
+| No git, no manifest; cwd is `$HOME`, `/`, a projects or chat folder              | **N. New folder**    |
+| `.project/`: a `migrating` line, or no `migrated` line, product.md or roadmap.md | **C. Migrate v1**    |
+| No source files, no `docs/product.md`                                            | **P. Product first** |
+| No source files, `docs/product.md` exists                                        | **A. Scaffold**      |
+| Otherwise                                                                        | **B. Onboard**       |
 
 ## N. New folder
 
@@ -109,9 +109,8 @@ Why: <reason> · Rejected: <alternative + why not> · Superseded by: <link or �
 ## C. Migrate v1
 
 First run `node "${CLAUDE_SKILL_DIR}/scripts/migrate-v1.js" .` (read-only): it prints the open
-backlog items, the product source, the conventions, the strongest learnings grouped by target
-`AGENTS.md`, and a CLAUDE.md summary. Work from that output instead of reading the JSON
-yourself. Write no files before step 7's preview is confirmed.
+backlog items, product source, conventions, strongest learnings per target `AGENTS.md` and a
+CLAUDE.md summary; work from it, not the JSON. Write no files before step 7's yes.
 
 1. **CLAUDE.md** → keep only content that is not derivable and not template (project rules,
    runbooks, pitfalls) for `AGENTS.md`. Drop `## User Preferences`, `## Project`, `## Project
@@ -130,9 +129,10 @@ Context`, the GENERATED marker, `{{…}}` placeholders, `.project/` rules, Front
 7. **Preview**: run **B** step 1, then show the proposed `AGENTS.md`, `docs/product.md`,
    backlog items and every Claude file to be removed, by name; one AskUserQuestion: Write
    (Recommended) / Adjust / Cancel.
-8. Then write: run **B** steps 2-9 with this material and add the marker line
-   `<!-- migrated from v1 <date> -->` at the end of `docs/decisions.md`. Leave `.project/` untouched; tell the
-   user it can be deleted once they are happy (omitted learnings live only there).
+8. Then write: first `<!-- migrating from v1 <date> -->` at the end of `docs/decisions.md` (one
+   there already → keep it; new file → **B** 4's header), so an interrupted run resumes **C** and
+   adds only what is missing. Then **B** 2-8, `migrating` → `migrated` last, **B** 9. Leave
+   `.project/` untouched; tell the user it can go once happy (omitted learnings live only there).
 
 ## Report
 

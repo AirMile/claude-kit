@@ -53,15 +53,22 @@ test("cancelled items are not open backlog", () => {
   assert.match(backlog, /Cancelled in v1 \(not migrated\): dropped$/m);
 });
 
-test("set conventions are printed in full", () => {
-  const out = report({
-    ".project/conventions.md":
-      "<!-- conventions-status: set -->\n\n# Project Conventions\n\n## Naming\n\n- Scripts are `<verb>.py`.\n",
-  });
-  const conventions = section(out, "Conventions");
-  assert.match(conventions, /- Scripts are `<verb>\.py`\./);
-  assert.match(conventions, /^### Naming/m, "headings stay inside the section");
-  assert.doesNotMatch(conventions, /conventions-status/);
+test("set conventions are printed as written, inside a fence", () => {
+  // Rewriting any of this took a Markdown parser, so nothing in the file may change.
+  const text = [
+    "  ~~~~sh",
+    "  ## not a heading",
+    "<!-- not a comment -->",
+    "  ~~~~",
+    "<!-- conventions-status: set -->",
+    "# Project Conventions",
+    "## Naming",
+    "- Scripts are `<verb>.py`; wrap as `<!-- open",
+    "    <!-- close -->`.",
+  ].join("\n\n");
+  const out = report({ ".project/conventions.md": `${text}\n\n` });
+  // One tilde longer than the longest run in the file, so the file cannot close it.
+  assert.ok(out.includes(`\n~~~~~markdown\n${text}\n~~~~~\n`), out);
 });
 
 test("conventions marked none or missing say so", () => {

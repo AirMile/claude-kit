@@ -95,19 +95,19 @@ if (fs.existsSync(seedFile)) {
 }
 out.push("");
 
-// Conventions: headings move one level down so they stay inside this section.
+// Conventions, as written. The fence keeps their headings inside this section; one tilde
+// longer than any run in the file, so the file cannot close it.
 const conventionsFile = path.join(dir, "conventions.md");
 let conventions = "";
 if (fs.existsSync(conventionsFile)) {
-  const text = fs.readFileSync(conventionsFile, "utf8");
+  const text = fs.readFileSync(conventionsFile, "utf8").trimEnd();
   // The first marker is the file's own status; later mentions are text.
   const status = text.match(/<!--\s*conventions-status:\s*(\w+)/)?.[1];
-  if (status !== "none")
-    conventions = text
-      .replace(/<!--[\s\S]*?-->/g, "")
-      .replace(/^# .*$/m, "")
-      .replace(/^(?=##)/gm, "#")
-      .trim();
+  if (text && status !== "none") {
+    const runs = (text.match(/~+/g) || []).map((run) => run.length);
+    const fence = "~".repeat(Math.max(2, ...runs) + 1);
+    conventions = `${fence}markdown\n${text}\n${fence}`;
+  }
 }
 out.push("## Conventions (.project/conventions.md)", "");
 out.push(conventions || "none", "");
