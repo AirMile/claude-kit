@@ -21,7 +21,9 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   `hooks/chat-facts.ts`), the band
   above the prompt (`hooks/kit-band.tsx`: one line of usage, switches a press
   cycles (the profile, GPT on or off, the limit button (Off (default), Warm, Limit: pause + warm while work is open; per chat)), the effort with ‹ › when the profile is off, git, dashboard; the menus in
-  `hooks/band-menus.tsx`, the Claude·GPT meters in `hooks/band-meters.tsx`), model/effort per prompt and subagent
+  `hooks/band-menus.tsx`, the plan meters in `hooks/band-meters.tsx`: text on a terminal, elsewhere a 5h and a
+  week ring of Claude, ChatGPT and Gemini (the pure `hooks/band-rings.ts`), Gemini's figures from
+  `agy --print=/usage` in `hooks/agy-usage.ts`), model/effort per prompt and subagent
   (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, switches kept by `hooks/model-switch.ts`, the Claude plan in `hooks/plan.ts`, `/mode`; every started subagent noted and logged by `hooks/spawn-record.ts`), flow (`hooks/flow.ts` on the pure `hooks/flow-policy.ts`, `hooks/flow-check.ts` and
   `hooks/flow-log.ts`, review and verifier glue in `hooks/flow-agents.ts`, evidence in
   `hooks/flow-evidence.ts` with hold advice in `hooks/flow-advice.ts`, task state in `hooks/flow-state.ts`, storage and git fingerprint in
@@ -58,7 +60,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   skill → map it there. `hooks/codex-hooks.test.cjs` also checks both manifests' versions
 - Skill Feedback inbox: `~/.agents/kit/feedback.md`, one Markdown line per point (format in its
   header), written by the model in any project and read by `/improve`. No script
-- `skills/agy/SKILL.md`: Gemini through the `agy` CLI, parallel to `codex` (no mod tool: no meters)
+- `skills/agy/SKILL.md`: Gemini through the `agy` CLI, parallel to `codex`
 - `skills/<name>/scripts/`: deterministic helpers (commit: `staging-check.js`, setup:
   `migrate-v1.js` and `detect-tools.js` (+ test: Test/Lint/Build/Security/Quality from manifests), scan: `seo-facts.js`, codex: `codex-status.js`), called via `${CLAUDE_SKILL_DIR}` and allowed in the
   skill's `allowed-tools`
@@ -96,7 +98,8 @@ product and `§ Backlog`, `setup` for AGENTS/decisions, `task-readiness/referenc
   plus `organizationType` from the login's `~/.claude.json` (`hooks/plan.ts`); it writes only
   `$.store` (pins among it). It starts Codex only for `mcp__kit__delegate`,
   `mcp__kit__run_task` and the window-sync ping: what a writing run changes is Codex's work, in
-  Codex's sandbox, reviewed by the chat. The only other commands it runs for the chat are the
+  Codex's sandbox, reviewed by the chat. It starts agy only for `mcp__kit__delegate` and, where
+  the band draws rings, read-only for `/usage` (no model run). The only other commands it runs for the chat are the
   check argvs the chat passes to `run_task` (as the user, after the permission prompt). Flow reads the
   chat's own tool calls (Edit/Write, Bash), subagents' answers and read-only git state (`ls-files`,
   diff, `hash-object` without `-w`), and holds a turn's end; it writes only `$.store` (its

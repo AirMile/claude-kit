@@ -23,8 +23,8 @@ for GPT: it runs `agy` here, keeps its log out of this chat and returns the resp
 changed files and a `thread` for a follow-up (also `provider: "gemini"`). A review by Gemini
 counts as another family's review for code Claude or GPT wrote, with `author` set to who wrote
 it; Gemini never reviews its own code (`author: "gemini"`). It runs only when asked for: no
-meters, no balance. A writing role asks the user first, as the band's GPT switch does not cover
-it. A brief over 200000 characters is refused.
+balance (the band's rings show its meters, routing does not weigh them). A writing role asks
+the user first, as the band's GPT switch does not cover it. A brief over 200000 characters is refused.
 
 Headless `agy` ends the whole run with no answer at the first denied tool call (a shell command, or
 a file outside the workspace). The tool reads which one from agy's JSON, retries once in the same

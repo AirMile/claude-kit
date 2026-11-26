@@ -7,7 +7,7 @@ import { reset } from "./model-switch";
 // the skills (kit's skills by stage, with the dashboard pane's Open or Close), each a row of
 // choices beside its name.
 
-export type Menu = "ctx" | "git" | "skills";
+export type Menu = "usage" | "ctx" | "git" | "skills";
 
 export type MenuState = {
   ui: ReturnType<EngineInterface["ui"]["resolve"]>;

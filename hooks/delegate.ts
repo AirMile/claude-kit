@@ -53,7 +53,7 @@ export const delegateTool: ToolSpec = {
     "constraints, files, checks to run. family: a GPT model the user asked for by name (sol, " +
     "terra, luna, astra), which then runs any role, or a Gemini one (hydrogen, the default, flash, pro; naming one sets " +
     "provider gemini). provider: gemini when the user asks for Gemini, agy or Antigravity; it " +
-    "never runs unasked and shows no meters. " +
+    "never runs unasked. " +
     "A brief states the decision you need, facts already known, files in scope and when to stop. " +
     "dirs: Gemini only, absolute folders besides the project that agy may read (goes through the permission check). " +
     "thread: continue an earlier GPT or Gemini run with a follow-up brief. A run returns its final " +
