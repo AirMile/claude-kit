@@ -22,7 +22,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   above the prompt (`hooks/kit-band.tsx`: one line of usage, switches a press
   cycles (the profile, GPT on or off, the limit button (Off (default), Warm, Limit: pause + warm while work is open; per chat)), the effort with ‹ › when the profile is off, git, dashboard; the menus in
   `hooks/band-menus.tsx`, the Claude·GPT meters in `hooks/band-meters.tsx`), model/effort per prompt and subagent
-  (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, switches kept by `hooks/model-switch.ts`, the Claude plan in `hooks/plan.ts`, `/mode`), flow (`hooks/flow.ts` on the pure `hooks/flow-policy.ts`, `hooks/flow-check.ts` and
+  (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, switches kept by `hooks/model-switch.ts`, the Claude plan in `hooks/plan.ts`, `/mode`; every started subagent noted and logged by `hooks/spawn-record.ts`), flow (`hooks/flow.ts` on the pure `hooks/flow-policy.ts`, `hooks/flow-check.ts` and
   `hooks/flow-log.ts`, review and verifier glue in `hooks/flow-agents.ts`, evidence in
   `hooks/flow-evidence.ts`, task state in `hooks/flow-state.ts`, storage and git fingerprint in
   `hooks/flow-store.ts`: each change task's

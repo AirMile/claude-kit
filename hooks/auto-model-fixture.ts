@@ -20,6 +20,7 @@ export function world(
     drawn?: true; // a mounted band redraws on ui.invalidate: leave it to the engine
     login?: string; // organizationType in the login's config (default: no config)
     configDir?: string; // CLAUDE_CONFIG_DIR
+    beforeSet?: (key: string) => Promise<void>; // holds a store write back
   },
 ) {
   const asked: string[] = [];
@@ -87,6 +88,7 @@ export function world(
     });
   on("store.get", async (_$, e) => ({ value: store[e.key] }));
   on("store.set", async (_$, e) => {
+    await opts.beforeSet?.(e.key);
     store[e.key] = e.value;
     return { value: undefined };
   });

@@ -2,6 +2,7 @@ import { expect, test } from "claude-code/testing";
 
 
 import { world, band, runText, effortLevel } from "./auto-model-fixture";
+import type { LogEntry } from "./flow-log";
 import { newTask, type Task } from "./flow-policy";
 import { FOOTER } from "./delegate-run";
 
@@ -397,4 +398,119 @@ test("a session model outside the plan can still be kept", async ($, on) => {
   });
   await $.prompt.submit({ text: "refactor the auth layer", origin: TYPED });
   expect(w.offered[0]).toContain("Stay on Fable 5.2");
+});
+
+const spawns = (store: Record<string, unknown>) =>
+  ((store.flowLog ?? []) as LogEntry[]).filter((e) => e.event === "spawn");
+
+// The baseline of the model ladder: every way through the hook logs what really ran.
+for (const route of ["off", "fork", "custom", "picked"]) {
+  test(`agent.spawn logs type and resolved model on the ${route} path`, async ($, on) => {
+    const w = world(on, {
+      model: "claude-sonnet-5-5",
+      label: ROUTINE,
+      store: { mode: route === "off" ? "off" : "balanced" },
+    });
+    const asked: (string | undefined)[] = [];
+    on("agent.spawn", async (_$, e) => {
+      asked.push(e.model);
+      return { model: "claude-haiku-5-5-20260901", agentId: "a1" };
+    });
+    const type =
+      { custom: "mine:reader", fork: "fork" }[route] ?? "general-purpose";
+    await $.agent.spawn({
+      subagentType: type,
+      prompt: "find the config loader",
+      parentModel: "claude-opus-5-5",
+      fork: route === "fork",
+      provider: { plugin: route === "custom" ? "user" : "engine" },
+    } as never);
+    expect(spawns(w.store)).toMatchObject([
+      {
+        text: type,
+        model: "claude-haiku-5-5-20260901",
+        parent: "claude-opus-5-5",
+      },
+    ]);
+    // Logging only: a model is still picked on the profile's path alone.
+    expect(asked[0] !== undefined).toBe(route === "picked");
+  });
+}
+
+test("subagents spawned at once are each logged, and /flow counts them", async ($, on) => {
+  const w = world(on, { model: "claude-sonnet-5-5", label: ROUTINE });
+  let n = 0;
+  on("agent.spawn", async () => ({
+    model: "claude-haiku-5-5",
+    agentId: `a${n++}`,
+  }));
+  await Promise.all(
+    ["Explore", "Explore", "general-purpose"].map((subagentType) =>
+      $.agent.spawn({
+        subagentType,
+        prompt: "find the config loader",
+        provider: { plugin: "engine" },
+      } as never),
+    ),
+  );
+  expect(spawns(w.store).length).toBe(3);
+  const ran = await $.command.run({ command: "flow", args: "" });
+  expect(ran.text).toContain("subagent spawns 3");
+  expect(ran.text).toContain("Explore 2: claude-haiku-5-5 2");
+});
+
+test("a resumed run is marked, so it never counts as a new spawn", async ($, on) => {
+  const w = world(on, { model: "claude-sonnet-5-5", label: ROUTINE });
+  on("agent.spawn", async () => ({ model: "claude-haiku-5-5", agentId: "a1" }));
+  await $.agent.spawn({
+    subagentType: "Explore",
+    prompt: "and the tests?",
+    resume: { agentId: "a1" },
+    provider: { plugin: "engine" },
+  } as never);
+  expect(spawns(w.store)).toMatchObject([{ text: "Explore", reason: "resume" }]);
+});
+
+test("a stalled log write holds only the hook that made it", async ($, on) => {
+  let release = () => {};
+  const held = new Promise<void>((done) => (release = done));
+  let stalled = false;
+  const w = world(on, {
+    model: "claude-sonnet-5-5",
+    label: ROUTINE,
+    beforeSet: async (key) => {
+      if (key !== "flowLog" || stalled) return;
+      stalled = true;
+      await held;
+    },
+  });
+  on("agent.spawn", async () => ({ model: "claude-haiku-5-5", agentId: "a1" }));
+  const spawn = () =>
+    $.agent.spawn({
+      subagentType: "Explore",
+      prompt: "find the config loader",
+      provider: { plugin: "engine" },
+    } as never);
+  const first = spawn();
+  while (!stalled) await settle();
+  const second = spawn();
+  const returned = await Promise.race([
+    second.then(() => true),
+    new Promise<boolean>((done) => setTimeout(() => done(false), 500)),
+  ]);
+  release();
+  await Promise.all([first, second]);
+  expect(returned).toBe(true);
+  expect(spawns(w.store).length).toBe(2); // the waiting entry was written after it
+});
+
+test("a refused spawn is not logged", async ($, on) => {
+  const w = world(on, { model: "claude-sonnet-5-5", label: ROUTINE });
+  on("agent.spawn", async () => ({ deny: "no more agents" }));
+  await $.agent.spawn({
+    subagentType: "general-purpose",
+    prompt: "find the config loader",
+    provider: { plugin: "engine" },
+  } as never);
+  expect(spawns(w.store)).toEqual([]);
 });

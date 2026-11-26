@@ -964,7 +964,8 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   Flow is always on: there is no switch. `/flow` reports 14 days: tasks per first pick, how many grew after it (too light?) or ended
   heavy with two files or fewer and no spec (too heavy?), holds, how tasks ended (
   verified, waived, and older unresolved or unverified endings), and the last ten picks and holds, numbered.
-  It also shows the open task and what it still needs.
+  It also shows the open task and what it still needs, and counts the subagent spawns of those
+  14 days (the newest 2000) by type and the model each ran on, resumed runs apart.
   `/flow mark 3 too-light` (or `too-heavy`, `hold-right`, `hold-wrong`) adds your judgment, which counts
   alone can't give. Flow stays off the band; `/flow` shows its tasks.
 

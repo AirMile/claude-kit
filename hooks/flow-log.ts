@@ -20,8 +20,8 @@ export type Ending =
 export type LogEntry = {
   at: number;
   task?: number;
-  event: string; // task events, decision, levels, read-note, delegate
-  text: string; // the prompt's first 60 characters, or the files it is about
+  event: string; // task events, decision, levels, read-note, delegate, spawn
+  text: string; // the prompt's first 60 characters, the files it is about, or a subagent's type
   track?: Track;
   first?: Track;
   kind?: Kind;
@@ -40,13 +40,22 @@ export type LogEntry = {
   levels?: string; // task-policy's levels, as the band shows them ("D1 E1 V1")
   claude5h?: number; // both 5h meters when the levels were decided
   gpt5h?: number;
+  model?: string; // a spawn: the model the subagent runs on, and the model that spawned it
+  parent?: string;
 };
 
 export const KEEP_MS = 14 * 86_400_000;
 export const LOG_MAX = 2000;
 
-export const keep = (log: readonly LogEntry[], entry: LogEntry): LogEntry[] =>
-  [...log.filter((e) => entry.at - e.at < KEEP_MS), entry].slice(-LOG_MAX);
+// Subagent spawns and the rest each hold LOG_MAX entries: a fan-out never pushes tasks, holds
+// or the user's marks out.
+export function keep(log: readonly LogEntry[], entry: LogEntry): LogEntry[] {
+  const live = [...log.filter((e) => entry.at - e.at < KEEP_MS), entry];
+  const same = (e: LogEntry) =>
+    (e.event === "spawn") === (entry.event === "spawn");
+  let over = live.filter(same).length - LOG_MAX;
+  return over > 0 ? live.filter((e) => !same(e) || over-- <= 0) : live;
+}
 
 export function endEntry(t: Task, outcome: Ending, at: number): LogEntry {
   return {
@@ -132,6 +141,37 @@ export function decisionLines(log: readonly LogEntry[]): string[] {
   ];
 }
 
+// The subagents by type and the model each ran on, the most frequent first. A resumed run goes
+// on with an agent already counted: it is named apart.
+export function spawnLines(log: readonly LogEntry[]): string[] {
+  const logged = log.filter((e) => e.event === "spawn");
+  const spawns = logged.filter((e) => e.reason !== "resume");
+  const resumed = logged.length - spawns.length;
+  const apart = resumed ? ` · ${resumed} resumed, not counted` : "";
+  if (!spawns.length) return [`subagent spawns: none yet${apart}`];
+  const types = new Map<string, Map<string, number>>();
+  for (const e of spawns) {
+    const models = types.get(e.text) ?? new Map<string, number>();
+    const model = e.model ?? "unknown";
+    types.set(e.text, models.set(model, (models.get(model) ?? 0) + 1));
+  }
+  const total = (models: Map<string, number>) =>
+    [...models.values()].reduce((sum, n) => sum + n, 0);
+  const most = <T>(of: Map<string, T>, size: (value: T) => number) =>
+    [...of].sort(
+      ([a, x], [b, y]) => size(y) - size(x) || a.localeCompare(b),
+    );
+  return [
+    `subagent spawns ${spawns.length}${apart} (type: resolved model):`,
+    ...most(types, total).map(
+      ([type, models]) =>
+        `  ${type} ${total(models)}: ${most(models, (n) => n)
+          .map(([model, n]) => `${model} ${n}`)
+          .join(" · ")}`,
+    ),
+  ];
+}
+
 // /flow's report: the first picks against how the tasks ended, the holds, the user's marks.
 export function report(log: readonly LogEntry[]): string {
   const ends = log.filter((e) => e.event === "end");
@@ -152,6 +192,7 @@ export function report(log: readonly LogEntry[]): string {
     `holds ${count((e) => e.event === "block")} · ended ${(["verified", "waived", "unresolved", "unverified"] as const).map((o) => `${o} ${count((e) => e.outcome === o, ends)}`).join(" · ")}`,
     `your marks: ${MARKS.map((m) => `${m} ${count((e) => e.mark === m)}`).join(" · ")}`,
     ...decisionLines(log),
+    ...spawnLines(log),
     `read notes ${count((e) => e.event === "read-note")} · delegated ${delegated.length} (gpt ${count((e) => e.provider === "gpt", delegated)}, claude ${count((e) => e.provider === "claude", delegated)}) · not delegated ${count((e) => e.provider === "none", delegates)} · failed ${count((e) => e.provider !== "none" && e.outcome === "failed", delegates)}`,
   ];
   const last = notable(log);

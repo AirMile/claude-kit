@@ -20,6 +20,12 @@ export async function writeLog($: EngineInterface, list: LogEntry[]) {
   await $.store.set(LOG_KEY, list).catch(() => {});
 }
 
+// One writer at a time: entries logged while a write runs (subagents spawned at once) join the
+// next one, else each would read the same list and the last write would drop the others. Nobody
+// waits on another hook's write, so a stalled store call holds only the hook that made it.
+const pending: LogEntry[] = [];
+let writing = false;
+
 export async function log(
   $: EngineInterface,
   entry: Omit<LogEntry, "at"> & { at?: number },
@@ -30,7 +36,17 @@ export async function log(
   } catch {
     // no debug log here: the store keeps it
   }
-  await writeLog($, keep(await readLog($), full));
+  pending.push(full);
+  if (writing) return; // the running writer takes it along
+  writing = true;
+  try {
+    while (pending.length) {
+      const stored = await readLog($);
+      await writeLog($, pending.splice(0).reduce(keep, stored));
+    }
+  } finally {
+    writing = false;
+  }
 }
 
 export async function loadTask(

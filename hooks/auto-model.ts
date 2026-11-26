@@ -2,7 +2,7 @@ import type { CommandSpec, EngineInterface, On } from "claude-code";
 
 import { agentCalls, askedEffort } from "./agent-effort";
 import { limitPrompt, limitStep } from "./limit-guard";
-import { noteSpawned, replayDropped, replayOf } from "./limit-queue";
+import { replayDropped, replayOf } from "./limit-queue";
 import {
   agentKind,
   carry,
@@ -37,7 +37,8 @@ import {
 import { forgetPlan, getPlan, planCommand, planName } from "./plan";
 import { notePrompt } from "./auto-compact";
 import { noteAgent } from "./chat-facts";
-import { flowPrompt, flowSpawned } from "./flow";
+import { flowPrompt } from "./flow";
+import { spawnRecorded } from "./spawn-record";
 
 // Picks model and effort before the model runs (it cannot change its own turn's effort):
 // - the first prompt of a chat (a new session or after /clear) picks a model from the profile,
@@ -316,31 +317,19 @@ export function autoModel(on: On) {
   on("agent.spawn", async ($, e, next) => {
     noteAgent(e.subagentType);
     const now = await getMode($);
-    if (now === "off" || e.fork) {
-      const started = await next(e);
-      noteSpawned(started.agentId); // the plan-limit pause tells it from a forked command
-      await flowSpawned($, started.agentId, e.subagentType, e.prompt); // flow binds verifier and review evidence
-      return started;
-    }
+    if (now === "off" || e.fork) return spawnRecorded($, e, await next(e));
     const isEngine = e.provider.plugin === "engine";
     const known = agentKind(e.subagentType);
     // A plugin's or user's agent keeps its own definition unless kit knows its work.
-    if (!isEngine && !known) {
-      const started = await next(e);
-      noteSpawned(started.agentId);
-      await flowSpawned($, started.agentId, e.subagentType, e.prompt);
-      return started;
-    }
+    if (!isEngine && !known) return spawnRecorded($, e, await next(e));
     const kind = known ?? (await kindOf($, e.prompt)) ?? "routine";
     const p = pick(await getPlan($), now, kind);
     const spawned = await next(
       isEngine && !e.model ? { ...e, model: p.model } : e,
     );
-    noteSpawned(spawned.agentId);
-    await flowSpawned($, spawned.agentId, e.subagentType, e.prompt);
     const own = subagentEffort(askedEffort(e.tool_use_id), p.effort);
     if (spawned.agentId && own) agentEffort.set(spawned.agentId, own);
-    return spawned;
+    return spawnRecorded($, e, spawned);
   });
 
   agentCalls(on);
