@@ -90,7 +90,8 @@ kit keeps project instructions in `AGENTS.md`, including nested ones per module.
 (v2.1.277+) reads root and nested `AGENTS.md` files natively, but **only when the project has no
 `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md`** (docs: memory § AGENTS.md). So kit
 projects have none: `/setup` moves anything useful from an existing `CLAUDE.md` into `AGENTS.md`
-and removes it. Your personal `~/.claude/CLAUDE.md` doesn't count and keeps working.
+and removes it after you confirm. One in a parent folder blocks `AGENTS.md` too; `/setup` only
+reports it. Your personal `~/.claude/CLAUDE.md` doesn't count and keeps working.
 Bonus: `AGENTS.md` is also read by other coding agents, so the project stays tool-agnostic.
 
 ### Recommended: frontend rule
@@ -425,7 +426,8 @@ It detects one of five situations:
 
 - writes `AGENTS.md` from the template, with only verified facts (no placeholders);
 - moves useful content from an existing `CLAUDE.md` into `AGENTS.md` and removes the `CLAUDE.md`
-  (otherwise `AGENTS.md` wouldn't load);
+  after you confirm (otherwise `AGENTS.md` wouldn't load); a `CLAUDE.md` in a parent folder is
+  only reported;
 - creates `docs/decisions.md` with its format header (never overwrites) and fills `AGENTS.md § Backlog`;
 - makes sure `AGENTS.md` and `docs/` are not in `.gitignore`, and ignores `.claude/worktrees/`;
 - asks the git mode and prepares parallel sessions (`.worktreeinclude`, `autoPort`, database line).
@@ -438,7 +440,8 @@ you can delete it when satisfied:
 | Generated `CLAUDE.md`                            | real rules/runbooks/pitfalls → `AGENTS.md`; template sections dropped |
 | `AGENTS.md` symlinked to `CLAUDE.md`             | replaced by a real file                                               |
 | `.project/project-seed.md`                       | `docs/product.md`                                                     |
-| `.project/backlog.json` (unshipped, board order) | the backlog named in `AGENTS.md § Backlog`                            |
+| `.project/backlog.json` (open, board order)      | the backlog named in `AGENTS.md § Backlog`; cancelled items stay out  |
+| `.project/conventions.md`                        | project rules → `AGENTS.md § Conventions`                             |
 | `.project/project-context.json` learnings        | ≤ ~15 non-derivable ones → root or nested `AGENTS.md`                 |
 
 You get a preview and one confirmation before anything is written. `/setup` never commits; it

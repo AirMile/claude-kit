@@ -15,16 +15,17 @@ from a worktree session (it writes files every worktree needs).
 ## 0. Detect the situation
 
 Check, in one Bash call: `pwd`, `git rev-parse --is-inside-work-tree`, `AGENTS.md`, `CLAUDE.md`,
-`.claude/CLAUDE.md`, `CLAUDE.local.md` (and symlinks), `docs/product.md`, `docs/roadmap.md`,
-`.project/`, `git worktree list`, any source files / package manifest, `.gitignore`, and which
-subfolders hold a `.git` or a manifest.
+`.claude/CLAUDE.md`, `CLAUDE.local.md` (and symlinks; the three Claude files also in every
+parent directory, `~/.claude/CLAUDE.md` excluded), `docs/product.md`, `docs/roadmap.md`,
+`docs/decisions.md` (a `migrated from v1` line?), `.project/`, `git worktree list`, any source files /
+package manifest, `.gitignore`, and which subfolders hold a `.git` or a manifest.
 
 | Situation                                                            | Route                |
 | -------------------------------------------------------------------- | -------------------- |
 | No git, no manifest, and cwd is `$HOME`, `/` or a folder of projects | **N. New folder**    |
 | No source files, no `docs/product.md`                                | **P. Product first** |
 | No source files, `docs/product.md` exists                            | **A. Scaffold**      |
-| `.project/`, no `docs/product.md`, no `docs/roadmap.md`              | **C. Migrate v1**    |
+| `.project/`, not migrated: no product.md, roadmap.md or marker line  | **C. Migrate v1**    |
 | Otherwise                                                            | **B. Onboard**       |
 
 ## N. New folder
@@ -63,11 +64,15 @@ Written → continue here with **A** (don't stop at its report).
    `## Commands` and nothing is added that the output doesn't show. Existing lines stay; only
    missing keys are filled (a `Lint` or `Typecheck` line counts as `Lint / typecheck`). Several `##` blocks (a monorepo) → one line per key per folder.
 2. Write `AGENTS.md` (≤ 100 lines) from `${CLAUDE_SKILL_DIR}/references/agents-template.md`,
-   filling only what you verified. Unknown → omit the line, never a placeholder.
+   filling only what you verified. Unknown → omit the line, never a placeholder. A symlinked
+   `AGENTS.md` → never write through it: get 3's yes first.
 3. **No `CLAUDE.md`**: Claude Code reads `AGENTS.md` (root and nested) natively only when no
-   `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` exists. Move their durable content
-   into `AGENTS.md`, then delete them (show what moves first). A symlink between the two → one
-   real `AGENTS.md`.
+   `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` exists here or in a parent directory.
+   In the project: show what moves into `AGENTS.md` and what is dropped, then one
+   AskUserQuestion: Move and delete (Recommended) / Keep. Delete only on that yes (C's preview
+   counts for the files it names); `CLAUDE.local.md` is usually untracked, so gone for good. Kept, or no answer → the
+   files stay and the report says `AGENTS.md` won't load. In a parent directory → report its
+   path, never edit it. A symlink between the two → one real `AGENTS.md`.
 4. `docs/decisions.md` missing → create it with its format header (below); never overwrite.
    `.project/backlog.json` with open items the backlog lacks (not saved earlier) → offer **C** 3.
    `docs/specs/` is created by `/task-readiness`. **Backlog**: fill `AGENTS.md § Backlog` by
@@ -76,7 +81,7 @@ Written → continue here with **A** (don't stop at its report).
    first). Add `.claude/worktrees/`.
 6. **Less to read**: checked-in generated or vendored code (`vendor/`, `*.generated.*`, a
    committed `dist/`) → `permissions.deny` `Read(./**/<dir>/**/*)` in `.claude/settings.json`
-   (gitignored paths are skipped already). Main language has an LSP plugin in
+   (Grep skips gitignored paths already). Main language has an LSP plugin in
    `claude-plugins-official` (e.g. `typescript-lsp`) → suggest it in the report; don't install.
 7. **Git** for `AGENTS.md § Git`, one AskUserQuestion with two questions. Workflow: Branches
    (Recommended for parallel sessions or a host that deploys the default branch) / Trunk (one
@@ -102,8 +107,9 @@ Why: <reason> · Rejected: <alternative + why not> · Superseded by: <link or �
 ## C. Migrate v1
 
 First run `node "${CLAUDE_SKILL_DIR}/scripts/migrate-v1.js" .` (read-only): it prints the open
-backlog items, the product source, learnings grouped by target `AGENTS.md`, and a
-CLAUDE.md summary. Work from that output instead of reading the JSON yourself.
+backlog items, the product source, the conventions, the strongest learnings grouped by target
+`AGENTS.md`, and a CLAUDE.md summary. Work from that output instead of reading the JSON
+yourself. Write no files before step 7's preview is confirmed.
 
 1. **CLAUDE.md** → keep only content that is not derivable and not template (project rules,
    runbooks, pitfalls) for `AGENTS.md`. Drop `## User Preferences`, `## Project`, `## Project
@@ -112,16 +118,19 @@ Context`, the GENERATED marker, `{{…}}` placeholders, `.project/` rules, Front
    (see `product` skill: What · For whom · Why · Non-goals · Stack).
 3. **Backlog** → the script's items go to the backlog of **B** step 4. Drop v1-only items
    (re-running v1 manual tests, `.project`/worktree tooling).
-4. **Learnings** → at most ~15 that pass the `lessons` criteria, in the `AGENTS.md` the script
+4. **Conventions** → the project's own rules to `AGENTS.md` § Conventions; drop what only
+   points at v1's shared rules.
+5. **Learnings** → at most ~15 that pass the `lessons` criteria, in the `AGENTS.md` the script
    grouped them under. Drop v1-pipeline ones; merge duplicates (often stored twice, two languages).
-5. **Old worktrees** (`git worktree list` beyond the main checkout, v1 made them): per worktree
-   show branch, uncommitted files, commits not on the default branch, last commit date. Ask per
-   worktree: Keep / Remove (only offered when it has nothing unmerged or uncommitted that matters).
-6. Then run **B** steps 2-9 with this material. Leave `.project/` untouched; tell the user it
-   can be deleted once they are happy.
-
-Show the proposed `AGENTS.md` and backlog items as a preview and get one confirmation before writing
-(AskUserQuestion: Write (Recommended) / Adjust / Cancel).
+6. **Old worktrees** (v1's, in `git worktree list`): per worktree show branch, uncommitted
+   files, unmerged commits, last commit date; ask Keep / Remove (Remove only when nothing
+   unmerged or uncommitted matters).
+7. **Preview**: run **B** step 1, then show the proposed `AGENTS.md`, `docs/product.md`,
+   backlog items and every Claude file to be removed, by name; one AskUserQuestion: Write
+   (Recommended) / Adjust / Cancel.
+8. Then write: run **B** steps 2-9 with this material and add the marker line
+   `<!-- migrated from v1 <date> -->` at the end of `docs/decisions.md`. Leave `.project/` untouched; tell the
+   user it can be deleted once they are happy (omitted learnings live only there).
 
 ## Report
 
