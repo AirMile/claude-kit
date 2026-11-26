@@ -31,9 +31,10 @@ test("with GPT off or unread only Claude shows; a window nobody reported is left
 });
 
 test("with GPT off its shares are left out, even while still in the usage", () => {
-  const rows = meterRows([u("5h", "30%", "3h29m"), u("gpt 5h", "2%", "4h12m")], false);
+  const off = { gpt: false, gemini: true };
+  const rows = meterRows([u("5h", "30%", "3h29m"), u("gpt 5h", "2%", "4h12m")], off);
   expect(rows.map((r) => [r.label, r.claude?.value, r.gpt])).toEqual([
     ["5h", "30%", undefined],
   ]);
-  expect(meterRows([u("gpt wk", "1%")], false)).toEqual([]);
+  expect(meterRows([u("gpt wk", "1%")], off)).toEqual([]);
 });

@@ -2,12 +2,15 @@
 /**
  * Detect evidenced verification commands as fixed Markdown for AGENTS.md.
  * Reads only the project and its immediate, non-generated subdirectories.
- * Unknown projects print nothing and exit 0; no commands are executed.
+ * Unknown projects print nothing and exit 0. No project command is executed; a Cargo project
+ * only asks, from the home folder, whether the installed toolchain has rustfmt.
  *
  * Usage: node detect-tools.js [dir]
  */
 
+const { spawnSync } = require("child_process");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 
 const SKIP = new Set([
@@ -213,7 +216,19 @@ function python(toml, requirements, has) {
   );
 }
 
-function directory(dir, rel) {
+// From the home folder, so the project's rust-toolchain file picks no binary, and without
+// letting rustup download a toolchain.
+function hasRustfmt() {
+  const probe = spawnSync("cargo", ["fmt", "--version"], {
+    cwd: os.homedir(),
+    env: { ...process.env, RUSTUP_AUTO_INSTALL: "0" },
+    stdio: "ignore",
+    timeout: 10_000,
+  });
+  return probe.status === 0;
+}
+
+function directory(dir, rel, probes) {
   const files = entries(dir)
     .filter((entry) => entry.isFile())
     .map((entry) => entry.name);
@@ -277,7 +292,10 @@ function directory(dir, rel) {
       "Rust",
       lines(
         ["cargo test"],
-        ["cargo clippy --all-targets -- -D warnings"],
+        [
+          ...(probes.rustfmt() ? ["cargo fmt --check"] : []),
+          "cargo clippy --all-targets -- -D warnings",
+        ],
         ["cargo build"],
         security,
         text("Cargo.toml").includes("cargo-machete") ? ["cargo machete"] : [],
@@ -388,7 +406,7 @@ function directory(dir, rel) {
   return blocks;
 }
 
-function detect(dir = ".") {
+function detect(dir = ".", probes = { rustfmt: hasRustfmt }) {
   const root = path.resolve(dir);
   const children = entries(root)
     .filter(
@@ -400,8 +418,10 @@ function detect(dir = ".") {
     .map((entry) => entry.name)
     .sort();
   return [
-    ...directory(root, "."),
-    ...children.flatMap((name) => directory(path.join(root, name), name)),
+    ...directory(root, ".", probes),
+    ...children.flatMap((name) =>
+      directory(path.join(root, name), name, probes),
+    ),
   ];
 }
 

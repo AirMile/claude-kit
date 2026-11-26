@@ -224,13 +224,15 @@ export const onReview = (task: Task, record: ReviewRecord): Task => {
     sameCode &&
     noVerdict &&
     (previous?.outcome === "pass" || previous?.outcome === "fail");
-  // The Claude stand-in may not displace another family's findings: not on code that did not
-  // change (with any outcome, or a Claude fail would open the way for a pass), nor with a late
-  // answer that started before them.
+  // A stand-in (Claude for any other family, Gemini for GPT) may not displace those findings:
+  // not on code that did not change (with any outcome, or a stand-in's fail would open the way
+  // for its pass), nor with a late answer that started before them.
+  const standsIn =
+    (record.family === "claude" && previous?.family !== "claude") ||
+    (record.family === "gemini" && previous?.family === "gpt");
   const displaces =
-    record.family === "claude" &&
+    standsIn &&
     previous?.outcome === "fail" &&
-    previous.family !== "claude" &&
     (sameCode || record.at < previous.at);
   if (weaker || displaces) return task;
   // a reviewer did run on the excused code: the excuse no longer filters its verdict out of

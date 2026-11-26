@@ -35,8 +35,14 @@ export const AGY_USAGE = JSON.stringify({
 
 export function bandWorld(
   on: On,
-  opts: { usage?: string; surface?: "terminal" | "desktop" } = {},
+  opts: {
+    usage?: string;
+    surface?: "terminal" | "desktop";
+    store?: Record<string, unknown>;
+    brokenWrite?: string; // writing this store key fails
+  } = {},
 ) {
+  const store: Record<string, unknown> = { ...opts.store };
   const asked: (readonly string[])[] = []; // every `agy /usage` run
   const clock = { now: NOW };
   const out = (stdout: string) => ({
@@ -65,11 +71,13 @@ export function bandWorld(
   on("clock.now", async () => ({ value: clock.now }));
   on("clock.after", async () => ({ value: undefined }));
   on("clock.every", () => new Promise<never>(() => {}));
-  on("store.get", async () => ({ value: undefined }));
-  on("store.set", async () => ({ value: undefined }));
-  on("ui.panes", async () => ({ value: [] }));
+  on("store.get", async (_$, e) => ({ value: store[e.key] }));
+  on("store.set", async (_$, e) => {
+    if (e.key === opts.brokenWrite) throw new Error("store broke");
+    store[e.key] = e.value;
+    return { value: undefined };
+  });
   on("session.surfaces", async () => ({ value: [opts.surface ?? "desktop"] }));
-  on("ui.invalidate", async () => ({ value: undefined }));
   on("ui.toast", async () => ({ value: undefined }));
   on("ui.log", async () => ({ value: undefined }));
   on("fs.exists", async () => ({ value: true }));
@@ -93,7 +101,7 @@ export function bandWorld(
     }
     return out("");
   });
-  return { asked, clock };
+  return { asked, clock, store };
 }
 
 export const measure = ($: Parameters<TestBody>[0]) =>

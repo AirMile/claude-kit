@@ -1,7 +1,6 @@
 import type { EngineInterface, On, SessionMessage } from "claude-code";
 
 import { recordCompaction } from "./auto-compact";
-import { noteCompact } from "./chat-facts";
 import { flowRecovery } from "./flow";
 import { isPinsNote, pinsNote } from "./pins";
 import { isRecentNote, recentNote } from "./recent";
@@ -94,7 +93,6 @@ export function compaction(on: On) {
     const compacted = await next({ ...e, instructions });
     if (e.trigger === "precompute" || !compacted.messages) return compacted;
 
-    noteCompact();
     // Native counts are accounting, not proof of quality or dollar savings. Missing usage
     // can mean core reused a precomputed summary; leave it absent rather than inventing it.
     try {

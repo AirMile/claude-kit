@@ -90,7 +90,8 @@ test("Not delegated excuses this round's review hold; the next change folds with
     store: {
       mode: "off",
       gpt: false,
-      // V3: no Claude stand-in, so GPT off leaves no reviewer; its verifier already passed
+      gemini: false,
+      // V3: no Claude stand-in, so GPT and Gemini off leave no reviewer; its verifier passed
       flowTasks: {
         s1: { ...task(), gateV: 3, verifier: "pass", lastVerifierAt: 3 },
       },

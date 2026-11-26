@@ -12,7 +12,7 @@ Code already has a native feature (subagents, `AGENTS.md` loading, `/simplify`,
 `/security-review`) kit uses it instead of rebuilding it.
 
 ```
-18 skills · 1 agent · 2 hooks + 1 mod (2 panes) · 7 scripts · ~1970 lines of skills · ~420 tokens always-on
+18 skills · 1 agent · 2 hooks + 1 mod (1 pane) · 7 scripts · ~1970 lines of skills · ~420 tokens always-on
 ```
 
 ---
@@ -110,6 +110,9 @@ On Windows, copy the file instead (symlinks need admin rights there).
 ### Update / uninstall
 
 - Edits to this repo take effect only after you bump `version` in `.claude-plugin/plugin.json`, then `claude plugin marketplace update airmile && claude plugin update kit@airmile` and start a new session. Without the bump the cached copy stays as it was.
+- The desktop app can load its own copy from the claude.ai marketplace `claude-kit` (synced from
+  GitHub) instead. After a push, press **Check for updates** there (claude.ai › Add › Manage
+  marketplaces; "Sync automatically" has lagged behind) and start a new session.
 - Try edits without installing: `claude --plugin-dir ~/Projects/claude-kit`.
 - Remove: `claude plugin marketplace remove airmile` (also uninstalls the plugin).
 
@@ -604,8 +607,8 @@ Hands a task to a Gemini model through the Antigravity CLI (`agy`), the same way
 for GPT. Claude recognises "Gemini", "agy" and "Antigravity" like the GPT names ("vraag Gemini
 wat hij hiervan vindt"); "GPT en Gemini" runs both blind on the same brief and compares them.
 Runs read-only (`--mode plan`) unless you asked for an implementation. It uses no `mcp__kit__`
-tool for the hand route; with the kit mod `mcp__kit__delegate` runs it (`provider: "gemini"`): only the response and the changed files come back, a Gemini review counts as another family's review in flow, and a writing role asks first. No balance: it runs only when you ask for it (the
-band's rings show its meters).
+tool for the hand route; with the kit mod `mcp__kit__delegate` runs it (`provider: "gemini"`): only the response and the changed files come back, a Gemini review counts as another family's review in flow, and a writing role asks first. Unasked it only
+stands in for GPT (see **Delegation** below); its meters show in the band but weigh nothing.
 
 ### /launch
 
@@ -839,20 +842,17 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt, one line: usage at the left (see **Usage** below), then
-  the model with its effort, the profile, GPT, the limit button, `⎇` and `⌘`
-  (the skills menu, with the dashboard's open and close). The context figure and `⎇` open a menu in its own block above the
-  band (hover to peek, press to keep it open): **Compact** and **Clear**, run at once or when
-  the running turn ends; **Commit** (runs `/kit:commit`), Diff, Pull, Push, PR, Branch. The
-  rest are switches a press cycles, none depending on another:
-  - **Profile**: `A·L` → `A·B` → `A·Q` (Lean, Balanced, Quality) → `A` dim (off). Beside it
+  the model with its effort, the profile and the limit button. The context figure opens
+  a menu in its own block above the band (hover to peek, press to keep it open): **Compact**
+  and **Clear**, run at once or when the running turn ends. The buttons at the right are
+  switches a press cycles, none depending on another:
+  - **Profile**: `◔` → `◑` → `●` (Lean, Balanced, Quality) → `○` dim (off). Beside it
     the model and effort kit set for the last prompt (`Opus 5.5 · medium`), which can differ
     from the session setting in the app's model picker.
   - **Effort**, only with the profile off (you pick the model in the app's picker):
     `‹ high ›`, a press on `‹` or `›` one level down or up (`default`, the session's own,
     then low to max); it holds over new chats and restarts. The engine lowers a level the
     model lacks.
-  - **GPT**: `GPT` or `GPT off` (may kit send work to GPT). A ChatGPT window from half used
-    shows on it (`GPT 5h 62%`).
   - **Limit**: `⏸ Off` (no pause, no pings; the default) → `⏸♨ Warm` (keep the cache warm
     while idle; `♨×3` after it counts the pings) → `⏸ Limit` (pause at the plan limit, the
     cache warm while work is open); see Keep warm. Kept per chat, over a reload or restart; a
@@ -1013,6 +1013,7 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   review      GPT Sol of Claude's code (Astra for a V3 task); of GPT's code, or without
               GPT room below V3: a fresh Claude reviewer (Fable on Max, Opus on Pro)
   plan        GPT Sol: a blind second plan
+  GPT cannot  review and plan: Gemini, while its switch is on
   any, named  the GPT model you ask for
   ```
 
@@ -1023,16 +1024,25 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   **ChatGPT's limits**: a run kit picks itself starts only when it fits: about 5 points of the
   5h window for a Sol read, 18 for Astra, and neither window past 95% (a window past its reset
   counts as empty; the meters are read from Codex at most every 10 minutes and again after each
-  run). No room, no Codex or GPT off: a second plan is made here and a review goes to the Claude
-  reviewer; a V3 review stays open until GPT can run or you waive it. A model you name runs anyway. **GPT off** on the band (or
-  `/gpt off`) reads nothing from Codex and hides its meters; a GPT model you name still runs.
-  While GPT is on, a GPT run may write without asking (that switch is the standing request);
-  with it off, a write asks first. A GPT run returns its final message, the files it changed
+  run). No room, no Codex or GPT off: a review or second plan goes to Gemini (see **Gemini
+  stands in**); without it a second plan is made here, a review goes to the Claude reviewer and
+  a V3 review stays open until another family can run or you waive it. A model you name runs
+  anyway. **GPT off** (in the rings' table or `/gpt off`) reads nothing from Codex and hides its
+  meters; a GPT model you name still runs. While GPT is on, a GPT run may write without asking
+  (that switch is the standing request); with it off, a write asks first. A GPT run returns its final message, the files it changed
   and a `thread` for a follow-up without a new brief (checked against the limits too, unless
   you named the model); its whole log stays in Codex's session file. Writing runs one at a
   time, commit nothing, and Claude reviews the diff and runs the checks. A Claude route comes
   back as "run this as an Agent subagent on model X".
 
+- **Gemini stands in**: while the Gemini switch is on (the default; the rings' table or
+  `/gemini off`), a review or second plan GPT cannot take runs read-only on Gemini through
+  `agy`, so that code goes to Google without a question (a review sends the whole uncommitted
+  diff, also parts the brief does not name); the answer says it stood in and why.
+  Not when you asked for GPT (a model or `provider: "gpt"`), for a follow-up on a thread, or for
+  a review of code Gemini wrote in this chat's open task (after `/clear` or in another chat kit
+  no longer knows the author: pass `author`, or switch Gemini off). Without `agy`, or when Gemini gives no answer, everything stays
+  as above. A Gemini verdict never replaces a GPT fail on unchanged code.
 - **Task runner**: for a change GPT builds (on Pro by itself, on Max when you ask).
   `mcp__kit__run_task` takes one change brief, a model only when you asked for GPT (the one you
   named, else Sol), and 1-3 covering checks (each an argv, e.g.
@@ -1049,6 +1059,7 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   sandbox, so every call asks permission and shows the argv. It leaves the diff review (and at
   V2+ the review) to the chat.
 
+- **/gemini**: Gemini's review model and meters; `/gemini on` and `/gemini off` set its switch.
 - **/gpt**: the newest model per family and the ChatGPT meters; `/gpt on` and `/gpt off` set
   the GPT switch. `/gpt pin terra gpt-5.6-terra`
   holds a family on a version (a new release that disappoints); `/gpt unpin terra` lets go.
@@ -1077,23 +1088,14 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   and Claude's time until reset. In the desktop app (and wherever the app draws pictures) as one
   ring per window, `5h` and `wk`, each with three arcs: Claude outside, ChatGPT between, Gemini
   inside, red from 90%. Claude's share and reset always stand beside the ring; pointing at the
-  rings shows all three plans in figures. Gemini's come from `agy --print=/usage` (no model
+  rings shows all three plans in figures, with the **GPT** and **Gemini** switches (`on` /
+  `off`, kept across chats; in a terminal `/gpt` and `/gemini`). Gemini's come from `agy --print=/usage` (no model
   run, no tokens), read at most every 10 minutes while the rings are drawn; without agy or a
   reading its arc stays empty.
 
-**Panes** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
+**Theme pane** (docked on the right in the Desktop Code tab and a fullscreen terminal ≥ 110
 columns, above the prompt otherwise):
 
-- **Dashboard**: titled with the product's name (`Dashboard` without `docs/product.md`), in two
-  tabs (a row of buttons on top, the shown one at full strength): **◈ Messages** (this chat's
-  latest messages, each with **Remember**, which asks the model to keep it as a project lesson
-  through `kit:lessons`: only what a later session could not learn from the code ends up in
-  `AGENTS.md`) and **◎ Session** (model and effort, turns, how long, cost where the host reports
-  it, compactions, the context by category as a bar like `/context`, the files this chat wrote
-  or edited and the subagents it ran, counted since the mod loaded; a `/clear` starts over). It
-  never opens by itself: the band's skills menu (**Open dashboard**) or `/panel` opens it. On
-  the desktop app a click also counts when the pane didn't have focus yet; the catch is that
-  Tab onto a button there presses it.
 - **Theme**: `/theme` shows its proposal before you approve it: colors for light and dark
   with contrast ratios, a sample card and button, the type scale in the real fonts, spacing,
   radius and shadow. Google Fonts are fetched as a small glyph subset and embedded (needs

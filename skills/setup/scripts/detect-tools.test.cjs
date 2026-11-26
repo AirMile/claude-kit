@@ -25,13 +25,20 @@ function fixture(files, check) {
   }
 }
 
+// The rustfmt probe asks the machine; the fixtures answer it themselves.
+const NO_FMT = { rustfmt: () => false };
+
 const pkg = (value) => JSON.stringify(value);
 const block = (ecosystem, lines, rel = ".") => ({ ecosystem, rel, lines });
 function expect(files, ecosystem, lines, title) {
   test(title || `${ecosystem}: ${Object.keys(files).join(", ")}`, () => {
     fixture(files, (dir) => {
-      assert.deepStrictEqual(detect(dir), [block(ecosystem, lines)]);
-      assert.deepStrictEqual(detect(dir), detect(dir), "stable ordering");
+      assert.deepStrictEqual(detect(dir, NO_FMT), [block(ecosystem, lines)]);
+      assert.deepStrictEqual(
+        detect(dir, NO_FMT),
+        detect(dir, NO_FMT),
+        "stable ordering",
+      );
     });
   });
 }
@@ -208,6 +215,25 @@ expect(
     "Quality: `cargo machete`",
   ],
 );
+
+test("Rust with rustfmt installed checks the formatting before clippy", () => {
+  fixture({ "Cargo.toml": "" }, (dir) => {
+    assert.deepStrictEqual(detect(dir, { rustfmt: () => true }), [
+      block("Rust", [
+        "Test: `cargo test`",
+        "Lint / typecheck: `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings`",
+        "Build: `cargo build`",
+      ]),
+    ]);
+  });
+});
+
+test("a project without Cargo.toml never asks for rustfmt", () => {
+  fixture({ "go.mod": "module example.test/app" }, (dir) => {
+    const rustfmt = () => assert.fail("probed rustfmt");
+    assert.strictEqual(detect(dir, { rustfmt }).length, 1);
+  });
+});
 
 expect(
   {

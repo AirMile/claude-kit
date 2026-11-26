@@ -22,6 +22,9 @@ It is the only list: no copy in the repo, no `docs/roadmap.md`.
   `AGENTS.md` yet → note the answer for `/setup`.
 - None, or unreachable (no connector, e.g. in Codex) → show the items in the chat and say they
   were not saved. Never create a file for them instead.
+- Items added to Todoist, and the notes vault in the user's instructions has no view of them →
+  offer `Projects/<Name>/<Name> taken.md` there with a `todoist` query block (shaped like an
+  existing one); write it only on a yes.
 - The repo has a `docs/roadmap.md` without a `moved to the backlog` line → offer to move its
   open lines and `## Later`, only those the backlog lacks. Only once all of them are in, add
   `<!-- moved to the backlog <date> -->` at its top. The file stays; delete it only on an
@@ -30,7 +33,8 @@ It is the only list: no copy in the repo, no `docs/roadmap.md`.
 
 ## 0. Route
 
-- No git, no manifest, cwd is `$HOME`, `/` or a folder of projects → stop: `/setup` first.
+- No git, no manifest, and cwd is `$HOME`, `/`, a folder of projects or the desktop app's
+  throwaway chat folder → stop: `/setup <idea>` first (it asks the name and place).
 - `docs/product.md` missing → **New**.
 - Exists, no arg → list the open backlog items by section and stop: the user says what to change.
 - Exists, arg starts with `critique` → **Critique**; `brainstorm` → **Brainstorm**.
