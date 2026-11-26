@@ -28,11 +28,12 @@ export function parseRequired(agentsMd: string): CheckKind[] {
     if (!name) continue;
     const value = m?.[2] ?? "";
     if (NONE.test(value.replace(/`/g, "").trim())) continue;
-    const kind: CheckKind = name.startsWith("lint") || name === "typecheck"
-      ? "static"
-      : name === "test"
-        ? "test"
-        : "build";
+    const kind: CheckKind =
+      name.startsWith("lint") || name === "typecheck"
+        ? "static"
+        : name === "test"
+          ? "test"
+          : "build";
     // Only a command flow can recognise as a check can ever be seen passing: another one
     // (./scripts/test.sh) would hold the task for ever.
     const command = /`([^`]+)`/.exec(value)?.[1] ?? value.trim();
@@ -95,5 +96,5 @@ export async function ensureRequired($: EngineInterface) {
     ? String(await $.fs.read(inRoot(root, "AGENTS.md")).catch(() => ""))
     : "";
   if (state.task === task)
-    state.task = { ...task, required: parseRequired(text) };
+    state.task = { ...task, required: parseRequired(text), requiredRoot: root };
 }

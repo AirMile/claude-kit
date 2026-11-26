@@ -242,6 +242,21 @@ test("AGENTS.md § Commands makes every listed kind required for a medium task",
   expect((await stop($)).block).toBe(undefined);
 });
 
+test("a hold for another folder's change names the session root's AGENTS.md", async ($, on) => {
+  const w = world(on);
+  on("fs.read", async (_$, e) => {
+    if (e.path !== "/p/app/AGENTS.md") throw new Error("missing");
+    return {
+      value: "## Commands\n\n- Test: `npm test`\n- Lint: `npm run lint`\n",
+    };
+  });
+  for (const f of ["a", "b", "c", "d"]) await write($, `/p/kit/src/${f}.ts`);
+  w.later(1000);
+  await bash($, "npm run lint");
+  w.later(1000);
+  expect((await stop($)).block).toContain("(/p/app/AGENTS.md lists it)");
+});
+
 const statusWorld = (on: Parameters<typeof world>[0], out: string) =>
   world(on, {}, undefined, (command) => (command.includes("echo") ? out : ""));
 const SUITE = "node --test test/*.test.mjs > f.log 2>&1; echo exit=$?";
@@ -330,5 +345,7 @@ test("Bash calls that are not checks are counted; a recognised one, even masked,
   expect(w.store.flowTasks).toMatchObject({ s1: { shellCalls: 2 } });
   expect((await stop($)).block).toContain("2 shell commands ran, none a check");
   await bash($, "npm test");
-  expect(w.store.flowTasks).toMatchObject({ s1: { shellCalls: 2, checkCalls: 1 } });
+  expect(w.store.flowTasks).toMatchObject({
+    s1: { shellCalls: 2, checkCalls: 1 },
+  });
 });

@@ -35,7 +35,7 @@ export type Change = "none" | Track;
 
 // What the change classifier sees: the risk of the change, not the model it needs.
 export const CHANGE_LABELS: Record<Change, string> = {
-  none: "none: no code change (an explanation, a question, a review, a plan only)",
+  none: "none: no code change (an explanation, a question, a review, a plan only, or only deleting whole project folders)",
   light: "light: a small local change in one or two files",
   medium:
     "medium: a bounded behaviour change or a clear bug across a few files",
@@ -75,6 +75,7 @@ export type Task = {
   closedPrints?: Partial<Record<CheckKind, string>>; // the worktree each closed kind passed on
   failedAt?: Partial<Record<CheckKind, number>>; // when each kind last failed or was reopened
   required?: CheckKind[]; // the kinds AGENTS.md § Commands lists; undefined: not read yet
+  requiredRoot?: string; // the session root those commands came from
   passedPrints?: Partial<Record<CheckKind, string>>; // the worktree each kind last passed on
   passedAt?: Partial<Record<CheckKind, number>>; // when each kind last passed (no git)
   baseline?: Partial<Record<CheckKind, string>>; // failure hash of a kind red before the first edit
