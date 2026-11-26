@@ -89,14 +89,14 @@ reason. Check as you go, not only at the end. Library API you are unsure of → 
   regression with a known good commit → `git bisect run`. Done = the repro is green and every
   `DBG` line is gone.
 - **Verify before you finish:** a heavy task gets a review (`mcp__kit__delegate` role
-  `review`): its P0/P1 findings are fails. Without GPT room it answers with a fresh Claude
-  reviewer, which counts below V3; V3 without room → ask once: wait, or the exact words
-  "skip verify" (the gate reads only fixed phrases). The `kit:verifier` agent (fresh context;
-  criteria, changed files, baseline) is needed only at V3, without a test run passed on the
-  final code, or without a reviewer. After a fix re-run the failing checks and the full suite;
-  the flow's hold names what else must run again (a docs-only fix reopens nothing). A
-  re-review covers only the fix diff, the verifier only the criteria it touched. A finding
-  outside the agreed criteria → write it down as a limit, not another round.
+  `review`): P0/P1 findings are fails. A task that only deletes whole project folders needs no
+  review unless a flow hold asks. Without GPT room a fresh Claude reviewer answers, which counts
+  below V3; V3 without room → ask once: wait, or the exact words "skip verify" (fixed phrases
+  only). `kit:verifier` (fresh context; criteria, changed files, baseline) is needed only at
+  V3, without a test run passed on the final code, or without a reviewer. After a fix re-run
+  the failing checks and the full suite; the flow's hold names what else reruns (a docs-only
+  fix reopens nothing). A re-review covers only the fix diff, the verifier only the criteria
+  it touched. A finding outside the agreed criteria → a noted limit, not another round.
 - **A live peer session edits this checkout** (changed files you didn't write) → propose a
   worktree. Staying → edit only your own lines; checks on HEAD (`git worktree add --detach`)
   plus your files; no `run_task`; review only your paths; note it in the Handoff.

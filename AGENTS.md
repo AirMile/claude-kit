@@ -24,7 +24,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   `hooks/band-menus.tsx`, the Claude·GPT meters in `hooks/band-meters.tsx`), model/effort per prompt and subagent
   (`hooks/auto-model.ts` on the pure `hooks/model-policy.ts`, switches kept by `hooks/model-switch.ts`, the Claude plan in `hooks/plan.ts`, `/mode`; every started subagent noted and logged by `hooks/spawn-record.ts`), flow (`hooks/flow.ts` on the pure `hooks/flow-policy.ts`, `hooks/flow-check.ts` and
   `hooks/flow-log.ts`, review and verifier glue in `hooks/flow-agents.ts`, evidence in
-  `hooks/flow-evidence.ts`, task state in `hooks/flow-state.ts`, storage and git fingerprint in
+  `hooks/flow-evidence.ts` with hold advice in `hooks/flow-advice.ts`, task state in `hooks/flow-state.ts`, storage and git fingerprint in
   `hooks/flow-store.ts`: each change task's
   track light/medium/heavy, its note pointing to task-readiness at the start or on growth, the verify gate on `classic.Stop`
   from the worktree's git fingerprint, the checks (a masked exit status never credits a pass: `;`/`||` after the check, `||` before it in the same list, a background `&` or a pipe without `set -o pipefail` leave it indeterminate; only the check's own trailing `; echo <word>=$?` or `; echo $?` whose output shows 0 passes, and a final echo does not rescue a preceding `||`; a hold says so when no command this task was recognised as a check, counted by `checkCalls`/`shellCalls`, `noCheckSeen` in `hooks/flow-evidence.ts`), reviews and verifier's answer; unverified work stays open, `/flow` in `hooks/flow-command.ts`),

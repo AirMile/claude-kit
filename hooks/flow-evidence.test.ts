@@ -24,7 +24,7 @@ import {
   type Family,
   type ReviewRecord,
 } from "./flow-evidence";
-import { newTask, type Task } from "./flow-policy";
+import { newTask, stopVerdict, type Task } from "./flow-policy";
 
 const work = (over: Partial<Task> = {}): Task => ({
   ...newTask(1, "light", "p0"),
@@ -34,7 +34,7 @@ const work = (over: Partial<Task> = {}): Task => ({
   ...over,
 });
 const ADVICE =
-  "Recognised: node --test, npm/pnpm/yarn test, vitest, jest, pytest, go test, cargo test, tsc, eslint, build scripts. Run the project's test command through the Bash tool (the flow does not see PowerShell calls), or ask the user to add `Test:` to AGENTS.md § Commands; that command must start with one of the recognised runners, or it is ignored.";
+  "Recognised: node --test, npm/pnpm/yarn test, vitest, jest, pytest, go test, cargo test, tsc, eslint, claude plugin test, build scripts. Run the project's test command through the Bash tool (the flow does not see PowerShell calls), or ask the user to add `Test:` to AGENTS.md § Commands; that command must start with one of the recognised runners, or it is ignored.";
 const review = (over: Partial<ReviewRecord> = {}): ReviewRecord => ({
   outcome: "pass",
   family: "gpt",
@@ -304,9 +304,9 @@ test("a hold names every missing item and preserves the check and verifier sente
   expect(hold).toContain("verdict: pass|fail");
   expect(hold).toContain("footer from delegate’s answer word for word");
   // below V3 the Claude route can follow any review, so its footer is always named
-  expect(
-    holdText(onReview(t, review({ outcome: "error" })), "p1"),
-  ).toContain("footer from delegate");
+  expect(holdText(onReview(t, review({ outcome: "error" })), "p1")).toContain(
+    "footer from delegate",
+  );
   expect(
     holdText(onReview({ ...t, gateV: 3 }, review({ outcome: "error" })), "p1"),
   ).not.toContain("footer from delegate");
@@ -675,4 +675,14 @@ test("no Claude run, in any order, displaces another family's fail on this code"
     const late = claude(failed, { print: basePrint && "p9", at: 6 });
     expect(late.review?.family).toBe("gpt");
   }
+});
+
+test("a hold for code this chat never edited names the other session", async () => {
+  const note = "if another session changed this checkout, say so and stop";
+  const bare = work({ files: [] });
+  expect(holdText(bare, "p1")).toContain(note);
+  expect(holdText(work(), "p1")).not.toContain(note);
+  // advice only: the gate asks for the same and still blocks
+  expect(missing(bare, "p1")).toEqual(missing(work(), "p1"));
+  expect(stopVerdict(bare, "Done.", "p1").block).toContain(note);
 });

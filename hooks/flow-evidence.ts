@@ -1,3 +1,11 @@
+import {
+  KIND_NAME,
+  KIND_RUN,
+  listedIn,
+  noCheckAdvice,
+  noCheckNote,
+  otherSession,
+} from "./flow-advice";
 import type { CheckKind } from "./flow-check";
 import type { Task } from "./flow-policy";
 import { requiredMissing } from "./flow-required";
@@ -148,16 +156,6 @@ export function reviewProblem(
   return undefined;
 }
 
-const KIND_NAME: Record<CheckKind, string> = {
-  test: "tests",
-  static: "typecheck/lint",
-  build: "the build",
-};
-const KIND_RUN: Record<CheckKind, string> = {
-  test: "test run",
-  static: "typecheck/lint",
-  build: "build",
-};
 const checkNeeds = (t: Task, print?: string): string[] => [
   ...(t.openKinds ?? []).map(
     (kind) =>
@@ -167,7 +165,7 @@ const checkNeeds = (t: Task, print?: string): string[] => [
     .filter((kind) => !(t.openKinds ?? []).includes(kind))
     .map(
       (kind) =>
-        `a passing ${KIND_RUN[kind]} on this code (this project's AGENTS.md lists it)`,
+        `a passing ${KIND_RUN[kind]} on this code (${listedIn(t)} lists it)`,
     ),
 ];
 // No command this task was recognised as a check (a masked one counts as seen): the generic
@@ -179,11 +177,6 @@ export const noCheckSeen = (t: Task): boolean =>
   !(t.openKinds ?? []).length &&
   !Object.keys(t.passedAt ?? {}).length &&
   !Object.keys(t.baseline ?? {}).length;
-const RECOGNISED =
-  "node --test, npm/pnpm/yarn test, vitest, jest, pytest, go test, cargo test, tsc, eslint, build scripts";
-const noCheckNote = (t: Task): string =>
-  `no command this task was recognised as a check${t.shellCalls ? ` (${t.shellCalls} shell command${t.shellCalls === 1 ? "" : "s"} ran, none a check)` : ""}`;
-const noCheckAdvice = `Recognised: ${RECOGNISED}. Run the project's test command through the Bash tool (the flow does not see PowerShell calls), or ask the user to add \`Test:\` to AGENTS.md § Commands; that command must start with one of the recognised runners, or it is ignored.`;
 const baselineNote = (t: Task): string => {
   const kinds = Object.keys(t.baseline ?? {}).filter(
     (k) => !(t.openKinds ?? []).includes(k as CheckKind),
@@ -326,6 +319,8 @@ export function holdText(
           ? " On the Claude route, put the footer from delegate’s answer word for word in the subagent prompt or it is not recognised as a review."
           : ""),
     );
+  const other = sentences.length ? otherSession(t) : undefined;
+  if (other) sentences.push(other);
   return sentences.join(" ");
 }
 

@@ -254,3 +254,20 @@ test("the hold text names a baseline-red kind as pre-existing", () => {
   expect(block).toContain("Pre-existing, unchanged failures");
   expect(block).toContain("test");
 });
+
+test("the hold names which AGENTS.md lists a required check", () => {
+  const t: Task = {
+    ...newTask(1, "medium"),
+    required: ["static"],
+    files: ["/w/claude-kit/hooks/a.ts"],
+    lastEditAt: 5,
+    lastCheckAt: 6,
+  };
+  expect(
+    stopVerdict({ ...t, requiredRoot: "/w/codemap/" }, "Done.", undefined).block,
+  ).toContain("(/w/codemap/AGENTS.md lists it)");
+  // a task stored before the root was kept
+  expect(stopVerdict(t, "Done.", undefined).block).toContain(
+    "(this project's AGENTS.md lists it)",
+  );
+});
