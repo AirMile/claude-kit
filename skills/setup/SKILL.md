@@ -21,7 +21,7 @@ subfolders hold a `.git` or a manifest.
 
 | Situation                                                            | Route                |
 | -------------------------------------------------------------------- | -------------------- |
-| No git, no manifest, and cwd is `$HOME`, `/` or a folder of projects | **N. New folder**    |
+| No git, no manifest; cwd is `$HOME`, `/`, a projects or chat folder  | **N. New folder**    |
 | No source files, no `docs/product.md`                                | **P. Product first** |
 | No source files, `docs/product.md` exists                            | **A. Scaffold**      |
 | `.project/`, no `docs/product.md`, no `docs/roadmap.md`              | **C. Migrate v1**    |
@@ -29,9 +29,10 @@ subfolders hold a `.git` or a manifest.
 
 ## N. New folder
 
-1. Ask the project name (open question; the arg as idea hints a name). Path: `<cwd>/<kebab-name>`,
-   or `~/Projects/<kebab-name>` when cwd is `$HOME` and that folder exists. Taken and not empty
-   → ask another name.
+1. Ask the project name (open question; the arg as idea hints a name). Path: `<cwd>/<kebab-name>`;
+   cwd is `$HOME` or a chat folder (the desktop app's throwaway one, no project) →
+   `~/Projects/<kebab-name>`, naming that path in the question (no `~/Projects` → ask where).
+   Taken and not empty → ask another name.
 2. `mkdir -p` it and `git init` there.
 3. Move the session: `mcp__ccd_directory__change_directory` (desktop) moves it when this turn
    ends → tell the user to send `/setup` (plus the idea) there. Tool missing (CLI) → print
@@ -52,7 +53,8 @@ Written → continue here with **A** (don't stop at its report).
    context7; don't guess). It refuses a non-empty folder → generate into a temp dir and move
    the files in; never pass `--overwrite`/`--force`.
 4. Add the test runner the stack expects if the generator didn't (one, not a menu).
-5. Boot the dev server once to confirm it works; stop only the process you started.
+5. Boot the dev server once to confirm it works; a native desktop app (no server or port) →
+   start it and check its window exists. Stop only the process you started.
 6. A `scaffold` backlog item → complete it after the user confirms. Continue with **B**.
 
 ## B. Onboard
