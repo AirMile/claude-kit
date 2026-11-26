@@ -105,6 +105,12 @@ product and `§ Backlog`, `setup` for AGENTS/decisions, `task-readiness/referenc
 - A rule that needs a second paragraph of exceptions is a sign to cut it, not to extend it
 - Check: `wc -l skills/*/SKILL.md`
 
+## Backlog
+
+- The backlog is the Todoist project `claude-kit` (the newer one, not `Claude-Kit`; sections
+  `Nu`, `Hierna`, `Ideeën`). Do not keep a list in the repo.
+- Add items only after the user confirms; complete one only after the user confirms.
+
 ## Git
 
 - Land: merge
