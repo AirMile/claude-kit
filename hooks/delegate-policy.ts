@@ -263,12 +263,16 @@ export function route(i: RouteInput): Route {
 
 // Gemini through the Antigravity CLI (agy): only on request (provider "gemini"), never by the
 // band: agy shows no meters, so there is nothing to balance. Ids read `gemini-<version>-<family>-
-// <effort>`; the newest version of the asked family wins, Flash when none is named, and the
+// <effort>`; the newest version of the asked family wins, Hydrogen when none is named, and the
 // other models agy lists (Claude, GPT-OSS) are never picked.
 export type Provider = "gpt" | "gemini";
 export const PROVIDERS: readonly Provider[] = ["gpt", "gemini"];
-export type GeminiFamily = "flash" | "pro";
-export const GEMINI_FAMILIES: readonly GeminiFamily[] = ["flash", "pro"];
+export type GeminiFamily = "hydrogen" | "flash" | "pro";
+export const GEMINI_FAMILIES: readonly GeminiFamily[] = [
+  "hydrogen",
+  "flash",
+  "pro",
+];
 export type GeminiEffort = "high" | "medium" | "low";
 
 export type GeminiRoute = {
@@ -292,7 +296,7 @@ const GEMINI_EFFORT: Record<Role, GeminiEffort> = {
 export function geminiRoute(
   role: Role,
   ids: string[],
-  family: GeminiFamily = "flash",
+  family: GeminiFamily = "hydrogen",
 ): GeminiRoute | { provider: "none"; reason: string } {
   const effort = GEMINI_EFFORT[role];
   let best: { id: string; version: number[] } | undefined;

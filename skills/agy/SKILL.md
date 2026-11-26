@@ -18,7 +18,7 @@ you cannot run as "no access" before checking `which agy`.
 
 ## With `mcp__kit__delegate` (the usual way)
 
-Call it with `provider: "gemini"` (or `family: "flash"` / `"pro"`), a `role` and a brief, like
+Call it with `provider: "gemini"` (or `family: "hydrogen"` / `"flash"` / `"pro"`), a `role` and a brief, like
 for GPT: it runs `agy` here, keeps its log out of this chat and returns the response, the
 changed files and a `thread` for a follow-up (also `provider: "gemini"`). A review by Gemini
 counts as another family's review for code Claude or GPT wrote, with `author` set to who wrote
@@ -39,8 +39,8 @@ The same run by hand, as below.
 
 ## Models
 
-`agy models` lists ids (`gemini-<version>-<family>-<effort>`, e.g. `gemini-3.8-flash-high`).
-Use the newest Gemini version, a family the user named (Flash, Pro), else Flash. Effort:
+`agy models` lists ids (`gemini-<version>-<family>-<effort>`, e.g. `gemini-4-hydrogen-high`).
+Use the newest Gemini version, a family the user named (Hydrogen, Flash, Pro), else Hydrogen. Effort:
 `high` for research, plans and reviews, `low` for a quick search. The list also holds non-Gemini
 models (Claude, GPT-OSS): use them only if the user asks for that exact model.
 
