@@ -11,8 +11,10 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
 - `hooks/hooks.json`: push-guard (PreToolUse) + format-on-save (PostToolUse);
   `hooks/push-guard.test.cjs` is its regression test. Its `modules` names `hooks/register.tsx`,
   the kit mod (Claude Code 2.1.287+): native compaction priorities and recovery note
-  (`hooks/compaction.ts`), auto-compact at a task boundary with a compaction ledger and
-  `/kitcompact` (`hooks/auto-compact.ts` on the pure `hooks/context-policy.ts`), `/pin` text that
+  (`hooks/compaction.ts`), auto-compact once the chat sits idle after a turn with a compaction ledger and
+  `/kitcompact` (`hooks/auto-compact.ts` on the pure `hooks/context-policy.ts`; the open task's
+  readiness block kept on the flow task and restored by the pure `hooks/readiness.ts`, the last
+  reply by the pure `hooks/reply.ts`, kit's notes told apart in `hooks/kit-notes.ts`), `/pin` text that
   survives compaction word for word (`hooks/pins.ts`), the user's latest messages restored the
   same way (`hooks/recent.ts`; per-chat storage in `hooks/chat-store.ts`), usage figures, the tool
   `mcp__kit__theme_view` (`hooks/theme-view.tsx`) that `/theme` calls to open its pane, the band
@@ -50,8 +52,7 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   read budgets (`hooks/read-budget.ts`, observed by `hooks/read-watch.ts`), a pause before the plan limit with
   cache keep-alive (`hooks/limit-guard.ts` on the pure `hooks/limit-policy.ts`, kept prompts and
   command replay in `hooks/limit-queue.ts`, text control with `/limit` in `hooks/limit-command.ts`), keep-alive forks by hand or
-  for the pause (`hooks/keep-warm.ts`, `/warm`), `/band`,
-  and `mcp__kit__fresh_start` (`hooks/fresh-start.ts`), for clearing and resuming. Only `register.tsx` registers events; `$` never crosses an import (the
+  for the pause (`hooks/keep-warm.ts`, `/warm`), and `/band`. Only `register.tsx` registers events; `$` never crosses an import (the
   validator refuses it), so `hooks/spec.ts` stays pure
 - `hooks/codex-hooks.json` (declared in `.codex-plugin/plugin.json`) → `hooks/codex-hooks.cjs`: push
   guard, format-on-save (also `apply_patch`) and, at session start, `hooks/codex-context.md`:

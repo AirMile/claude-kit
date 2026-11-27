@@ -1,4 +1,4 @@
-import type { EngineInterface, On } from "claude-code";
+import type { EngineInterface, On, SessionMessage } from "claude-code";
 
 import { gateLevel, reviewProblem } from "./flow-evidence";
 import {
@@ -15,7 +15,9 @@ import { endEntry, type Ending } from "./flow-log";
 import * as policy from "./flow-policy";
 import { log, worktreePrint } from "./flow-store";
 import { state, load, save } from "./flow-state";
+import { FLOW_NOTE, isKitNote } from "./kit-notes";
 import { isThin, type Kind } from "./model-policy";
+import { turnBlock } from "./readiness";
 import { readTurn } from "./read-watch";
 import type { Level, Levels } from "./task-policy";
 
@@ -31,7 +33,7 @@ export { flowCommand } from "./flow-command";
 // Flow (always on; /flow reports it, flow-command.ts): this chat's open change task, fed by its
 // prompts (auto-model.ts), edits, turn ends and compactions (register.tsx, compaction.ts), shell
 // checks (below) and mcp__kit__run_task's (task-runner.ts), the verifier's answer
-// (fresh-start.ts's turn.complete) and GPT's changes (delegate-run.ts). The worktree's git
+// (register.tsx's turn.complete) and GPT's changes (delegate-run.ts). The worktree's git
 // fingerprint is the evidence, per kind of check (flow-check.ts); the task is kept per session in
 // $.store, so a reload or restart keeps it. It sends the track's notes and task-policy's decision,
 // holds a turn that ends on unchecked changes; unverified work stays open. Reviews come from
@@ -45,6 +47,18 @@ export type CheckStart = {
 
 let promptPrint: string | undefined; // the worktree when the last prompt came in
 let endedOnQuestion = false; // the last turn ended on a question to the user
+
+// The main chat's context in tokens, for the log; undefined without a reading.
+async function contextNow($: EngineInterface): Promise<number | undefined> {
+  const n = (await $.session.usage().catch(() => undefined))?.context?.tokens;
+  return typeof n === "number" && n > 0 ? n : undefined;
+}
+
+// A point of a task with the context then; nothing without a reading.
+async function logContext($: EngineInterface, task: number, text: string) {
+  const ctx = await contextNow($);
+  if (ctx !== undefined) await log($, { task, event: "ctx", text, ctx });
+}
 
 // Flow growth or a failing check: the open task's levels go up, with the note for it.
 async function raise($: EngineInterface, why: string) {
@@ -106,6 +120,7 @@ export async function flowCheckEnd(
 ): Promise<string | undefined> {
   await load($);
   if (!state.task) return undefined;
+  const before = state.task;
   state.task = policy.onCheck(
     state.task,
     passed,
@@ -120,6 +135,11 @@ export async function flowCheckEnd(
       ? await raise($, "a failing check")
       : undefined;
   await save($);
+  if (passed && !before.passLogged) {
+    state.task = { ...state.task, passLogged: true };
+    await save($);
+    await logContext($, before.id, "first pass");
+  }
   return note;
 }
 
@@ -137,6 +157,13 @@ export async function flowPrompt(
 ): Promise<string | undefined> {
   readTurn();
   await load($);
+  // A pending readiness block waits for one short prompt, the go-ahead ("ja, bouwen"), and no
+  // longer: a request of its own (a command too) starts a task the block was not written for.
+  if (
+    pendingBlock &&
+    (++pendingBlock.prompts > 1 || !isThin(text) || text.trim().startsWith("/"))
+  )
+    pendingBlock = undefined;
   const now = await $.clock.now();
   const p = await worktreePrint($);
   promptPrint = p;
@@ -157,7 +184,10 @@ export async function flowPrompt(
   });
   endedOnQuestion = false;
   if (step.ended)
-    await log($, endEntry(step.ended, ending(step.ended, p), now));
+    await log($, {
+      ...endEntry(step.ended, ending(step.ended, p), now),
+      ctx: await contextNow($),
+    });
   state.task = step.task;
   await ensureRequired($);
   const kept = ["continue", "escalate", "fold"].includes(step.event);
@@ -210,6 +240,7 @@ export async function flowEdit(
 ): Promise<string | undefined> {
   await load($);
   const now = await $.clock.now();
+  const unedited = !state.task || state.task.lastEditAt === 0;
   const step = policy.onEdit(state.task, path, now, now, promptPrint, gpt);
   if (!step) return undefined;
   state.task = step.task;
@@ -223,6 +254,8 @@ export async function flowEdit(
       track: state.task.track,
       reason: "an edit outside any task",
     });
+  if (unedited && state.task.lastEditAt === now)
+    await logContext($, state.task.id, "first edit");
   if (!step.note) return undefined;
   if (state.task.levels)
     state.task = {
@@ -278,6 +311,7 @@ export async function flowStop(
       reason: "changes git saw",
     });
   }
+  await noteBlock($);
   const before = state.task;
   const v = policy.stopVerdict(state.task, lastMessage, p);
   endedOnQuestion = (lastMessage ?? "").trim().endsWith("?");
@@ -285,7 +319,11 @@ export async function flowStop(
   state.task = v.task;
   await save($);
   const now = await $.clock.now();
-  if (v.ended) await log($, endEntry(v.ended, "verified", now));
+  if (v.ended)
+    await log($, {
+      ...endEntry(v.ended, "verified", now),
+      ctx: await contextNow($),
+    });
   else if (before && v.outcome !== "none")
     await log($, {
       task: before.id,
@@ -297,8 +335,8 @@ export async function flowStop(
   return v.block;
 }
 
-// After flowStop: the turn closed every task and did not end on a question (auto-compact.ts).
-export const flowAtBoundary = (): boolean => !state.task && !endedOnQuestion;
+// After flowStop: the turn closed every task (auto-compact.ts).
+export const flowClosed = (): boolean => !state.task;
 
 // After a compaction: what the open task still needs, for the recovery note.
 export function flowRecovery(): string | undefined {
@@ -320,7 +358,71 @@ export function flowRecovery(): string | undefined {
       : level === 2
         ? " and a review"
         : "";
-  return `kit flow: an open ${state.task.track} task changed ${files}; before you finish, run the check that covers it${verifier}${review}.`;
+  return `${FLOW_NOTE}${state.task.track} task changed ${files}; before you finish, run the check that covers it${verifier}${review}.`;
+}
+
+
+// A readiness block seen at the end of a turn with no task open: the task the next turn opens
+// takes it (a block, then the user's go-ahead, then the first edit). One turn only.
+let pendingBlock: { block: string; at: number; prompts: number } | undefined;
+
+// The open task keeps the newest readiness block of its turns (readiness.ts).
+function keepBlock(block: string | undefined, now: number) {
+  if (!state.task) {
+    // A turn or compaction without a new block leaves a pending one to the prompt count.
+    if (block) pendingBlock = { block, at: now, prompts: 0 };
+    return;
+  }
+  const adopted =
+    pendingBlock && state.task.id >= pendingBlock.at ? pendingBlock.block : undefined;
+  pendingBlock = undefined;
+  const readiness = block ?? state.task.readiness ?? adopted;
+  if (readiness !== state.task.readiness) state.task = { ...state.task, readiness };
+}
+
+// The readiness block the turn wrote, at its end (flowStop, or flowTurnEnd when flow does not
+// judge that end).
+// With the store unread and no task in memory, the block waits for the stored task
+// (flow-state's `block`; the newest wins).
+async function noteBlock($: EngineInterface) {
+  const owner = !state.task ? state.unreadFor : undefined; // before the await
+  const said = await $.session.messages().catch(() => undefined);
+  if (!said) return;
+  const block = turnBlock(said, isKitNote);
+  if (owner) {
+    // Both: the stored task takes it once read; with none stored, a short go-ahead's new task.
+    if (block) {
+      state.block = { for: owner, text: block };
+      pendingBlock = { block, at: await $.clock.now(), prompts: 0 };
+    }
+    return;
+  }
+  keepBlock(block, await $.clock.now());
+}
+
+// A main-chat turn ended that flow does not judge (background work, another hook's hold): its
+// readiness block still counts.
+export async function flowTurnEnd($: EngineInterface) {
+  // Unreadable store: the block still goes on the task in memory, which joins the stored one.
+  const loaded = await load($);
+  const before = state.task?.readiness;
+  await noteBlock($);
+  if (loaded && state.task?.readiness !== before) await save($);
+}
+
+// The open task's readiness block for the note after a compaction (compaction.ts), taking any
+// block the running turn wrote first. `known: false`: the task could not be read, so an
+// earlier note must stay.
+export async function flowReadiness(
+  $: EngineInterface,
+  messages: readonly SessionMessage[],
+): Promise<{ known: false } | { known: true; id?: number; block?: string }> {
+  // A compaction right after a resume comes before any other flow event.
+  if (!(await load($))) return { known: false };
+  const before = state.task?.readiness;
+  keepBlock(turnBlock(messages, isKitNote), await $.clock.now());
+  if (state.task?.readiness !== before) await save($);
+  return { known: true, id: state.task?.id, block: state.task?.readiness };
 }
 
 // /clear: the open task ends here.
@@ -329,6 +431,7 @@ export async function resetFlow($: EngineInterface) {
   if (state.task)
     await log($, endEntry(state.task, "reset", await $.clock.now()));
   state.task = undefined;
+  pendingBlock = undefined;
   promptPrint = undefined;
   endedOnQuestion = false;
   await save($);

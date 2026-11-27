@@ -42,6 +42,7 @@ export type LogEntry = {
   gpt5h?: number;
   model?: string; // a spawn: the model the subagent runs on, and the model that spawned it
   parent?: string;
+  ctx?: number; // the main chat's context in tokens: at a task's first edit, first pass, end
 };
 
 export const KEEP_MS = 14 * 86_400_000;
@@ -172,6 +173,24 @@ export function spawnLines(log: readonly LogEntry[]): string[] {
   ];
 }
 
+// The median context at each point of a task, in k tokens: whether compacting mid-task would pay.
+export function contextLine(log: readonly LogEntry[]): string {
+  const median = (event: string, text?: string) => {
+    const v = log
+      .filter((e) => e.event === event && (text === undefined || e.text === text))
+      .map((e) => e.ctx)
+      .filter((n): n is number => typeof n === "number")
+      .sort((a, b) => a - b);
+    if (!v.length) return "-";
+    const m = v.length % 2 ? v[(v.length - 1) / 2]! : (v[v.length / 2 - 1]! + v[v.length / 2]!) / 2;
+    return `${Math.round(m / 1000)}k (${v.length})`;
+  };
+  return (
+    `context, median (tasks): first edit ${median("ctx", "first edit")} · ` +
+    `first pass ${median("ctx", "first pass")} · end ${median("end")}`
+  );
+}
+
 // /flow's report: the first picks against how the tasks ended, the holds, the user's marks.
 export function report(log: readonly LogEntry[]): string {
   const ends = log.filter((e) => e.event === "end");
@@ -191,6 +210,7 @@ export function report(log: readonly LogEntry[]): string {
       `ending with 2 files or fewer and no spec (too heavy?): ${count((e) => e.first === "heavy" && (e.files ?? 0) <= 2 && !e.spec, ends)}`,
     `holds ${count((e) => e.event === "block")} · ended ${(["verified", "waived", "unresolved", "unverified"] as const).map((o) => `${o} ${count((e) => e.outcome === o, ends)}`).join(" · ")}`,
     `your marks: ${MARKS.map((m) => `${m} ${count((e) => e.mark === m)}`).join(" · ")}`,
+    contextLine(log),
     ...decisionLines(log),
     ...spawnLines(log),
     `read notes ${count((e) => e.event === "read-note")} · delegated ${delegated.length} (gpt ${count((e) => e.provider === "gpt", delegated)}, claude ${count((e) => e.provider === "claude", delegated)}) · not delegated ${count((e) => e.provider === "none", delegates)} · failed ${count((e) => e.provider !== "none" && e.outcome === "failed", delegates)}`,

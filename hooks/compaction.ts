@@ -1,9 +1,21 @@
 import type { EngineInterface, On, SessionMessage } from "claude-code";
 
-import { recordCompaction } from "./auto-compact";
-import { flowRecovery } from "./flow";
+import {
+  compactionStarted,
+  recordCompaction,
+  type Restored,
+} from "./auto-compact";
+import { flowReadiness, flowRecovery } from "./flow";
+import {
+  isFlowNote,
+  isKitNote,
+  isSpecNote,
+  SPEC_NOTE,
+} from "./kit-notes";
 import { isPinsNote, pinsNote } from "./pins";
+import { isReadinessNote, readinessNote } from "./readiness";
 import { isRecentNote, recentNote } from "./recent";
+import { isReplyNote, replyNote } from "./reply";
 import { branchSlug, inRoot, parseSpec } from "./spec";
 
 // Add priorities to the native summarizer, never rebuild its input or its summary.
@@ -21,7 +33,8 @@ const PRESERVE = [
 
 const SLUG = /^[a-z0-9][a-z0-9-]*$/;
 
-// An actual user command or our recovery note selects a spec, never tool output.
+// An actual user command or our recovery note selects a spec, never tool output or a command
+// quoted in another of kit's notes.
 // undefined: no task-readiness command; null: the latest command has no explicit valid slug.
 function requestedSpec(
   messages: readonly SessionMessage[],
@@ -29,13 +42,11 @@ function requestedSpec(
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const message = messages[i];
     if (message?.role !== "user") continue;
-    // Our notes of quoted text are not commands.
-    if (isPinsNote(message) || isRecentNote(message)) continue;
+    if (message.toolResults?.length) continue;
     // The command may be gone after the first compaction on an unrelated branch.
-    const recovery = /^kit: building ([a-z0-9][a-z0-9-]*) · Status:/.exec(
-      message.text,
-    );
+    const recovery = SPEC_NOTE.exec(message.text);
     if (recovery) return recovery[1];
+    if (isKitNote(message)) continue;
     const plain = /^\s*\/(?:kit:)?task-readiness(?:\s+([\s\S]*))?$/.exec(
       message.text,
     );
@@ -52,9 +63,11 @@ function requestedSpec(
   return undefined;
 }
 
+// null: no spec to resume; undefined (with `unknown`): it could not be read.
 async function activeSpec(
   $: EngineInterface,
   messages: readonly SessionMessage[],
+  unknown?: true,
 ) {
   try {
     const root = await $.session.root();
@@ -63,23 +76,33 @@ async function activeSpec(
       const git = await $.process
         .run(["git", "symbolic-ref", "--short", "HEAD"], { cwd: root })
         .catch(() => null);
+      // git could not run: not the same as no branch, unless the project has no specs at all
+      if (!git && unknown)
+        return (await $.fs.exists(inRoot(root, "docs/specs"))) ? undefined : null;
       slug = git?.exitCode === 0 ? branchSlug(git.stdout) : null;
     }
     if (!slug || !SLUG.test(slug)) return null;
-    const state = parseSpec(
-      await $.fs.read(inRoot(root, `docs/specs/${slug}.md`)),
-    );
+    const file = inRoot(root, `docs/specs/${slug}.md`);
+    const text = await $.fs.read(file).catch(async (err: unknown) => {
+      // No such file is no spec; a file that is there but can't be read is unknown.
+      if (unknown && !(await $.fs.exists(file))) return null;
+      throw err;
+    });
+    if (text === null) return null;
+    const state = parseSpec(text);
     // A finished spec has nothing to resume, and its note would reselect it every time.
     return state && state.status !== "done" ? { slug, ...state } : null;
   } catch {
-    return null; // missing files or unavailable git must never block native compaction
+    // missing files or unavailable git must never block native compaction
+    return unknown ? undefined : null;
   }
 }
 
 export function compaction(on: On) {
   on("session.compact", async ($, e, next) => {
     if (e.agentId) return next(e);
-    const spec = await activeSpec($, e.messages);
+    if (e.trigger !== "precompute") compactionStarted(); // a planned idle compact is stale
+    const spec = await activeSpec($, e.messages, true);
     const instructions = [
       PRESERVE,
       spec
@@ -111,41 +134,146 @@ export function compaction(on: On) {
     } catch {
       // Diagnostic failures cannot discard a completed native summary.
     }
-    // After the log, so its duration is the summary's alone (auto-compact.ts's ledger).
+
+    const out = await withNotes($, e.messages, compacted.messages, spec);
+    // After the notes, so the ledger says what came back (auto-compact.ts).
     await recordCompaction($, {
       trigger: e.trigger,
       before: compacted.tokensBefore,
       after: compacted.tokensAfter,
+      notes: out.restored,
     }).catch(() => {}); // the ledger can never discard a completed summary
+    try {
+      $.ui.toast(compactToast(compacted.tokensBefore, compacted.tokensAfter, out.restored));
+    } catch {
+      // A missing toast must not discard a completed compaction.
+    }
+    return out.messages === compacted.messages
+      ? compacted
+      : { ...compacted, messages: out.messages };
+  });
+}
 
-    const notes: SessionMessage[] = [];
-    const now = spec ? await activeSpec($, e.messages) : null;
-    if (now)
-      notes.push({
-        role: "user",
-        toolUses: [],
+const k = (n?: number) => (n === undefined ? "?" : `${Math.round(n / 1000)}k`);
+
+export function compactToast(
+  before: number | undefined,
+  after: number | undefined,
+  r: Restored,
+): string {
+  const parts = [
+    r.restored.length ? `restored ${r.restored.join(", ")}` : "nothing to restore",
+    r.cut.length ? `shortened ${r.cut.join(", ")}` : "",
+    r.failed.length
+      ? `could not read ${r.failed.join(", ")} (an earlier copy stays where there was one)`
+      : "",
+  ].filter(Boolean);
+  return `kit: compacted ${k(before)} → ${k(after)} · ${parts.join(" · ")}`;
+}
+
+type Note = { name: string; text: string; cut?: boolean };
+
+// kit's notes after the summary. Each is built on its own: one that fails is named and leaves
+// any copy an earlier compaction kept in place; one that is read replaces that copy (or removes
+// it when there is nothing left to say), so notes never stack up.
+async function withNotes(
+  $: EngineInterface,
+  before: readonly SessionMessage[],
+  kept: readonly SessionMessage[],
+  spec: Awaited<ReturnType<typeof activeSpec>>, // read before the summary
+): Promise<{ messages: readonly SessionMessage[]; restored: Restored }> {
+  const restored: Restored = { restored: [], cut: [], failed: [] };
+  const drop: ((m: SessionMessage) => boolean)[] = [];
+  const first: Note[] = []; // old requests go first, so what is still to do closes the context
+  const last: Note[] = [];
+  // Each step: undefined = could not be read (keep the old copy), null = nothing to say.
+  // "keep" = nothing new to say: an earlier copy stays.
+  const step = async (
+    name: string,
+    is: (m: SessionMessage) => boolean,
+    into: Note[],
+    build: () => Promise<Note | null | undefined | "keep">,
+  ) => {
+    let note: Note | null | undefined | "keep";
+    try {
+      note = await build();
+    } catch {
+      note = undefined;
+    }
+    if (note === "keep") return; // nothing new: an earlier copy stays, nothing failed
+    if (note === undefined) {
+      restored.failed.push(name);
+      return;
+    }
+    drop.push(is);
+    if (note) into.push(note);
+  };
+
+  await step("recent messages", isRecentNote, first, async () => {
+    const text = await recentNote($, kept);
+    if (text === false) return undefined; // unreadable
+    if (text === undefined) return "keep"; // none noted
+    return text ? { name: "recent messages", text } : null;
+  });
+  // The open task's readiness block, kept on the flow task (flow.ts, readiness.ts).
+  await step("readiness", isReadinessNote, last, async () => {
+    const r = await flowReadiness($, before);
+    if (!r.known) return undefined;
+    return r.id !== undefined && r.block
+      ? { name: "readiness", text: readinessNote(r.id, r.block) }
+      : null;
+  });
+  await step("spec", isSpecNote, last, async () => {
+    // The read before the summary failed: a note core kept stays, and the toast names it.
+    if (spec === undefined) return undefined;
+    // None, or finished: a kept note would present it as still open.
+    if (spec === null) return null;
+    // Finished or gone since: a kept note would present it as still open.
+    const read = await activeSpec($, before, true);
+    if (read === null) return null;
+    // A second read that fails falls back to the first: a kept note is never dropped unseen.
+    const now = read ?? spec;
+    return (
+      now && {
+        name: `spec ${now.slug}`,
         text:
           `kit: building ${now.slug} · Status: ${now.status} · criteria ${now.done}/${now.total}. ` +
           `Re-read docs/specs/${now.slug}.md (## Handoff first) before continuing; ` +
           `if the /task-readiness procedure is no longer in context, run /task-readiness ${now.slug}.`,
-      });
-    // Flow's open task, which the summary may have lost (flow.ts).
-    const open = flowRecovery();
-    if (open) notes.push({ role: "user", toolUses: [], text: open });
-    // The user's pins (pins.ts) and latest messages (recent.ts), from disk. Once read, they
-    // replace any note core kept, so a removed pin stays removed.
-    const pinned = await pinsNote($);
-    const latest = await recentNote($, compacted.messages);
-    const kept = compacted.messages.filter(
-      (m) =>
-        !(pinned !== undefined && isPinsNote(m)) &&
-        !(latest !== undefined && isRecentNote(m)),
+      }
     );
-    // Old requests go first, so what is still to do closes the context.
-    if (latest) notes.unshift({ role: "user", toolUses: [], text: latest });
-    if (pinned) notes.push({ role: "user", toolUses: [], text: pinned });
-    return notes.length || kept.length !== compacted.messages.length
-      ? { ...compacted, messages: [...kept, ...notes] }
-      : compacted;
   });
+  // Flow's open task, which the summary may have lost (flow.ts); read with the readiness step.
+  await step("flow task", isFlowNote, last, async () => {
+    const r = await flowReadiness($, before);
+    if (!r.known) return undefined;
+    const text = flowRecovery();
+    return text ? { name: "flow task", text } : null;
+  });
+  // The user's pins (pins.ts), from disk: once read, a removed pin stays removed.
+  await step("pins", isPinsNote, last, async () => {
+    const text = await pinsNote($);
+    return text === undefined ? undefined : text ? { name: "pins", text } : null;
+  });
+  // Last of all: the reply the user's next message answers (reply.ts).
+  await step("last reply", isReplyNote, last, async () => {
+    const r = replyNote(before, kept, isKitNote);
+    return r && { name: "last reply", text: r.text, cut: r.cut };
+  });
+
+  const notes = [...first, ...last];
+  for (const n of notes) {
+    restored.restored.push(n.name);
+    if (n.cut) restored.cut.push(n.name);
+  }
+  const left = kept.filter((m) => !drop.some((is) => is(m)));
+  if (!notes.length && left.length === kept.length)
+    return { messages: kept, restored };
+  return {
+    messages: [
+      ...left,
+      ...notes.map((n): SessionMessage => ({ role: "user", toolUses: [], text: n.text })),
+    ],
+    restored,
+  };
 }

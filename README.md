@@ -834,19 +834,36 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
 - **Diagnostics**: the debug log records `kit compact:` with native token counts before/after,
   summarizer usage and duration when available. A reused precomputed summary may have no usage.
   These figures measure the integration, not summary quality or guaranteed dollar savings.
-- **Auto-compact at a task boundary**: when a turn ends with no open flow task, not on a
-  question and with no prompt queued behind it, and the context is at or above half the window
-  (capped at 160k tokens), kit runs `/compact` once the chat is idle, with a toast saying why.
-  Not within 3 turns of the last compaction, not while the plan-limit pause holds, never when a
-  fresh start is armed; a prompt you send first cancels it. Every completed compaction (native,
+- **Auto-compact when the chat sits idle**: when a turn ends (not held by flow, no background
+  work, no prompt queued behind it) and the context is at or above half the window (capped at
+  160k tokens), kit runs `/compact` after the chat sat idle, with a toast saying why: 3 minutes
+  after a turn that closed every task, so a follow-up question still finds the full context;
+  10 minutes while work waits on you (an open flow task, a question). Not within 3 turns of the
+  last compaction, not while the plan-limit pause holds; a prompt you send, typing in the
+  prompt box or a turn that starts first cancels it. A compaction Claude Code skips is said in
+  a toast and starts no cooldown.
+- **The readiness block survives**: flow keeps the newest readiness block (task-readiness's
+  `Goal:` … `Open:`, bold labels too) written in a turn of the open task on the task itself (a
+  block shown before your go-ahead goes to the task that the next turn opens). After any
+  compaction it comes back word for word, once; a new task starts without one, so an earlier
+  task's block never returns.
+- **Your last reply survives**: after every main-chat compaction the assistant's last reply
+  (with the questions of a question card) comes back word for word as the very last note,
+  marked as finished, still running, or already answered; over 4,000 characters it keeps its
+  first 3,000 and last 1,000. Not repeated when compaction kept it; carried over by the next one.
+- **Every note on its own**: each note (recent messages, readiness, spec, flow task, pins, last
+  reply) is built apart; one that can't be read leaves the copy an earlier compaction kept and
+  is named, the others still come back. A read note replaces its earlier copy, so none stack
+  up. A `/task-readiness` command quoted in any kit note never selects a spec. A store kit can't
+  read is never taken as empty: flow keeps its task and writes nothing over other chats'.
+- **You see what came back**: a toast after each main-chat compaction (`kit: compacted 320k →
+  28k · restored …`), with what was shortened or unreadable. Every completed compaction (native,
   yours or kit's) goes into a per-project ledger of the last 50 (tokens before/after, who
-  started it). `/kitcompact status` shows the state, the threshold and the latest rows;
+  started it, what was restored). `/kitcompact status` shows the state, the threshold and the latest rows;
   `/kitcompact off|on` per project (`/autocompact` is Claude Code's own command). A compact that fails turns it off until `/clear`.
-- **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
-  whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
 - **The band** above the prompt, one line: usage at the left (see **Usage** below); at the
-  right the model with its effort, then three buttons: the context figure, the profile and
-  the limit button. The context figure opens a menu in its own block above the band (hover
+  right the context figure, then the model with its effort, then the profile and the limit
+  button. The context figure opens a menu in its own block above the band (hover
   to peek, press to keep it open): **Compact** and **Clear**, run at once or when the
   running turn ends. The other buttons are switches a press cycles, none depending on
   another:
@@ -922,8 +939,7 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   command already on its way is refused when it arrives, a plain prompt already on its way may
   still enter. A forked command (`/code-review`) that the pause cuts is kept and run again.
   A built-in prompt command kit does not know is not kept, and the hold message says so.
-  A cut command kit cannot identify is not kept, and a toast says so. `fresh_start` does not
-  clear a chat that is paused or still keeps prompts.
+  A cut command kit cannot identify is not kept, and a toast says so.
   `/limit [status|off|warm|pause|resume]` replies in text, also during a running turn and on
   clients without the band. Empty or `status` shows Off, Warm or Limit, the pause time and
   kept count. `off`, `warm` and `pause` set the button; `pause` selects Limit (pause near the
@@ -970,7 +986,8 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
 
   Flow is always on: there is no switch. `/flow` reports 14 days: tasks per first pick, how many grew after it (too light?) or ended
   heavy with two files or fewer and no spec (too heavy?), holds, how tasks ended (
-  verified, waived, and older unresolved or unverified endings), and the last ten picks and holds, numbered.
+  verified, waived, and older unresolved or unverified endings), the median context at a task's
+  first edit, first passing check and end (whether compacting mid-task would pay), and the last ten picks and holds, numbered.
   It also shows the open task and what it still needs, and counts the subagent spawns of those
   14 days (the newest 2000) by type and the model each ran on, resumed runs apart.
   `/flow mark 3 too-light` (or `too-heavy`, `hold-right`, `hold-wrong`) adds your judgment, which counts
@@ -1108,7 +1125,7 @@ columns, above the prompt otherwise):
   text. Contrast is computed by the mod and returned to Claude, which fixes failing pairs.
 
 `/theme` passes its data to its pane as a tool call (`mcp__kit__theme_view`): display-only and
-allowed without a prompt. So is `mcp__kit__fresh_start` for clearing and resuming a chat.
+allowed without a prompt.
 
 Trunk mode or no matching spec → the context part shows nothing. To turn every mod off, set
 `"disableAllHooks": true` (this also stops push-guard and format-on-save).

@@ -14,11 +14,13 @@ function world(
     window?: number;
     fail?: string;
     late?: boolean;
+    slow?: boolean; // core takes 100 ms to summarize
   } = {},
 ) {
   const s = {
     store: {} as Record<string, unknown>,
     compacts: 0,
+    waits: [] as number[],
     commands: [] as string[],
     toasts: [] as string[],
     tokens: o.tokens ?? 120_000,
@@ -28,11 +30,12 @@ function world(
   on("session.id", async () => ({ value: "s1" }));
   on("clock.now", async () => ({ value: Date.parse("2026-11-25T12:00:00Z") }));
   // Resolving fires the timer: at once, or 50 ms later for a race.
-  on("clock.after", () =>
+  on("clock.after", (_$, e) => (
+    s.waits.push((e as { ms: number }).ms),
     o.late
       ? new Promise((r) => setTimeout(() => r({ value: undefined }), 50))
-      : Promise.resolve({ value: undefined }),
-  );
+      : Promise.resolve({ value: undefined })
+  ));
   on("session.root", async () => ({ value: "/p/app" }));
   // The transcript's count drops after a compaction: the mod must not rely on it.
   on("session.turns", async () => ({ value: 1 }));
@@ -80,12 +83,8 @@ function world(
     await s.onCompact?.();
     return { text: "" };
   });
-  for (const command of ["clear", "kit:task-readiness"])
-    on("command.run", { command }, async () => {
-      s.commands.push(command);
-      return { text: "" };
-    });
   on("session.compact", async () => ({
+    ...(o.slow ? await new Promise((r) => setTimeout(() => r({}), 100)) : {}),
     messages: [
       { role: "user" as const, text: "summary", toolUses: [], handle: "s" },
     ],
@@ -125,24 +124,45 @@ const ledger = (s: { store: Record<string, unknown> }) =>
   ((s.store["kit:context-ledger"] ?? {}) as Record<string, unknown[]>)["/p/app"] ??
   [];
 
-test("a closed turn over the threshold compacts once the turn is done", async ($, on) => {
+test("a closed turn over the threshold compacts after 3 idle minutes", async ($, on) => {
   const s = world(on);
   await fresh($);
   expect((await turn($)).block).toBe(undefined);
   expect(s.compacts).toBe(1);
-  expect(s.toasts.join(" ")).toContain("compacting");
+  expect(s.waits.at(-1)).toBe(3 * 60_000);
+  expect(s.toasts.join(" ")).toContain("task done, idle 3 min");
 });
 
-test("below the threshold, after a question, an aborted or errored turn, a subagent: no compact", async ($, on) => {
+test("a turn that ends on a question compacts only after 10 idle minutes", async ($, on) => {
+  const s = world(on);
+  for (const last of ["Zal ik het bouwen?", "**Zal ik het bouwen?**", "Akkoord? (ja/nee)"]) {
+    await fresh($);
+    const before = s.compacts;
+    await turn($, last);
+    expect(s.compacts).toBe(before + 1);
+    expect(s.waits.at(-1)).toBe(10 * 60_000);
+  }
+  expect(s.toasts.join(" ")).toContain("work waits on you, idle 10 min");
+});
+
+test("an open task let through unverified compacts after the longer idle wait", async ($, on) => {
+  const s = world(on);
+  await fresh($);
+  await begin($);
+  await write($, "/p/app/src/a.ts");
+  expect((await stop($)).block).toBeDefined(); // the first hold: the turn goes on
+  expect((await stop($)).block).toBe(undefined); // the same round again: let through, still open
+  await answered($);
+  expect(s.compacts).toBe(1);
+  expect(s.waits.at(-1)).toBe(10 * 60_000);
+});
+
+test("below the threshold, an aborted or errored turn, a subagent: no compact", async ($, on) => {
   const s = world(on, { tokens: 99_000 });
   await fresh($);
   await turn($);
   expect(s.compacts).toBe(0); // below half of 200k
   s.tokens = 150_000;
-  await turn($, "Zal ik het bouwen?");
-  await turn($, "**Zal ik het bouwen?**");
-  await turn($, "Akkoord? (ja/nee)");
-  expect(s.compacts).toBe(0); // ended on a question
   await turn($, "Done.", { reason: "aborted" });
   await turn($, "Done.", { reason: "error" });
   expect(s.compacts).toBe(0);
@@ -168,7 +188,7 @@ test("a subagent's Stop notes no boundary", async ($, on) => {
   expect(s.compacts).toBe(0);
 });
 
-test("an open flow task is no boundary", async ($, on) => {
+test("a turn flow holds is no boundary", async ($, on) => {
   const s = world(on);
   await fresh($);
   await begin($);
@@ -200,16 +220,32 @@ test("every compaction lands in the ledger; the cooldown counts the mod's own tu
   expect(ledger(s).at(-1)).toEqual(expect.objectContaining({ kit: false }));
 });
 
-test("a skipped compaction starts the cooldown and marks nothing as kit's", async ($, on) => {
+test("a skipped compaction is reported, starts no cooldown and marks nothing as kit's", async ($, on) => {
   const s = world(on); // the compact command runs, no compaction follows
   await fresh($);
   await turn($);
   expect(s.compacts).toBe(1);
-  await turn($); // within the cooldown: no second try at once
-  expect(s.compacts).toBe(1);
+  expect(s.toasts.at(-1)).toContain("auto-compact did not run");
+  await turn($); // no cooldown: the next idle turn tries again
+  expect(s.compacts).toBe(2);
   await compact($, "auto");
   expect(ledger(s).at(-1)).toEqual(expect.objectContaining({ kit: false }));
 });
+
+for (const how of ["edit", "change"] as const)
+  test(`typing in the prompt box before the planned compact fires cancels it (${how})`, async ($, on) => {
+    const s = world(on, { late: true });
+    on(`prompt.${how}`, async (_$, e) => e as never);
+    await fresh($);
+    await begin($);
+    await stop($);
+    await $.turn.complete({ answer: "Done.", reason: "answer" } as never);
+    await ($.prompt as unknown as Record<string, (e: unknown) => Promise<unknown>>)
+      [how]({ text: "j", cursor: 1, start: 0, end: 0, inputText: "j", origin: { kind: "history" } })
+      .catch(() => undefined);
+    await new Promise((r) => setTimeout(r, 120));
+    expect(s.compacts).toBe(0);
+  });
 
 test("a prompt queued during the turn voids its boundary", async ($, on) => {
   const s = world(on);
@@ -247,15 +283,6 @@ test("/kitcompact off stops it for the project, on restores it", async ($, on) =
   await turn($);
   expect(s.compacts).toBe(1);
   expect(String((await auto($, "status")).text)).toContain("threshold 100k");
-});
-
-test("an armed fresh start wins: it clears, no compact", async ($, on) => {
-  const s = world(on);
-  await fresh($);
-  await $.tool.call({ tool: "mcp__kit__fresh_start", slug: "context-policy" } as never);
-  await turn($);
-  expect(s.compacts).toBe(0);
-  expect(s.commands).toContain("clear");
 });
 
 // A thrown test hook reaches the mod as "unknown command", so the busy skip is unit-tested in
@@ -325,4 +352,40 @@ test("kit leaves the built-in /autocompact alone", async ($, on) => {
   on("command.run", async () => ({ text: "the built-in" }));
   const r = await $.command.run({ command: "autocompact", args: "status" } as never);
   expect((r as { text: string }).text).toBe("the built-in");
+});
+
+test("the ledger and /kitcompact status say what came back after a compaction", async ($, on) => {
+  const s = world(on);
+  await compact($, "manual");
+  expect(ledger(s).at(-1)).toEqual(
+    expect.objectContaining({
+      notes: { restored: expect.any(Array), cut: [], failed: [] },
+    }),
+  );
+  expect((await auto($, "status")).text).toContain("· restored: ");
+  expect(s.toasts.some((t) => t.startsWith("kit: compacted 120k → 15k"))).toBe(true);
+});
+
+test("a compaction still running when the planned compact fires cancels it", async ($, on) => {
+  const s = world(on, { late: true, slow: true });
+  await fresh($);
+  await begin($);
+  await stop($);
+  await $.turn.complete({ answer: "Done.", reason: "answer" } as never);
+  await compact($, "plugin"); // the timer fires 50 ms in, core is done at 100 ms
+  await new Promise((r) => setTimeout(r, 120));
+  expect(s.compacts).toBe(0);
+});
+
+test("a draft typed while the turn runs keeps its boundary", async ($, on) => {
+  const s = world(on);
+  on("prompt.edit", async (_$, e) => e as never);
+  await fresh($);
+  await begin($);
+  await ($.prompt as unknown as Record<string, (e: unknown) => Promise<unknown>>)
+    .edit({ text: "j", cursor: 1, start: 0, end: 0, inputText: "j" })
+    .catch(() => undefined);
+  await stop($);
+  await answered($);
+  expect(s.compacts).toBe(1);
 });

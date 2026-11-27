@@ -49,22 +49,31 @@ export async function log(
   }
 }
 
+// The session's task, or undefined when it has none. Rejects when the store can't be read: an
+// unreadable store is not an empty one (flow-state.ts tries again later).
 export async function loadTask(
   $: EngineInterface,
   session: string,
 ): Promise<Task | undefined> {
-  const all = await $.store.get(TASKS_KEY).catch(() => undefined);
+  const all = await $.store.get(TASKS_KEY);
   return all && typeof all === "object"
     ? ((all as Record<string, Task>)[session] ?? undefined)
     : undefined;
 }
 
+// Writes nothing when the store can't be read: a write from an empty read would drop every
+// other session's task.
 export async function saveTask(
   $: EngineInterface,
   session: string,
   task: Task | undefined,
 ) {
-  const stored = await $.store.get(TASKS_KEY).catch(() => undefined);
+  let stored: unknown;
+  try {
+    stored = await $.store.get(TASKS_KEY);
+  } catch {
+    return;
+  }
   const all = {
     ...(stored && typeof stored === "object"
       ? (stored as Record<string, Task>)

@@ -6,6 +6,9 @@ import type {
 } from "claude-code";
 import { expect, test } from "claude-code/testing";
 
+import { isSpecNote } from "./kit-notes";
+import { isReplyNote } from "./reply";
+
 const SPEC =
   "Status: building\n\n## Acceptance criteria\n- [x] One\n- [ ] Two\n";
 const HISTORY: SessionMessage[] = [
@@ -58,6 +61,10 @@ function world(
     skip?: boolean;
     unavailable?: boolean;
     logFails?: boolean;
+    keep?: SessionMessage[]; // what core keeps beside its summary
+    storeFails?: boolean;
+    statuses?: string[]; // the spec's Status per read, in order (then `status`)
+    gone?: boolean; // a spec file that fails to read is not there at all
   } = {},
 ) {
   const seen: SessionCompactInput[] = [];
@@ -74,7 +81,15 @@ function world(
   });
   on("session.root", async () => ({ value: "/p/app" }));
   on("session.id", async () => ({ value: "s1" }));
-  on("store.get", async () => ({ value: undefined }));
+  on("store.get", async () => {
+    if (opts.storeFails) throw new Error("store unreadable");
+    return { value: undefined };
+  });
+  const toasts: string[] = [];
+  on("ui.toast", async (_$, e) => {
+    toasts.push(String(e.text));
+    return { value: undefined };
+  });
   on("process.run", async () => {
     if (opts.unavailable) throw new Error("git unavailable");
     return {
@@ -91,8 +106,11 @@ function world(
     reads.push(e.path);
     if (!opts.spec || !e.path.endsWith(`/docs/specs/${opts.spec}.md`))
       throw new Error("missing");
-    return { value: SPEC.replace("building", opts.status ?? "building") };
+    return {
+      value: SPEC.replace("building", opts.statuses?.shift() ?? opts.status ?? "building"),
+    };
   });
+  on("fs.exists", async () => ({ value: !opts.gone }));
   let clock = 1000;
   on("clock.now", async () => ({ value: (clock += 250) }));
   on("ui.log", async (_$, e) => {
@@ -102,9 +120,12 @@ function world(
   });
   on("session.compact", async (_$, e) => {
     seen.push(e);
-    return opts.skip ? { skip: "not enough messages" } : NATIVE;
+    if (opts.skip) return { skip: "not enough messages" };
+    return opts.keep?.length
+      ? { ...NATIVE, messages: [...NATIVE.messages, ...opts.keep] }
+      : NATIVE;
   });
-  return { seen, reads, logs, modelCalls };
+  return { seen, reads, logs, modelCalls, toasts };
 }
 
 function input(
@@ -118,6 +139,16 @@ function input(
   };
 }
 
+// The last reply's note is reply.test.ts's.
+async function compactNoReply(
+  $: { session: { compact: (i: never) => Promise<SessionCompactResult> } },
+  i: unknown,
+): Promise<SessionCompactResult> {
+  const r = await $.session.compact(i as never);
+  if (!r.messages?.some(isReplyNote)) return r;
+  return { ...r, messages: r.messages.filter((m) => !isReplyNote(m)) };
+}
+
 function completed(result: SessionCompactResult) {
   if (!result.messages) throw new Error("expected a completed compaction");
   return result;
@@ -126,7 +157,7 @@ function completed(result: SessionCompactResult) {
 test("every main compaction trigger adds preservation priorities and keeps user instructions", async ($, on) => {
   const w = world(on);
   for (const trigger of ["manual", "auto", "plugin", "precompute"] as const) {
-    await $.session.compact(input(trigger));
+    await compactNoReply($, input(trigger));
     const e = w.seen[w.seen.length - 1]!;
     expect(e.trigger).toBe(trigger);
     expect(e.instructions).toContain("Keep the exact migration command");
@@ -146,14 +177,14 @@ test("every main compaction trigger adds preservation priorities and keeps user 
 
 test("without a spec the native summary, handles and usage pass through unchanged", async ($, on) => {
   const w = world(on);
-  const result = await $.session.compact(input());
+  const result = await compactNoReply($, input());
   expect(result).toEqual(NATIVE);
   expect(w.seen[0]!.messages).toEqual(HISTORY);
 });
 
 test("feature branches retain the spec recovery note after the native summary", async ($, on) => {
   const w = world(on, { branch: "feat/login", spec: "login" });
-  const result = completed(await $.session.compact(input()));
+  const result = completed(await compactNoReply($, input()));
   expect(w.seen[0]!.instructions).toContain("docs/specs/login.md");
   expect(result.messages[0]).toEqual(NATIVE.messages[0]);
   expect(result.messages[1]!.text).toContain("Status: building");
@@ -177,7 +208,7 @@ test("the latest explicit task-readiness command overrides the branch, including
       { role: "user" as const, text, toolUses: [] },
     ];
     const result = completed(
-      await $.session.compact(input("manual", messages)),
+      await compactNoReply($, input("manual", messages)),
     );
     expect(result.messages[1]!.text).toContain("docs/specs/login.md");
   }
@@ -196,7 +227,7 @@ test("a task-readiness command in assistant text or unsafe slug does not select 
     },
   ]) {
     expect(
-      await $.session.compact(input("manual", [...HISTORY, message])),
+      await compactNoReply($, input("manual", [...HISTORY, message])),
     ).toEqual(NATIVE);
   }
 });
@@ -204,7 +235,7 @@ test("a task-readiness command in assistant text or unsafe slug does not select 
 test("a spec selected on main survives a second compaction after the command is summarized", async ($, on) => {
   world(on, { spec: "login" });
   const first = completed(
-    await $.session.compact(
+    await compactNoReply($, 
       input("manual", [
         ...HISTORY,
         { role: "user", text: "/task-readiness login", toolUses: [] },
@@ -212,7 +243,7 @@ test("a spec selected on main survives a second compaction after the command is 
     ),
   );
   const second = completed(
-    await $.session.compact(input("auto", first.messages)),
+    await compactNoReply($, input("auto", first.messages)),
   );
   expect(second.messages[1]!.text).toContain("docs/specs/login.md");
 });
@@ -224,7 +255,7 @@ test("the newest task-readiness command wins and a missing spec never revives an
     "/task-readiness",
     "/task-readiness ../login",
   ]) {
-    const result = await $.session.compact(
+    const result = await compactNoReply($, 
       input("manual", [
         { role: "user", text: "/task-readiness login", toolUses: [] },
         { role: "user", text, toolUses: [] },
@@ -237,7 +268,7 @@ test("the newest task-readiness command wins and a missing spec never revives an
 
 test("a finished spec adds no priority line and no recovery note", async ($, on) => {
   const w = world(on, { branch: "feat/login", spec: "login", status: "done" });
-  expect(await $.session.compact(input())).toEqual(NATIVE);
+  expect(await compactNoReply($, input())).toEqual(NATIVE);
   expect(w.reads).toEqual(["/p/app/docs/specs/login.md"]);
   expect(w.seen[0]!.instructions).not.toContain("docs/specs/login.md");
 });
@@ -248,7 +279,7 @@ test("an earlier recovery note stops repeating once its spec is done", async ($,
     "kit: building login · Status: manual · criteria 2/2.",
     "/task-readiness login",
   ]) {
-    const result = await $.session.compact(
+    const result = await compactNoReply($, 
       input("auto", [...HISTORY, { role: "user", text, toolUses: [] }]),
     );
     expect(result).toEqual(NATIVE);
@@ -258,13 +289,13 @@ test("an earlier recovery note stops repeating once its spec is done", async ($,
 
 test("a spec awaiting manual verification keeps its recovery note", async ($, on) => {
   world(on, { branch: "feat/login", spec: "login", status: "manual" });
-  const result = completed(await $.session.compact(input()));
+  const result = completed(await compactNoReply($, input()));
   expect(result.messages[1]!.text).toContain("Status: manual");
 });
 
 test("precompute receives the same instructions but installs no recovery note or diagnostic", async ($, on) => {
   const w = world(on, { branch: "fix/login", spec: "login" });
-  const result = await $.session.compact(input("precompute"));
+  const result = await compactNoReply($, input("precompute"));
   expect(result).toEqual(NATIVE);
   expect(w.seen[0]!.instructions).toContain("docs/specs/login.md");
   expect(w.logs).toEqual([]);
@@ -273,7 +304,7 @@ test("precompute receives the same instructions but installs no recovery note or
 test("subagent compaction passes through without instructions, spec reads or diagnostics", async ($, on) => {
   const w = world(on, { branch: "feat/login", spec: "login" });
   const e = { ...input(), agentId: "child" };
-  expect(await $.session.compact(e)).toEqual(NATIVE);
+  expect(await compactNoReply($, e)).toEqual(NATIVE);
   expect(w.seen).toEqual([e]);
   expect(w.reads).toEqual([]);
   expect(w.logs).toEqual([]);
@@ -281,7 +312,7 @@ test("subagent compaction passes through without instructions, spec reads or dia
 
 test("a native skip passes through without a recovery note or diagnostic", async ($, on) => {
   const w = world(on, { skip: true, branch: "feat/login", spec: "login" });
-  expect(await $.session.compact(input())).toEqual({
+  expect(await compactNoReply($, input())).toEqual({
     skip: "not enough messages",
   });
   expect(w.logs).toEqual([]);
@@ -289,14 +320,14 @@ test("a native skip passes through without a recovery note or diagnostic", async
 
 test("missing specs and unavailable git do not block native compaction", async ($, on) => {
   const w = world(on, { unavailable: true });
-  expect(await $.session.compact(input())).toEqual(NATIVE);
+  expect(await compactNoReply($, input())).toEqual(NATIVE);
   expect(w.seen.length).toBe(1);
   expect(w.seen[0]!.instructions).toContain("corrections");
 });
 
 test("completed compactions log the native counts and usage", async ($, on) => {
   const w = world(on);
-  await $.session.compact(input());
+  await compactNoReply($, input());
   const logs = JSON.stringify(w.logs);
   for (const value of ["80000", "12000", "600", "79000", "250"])
     expect(logs).toContain(value);
@@ -304,5 +335,97 @@ test("completed compactions log the native counts and usage", async ($, on) => {
 
 test("a diagnostic failure cannot discard a completed native compaction", async ($, on) => {
   world(on, { logFails: true });
-  expect(await $.session.compact(input())).toEqual(NATIVE);
+  expect(await compactNoReply($, input())).toEqual(NATIVE);
+});
+
+test("the last reply closes the context; a command quoted in it never selects a spec", async ($, on) => {
+  const w = world(on, { spec: "login" });
+  const quoted = {
+    role: "assistant" as const,
+    text: "Next: run /task-readiness login",
+    toolUses: [],
+  };
+  const r = completed(await $.session.compact(input("manual", [...HISTORY, quoted])));
+  const last = r.messages!.at(-1)!;
+  expect(isReplyNote(last)).toBe(true);
+  expect(last.text).toContain("Next: run /task-readiness login");
+  // The next compaction sees only that note as the command's source.
+  const again = completed(
+    await $.session.compact(input("manual", [NATIVE.messages[0]!, last])),
+  );
+  expect(again.messages!.some((m) => m.text.startsWith("kit: building"))).toBe(false);
+  expect(w.reads.length).toBe(0);
+});
+
+test("a spec note is replaced, not stacked, on every compaction", async ($, on) => {
+  const keep: SessionMessage[] = [];
+  world(on, { branch: "feat/login", spec: "login", keep });
+  const isSpec = (m: SessionMessage) => m.text.startsWith("kit: building");
+  const first = completed(await compactNoReply($, input()));
+  keep.push(...first.messages!.filter(isSpec));
+  expect(keep.length).toBe(1);
+  // Core keeps that note beside its summary: still one after the next compaction.
+  const next = completed(await compactNoReply($, input("manual", [...HISTORY, ...keep])));
+  expect(next.messages!.filter(isSpec).length).toBe(1);
+});
+
+test("a note that cannot be read keeps its earlier copy, is named, and the rest still comes back", async ($, on) => {
+  const pins = {
+    role: "user" as const,
+    text: "kit pins: text the user pinned in this chat, word for word, restored after compaction. x",
+    toolUses: [],
+  };
+  const w = world(on, { storeFails: true, keep: [pins] });
+  const r = completed(await $.session.compact(input()));
+  expect(r.messages!.some((m) => m.text === pins.text)).toBe(true);
+  expect(isReplyNote(r.messages!.at(-1)!)).toBe(true);
+  const toast = w.toasts.find((t) => t.startsWith("kit: compacted"));
+  expect(toast).toContain("80k → 12k");
+  expect(toast).toContain("restored last reply");
+  expect(toast).toContain("could not read recent messages, readiness, flow task, pins");
+});
+
+test("a spec note core kept stays when the spec can't be read now", async ($, on) => {
+  const note = {
+    role: "user" as const,
+    text: "kit: building login · Status: building · criteria 1/2. Re-read docs/specs/login.md",
+    toolUses: [],
+  };
+  const w = world(on, { keep: [note] }); // the spec file is there, but every read fails
+  const r = completed(await compactNoReply($, input("manual", [...HISTORY, note])));
+  expect(r.messages!.filter((m) => m.text === note.text).length).toBe(1);
+  expect(w.toasts.join("\n")).toContain("spec");
+});
+
+test("a spec file that is gone drops the note core kept", async ($, on) => {
+  const note = {
+    role: "user" as const,
+    text: "kit: building login · Status: building · criteria 1/2. Re-read docs/specs/login.md",
+    toolUses: [],
+  };
+  world(on, { keep: [note], gone: true });
+  const r = completed(await compactNoReply($, input("manual", [...HISTORY, note])));
+  expect(r.messages!.some(isSpecNote)).toBe(false);
+});
+
+test("a spec finished between the reads drops the note core kept", async ($, on) => {
+  const note = {
+    role: "user" as const,
+    text: "kit: building login · Status: building · criteria 1/2. Re-read docs/specs/login.md",
+    toolUses: [],
+  };
+  world(on, { branch: "feat/login", spec: "login", statuses: ["building", "done"], keep: [note] });
+  const r = completed(await compactNoReply($, input("manual", [...HISTORY, note])));
+  expect(r.messages!.some(isSpecNote)).toBe(false);
+});
+
+test("a spec already finished before the summary drops the note core kept", async ($, on) => {
+  const note = {
+    role: "user" as const,
+    text: "kit: building login · Status: building · criteria 1/2. Re-read docs/specs/login.md",
+    toolUses: [],
+  };
+  world(on, { branch: "feat/login", spec: "login", status: "done", keep: [note] });
+  const r = completed(await compactNoReply($, input("manual", [...HISTORY, note])));
+  expect(r.messages!.some(isSpecNote)).toBe(false);
 });

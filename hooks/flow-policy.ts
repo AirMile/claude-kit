@@ -93,6 +93,8 @@ export type Task = {
   noReviewer?: { round: string; reason: string }; // no review hold for this round
   remindedRound?: string; // the round whose open work reminder was sent
   requestFiles?: number; // files already in the task when this request folded in
+  readiness?: string; // the newest readiness block of its turns, word for word (readiness.ts)
+  passLogged?: boolean; // its first passing check is in the log, with the context then
 };
 
 export const newTask = (
@@ -214,6 +216,17 @@ function kept(
 
 const DOCS = /(^|\/)docs?\/|\.(md|txt)$/i;
 const RISKY = /migrat|(^|\/)schema|\.sql$/i;
+
+// The track a task's size asks for: by its files beyond the request's, or one risky file
+// (`p`, the file just edited; every file without it).
+export function sizeTrack(t: Task, p?: string): Track {
+  const n = t.files.length - (t.requestFiles ?? 0);
+  const risky = p !== undefined ? RISKY.test(p) : t.files.some((f) => RISKY.test(f));
+  return n > 8 || risky ? "heavy" : n > 3 ? "medium" : "light";
+}
+
+// The larger of two tracks.
+export const maxTrack = (a: Track, b: Track): Track => (RANK[a] >= RANK[b] ? a : b);
 const SPEC = /(^|\/)docs\/specs\/[^/]+\.md$/;
 export const isSource = (path: string): boolean =>
   !DOCS.test(path.replace(/\\/g, "/"));
@@ -240,9 +253,7 @@ export function onEdit(
   if (gpt === "gemini") t.geminiWrote = true;
   else if (gpt) t.gptWrote = true;
   else t.claudeWrote = true;
-  const n = t.files.length - (t.requestFiles ?? 0);
-  const want: Track =
-    n > 8 || RISKY.test(p) ? "heavy" : n > 3 ? "medium" : "light";
+  const want = sizeTrack(t, p);
   if (RANK[want] > RANK[t.track]) {
     const from = t.track;
     t.track = want;

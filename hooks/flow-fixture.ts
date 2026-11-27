@@ -13,6 +13,7 @@ export function world(
   store: Record<string, unknown> = {},
   git?: { index: string; work: string; fresh?: string },
   out: (command: string) => string = () => "",
+  tokens?: number, // the context reading; absent: none
 ) {
   let now = Date.parse("2026-10-27T12:00:00Z");
   on("session.id", async () => ({ value: "s1" }));
@@ -22,7 +23,7 @@ export function world(
   on("session.usage", async () => ({
     value: {
       startedAt: 0,
-      context: { window: 200_000, percent: 10 },
+      context: { window: 200_000, percent: 10, tokens },
       rateLimits: [],
     },
   }));

@@ -1,6 +1,7 @@
 import { expect, test } from "claude-code/testing";
 
 import {
+  contextLine,
   endEntry,
   keep,
   LOG_MAX,
@@ -185,4 +186,20 @@ test("spawns have their own room: a fan-out pushes no task out of the log", asyn
   expect(keep(more, { at: LOG_MAX + 3, event: "end", text: "" }).length).toBe(
     LOG_MAX + 2,
   );
+});
+
+test("the context line gives the median per point of a task, in k", () => {
+  const at = 1;
+  expect(contextLine([])).toBe(
+    "context, median (tasks): first edit - · first pass - · end -",
+  );
+  expect(
+    contextLine([
+      { at, event: "ctx", text: "first edit", ctx: 40_000 },
+      { at, event: "ctx", text: "first edit", ctx: 60_000 },
+      { at, event: "ctx", text: "first pass", ctx: 90_000 },
+      { at, event: "end", text: "", ctx: 120_000 },
+      { at, event: "end", text: "" }, // no reading: not counted
+    ]),
+  ).toBe("context, median (tasks): first edit 50k (2) · first pass 90k (1) · end 120k (1)");
 });

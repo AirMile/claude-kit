@@ -298,14 +298,6 @@ test("a refused continue prompt counts as kept", async ($, on) => {
   expect((await $.command.run(status)).text ?? "").toContain("1 kept, not sent");
 });
 
-test("a fresh start does not clear a paused chat", async ($, on) => {
-  const w = world(on);
-  await $.session.measure(measure());
-  await $.tool.call({ tool: "mcp__kit__fresh_start", slug: "limit-commands" } as never);
-  await $.turn.complete({ turnId: "t", reason: "answer", answer: "ok" } as never);
-  expect(w.toasts.some((t) => t.includes("fresh start") && t.includes("paused"))).toBe(true);
-});
-
 test("/limit resume ends a pause that returned while a send is under way", async ($, on) => {
   const w = world(on); w.state.blockCommand = true;
   await $.session.measure(measure());
@@ -316,13 +308,3 @@ test("/limit resume ends a pause that returned while a send is under way", async
   expect((await $.command.run(status)).text ?? "").not.toContain("paused until");
 });
 
-test("a fresh start does not clear a chat that still keeps prompts", async ($, on) => {
-  const w = world(on); w.state.drop = true;
-  await $.session.measure(measure());
-  await $.prompt.submit(typed());
-  await $.command.run(resume);
-  await w.says("1 prompt still kept");
-  await $.tool.call({ tool: "mcp__kit__fresh_start", slug: "limit-commands" } as never);
-  await $.turn.complete({ turnId: "t", reason: "answer", answer: "ok" } as never);
-  expect(w.toasts.some((t) => t.includes("fresh start") && t.includes("kept"))).toBe(true);
-});

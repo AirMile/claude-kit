@@ -349,3 +349,284 @@ test("Bash calls that are not checks are counted; a recognised one, even masked,
     s1: { shellCalls: 2, checkCalls: 1 },
   });
 });
+
+test("the log notes the context at a task's first edit, first passing check and end", async ($, on) => {
+  const w = world(on, {}, undefined, () => "", 84_000);
+  await write($, "/p/app/src/a.ts");
+  await write($, "/p/app/src/b.ts"); // a second edit: no second entry
+  w.later(1_000);
+  await bash($, "npm test -- --fail");
+  await bash($, "npm test");
+  await bash($, "npm test");
+  const log = (w.store.flowLog ?? []) as { event: string; text: string; ctx?: number }[];
+  expect(log.filter((e) => e.event === "ctx").map((e) => [e.text, e.ctx])).toEqual([
+    ["first edit", 84_000],
+    ["first pass", 84_000],
+  ]);
+  expect((await stop($)).block).toBe(undefined);
+  const end = ((w.store.flowLog ?? []) as typeof log).find((e) => e.event === "end");
+  expect(end?.ctx).toBe(84_000);
+});
+
+test("an unreadable store is not an empty one: no task forgotten, no other session wiped", async ($, on) => {
+  const tasks = JSON.parse(
+    JSON.stringify({
+      s2: { ...newTask(2, "light"), lastEditAt: 2 },
+      s1: { ...newTask(1, "light"), lastEditAt: 1, openKinds: ["test"] },
+    }),
+  );
+  let broken = true;
+  const store: Record<string, unknown> = {};
+  Object.defineProperty(store, "flowTasks", {
+    enumerable: true,
+    get() {
+      if (broken) throw new Error("store unreadable");
+      return tasks;
+    },
+    set(v) {
+      Object.assign(tasks, v);
+      for (const k of Object.keys(tasks)) if (!(k in v)) delete tasks[k];
+    },
+  });
+  world(on, store);
+  await bash($, "npm run lint");
+  await write($, "/p/app/src/b.ts");
+  expect(Object.keys(tasks).sort()).toEqual(["s1", "s2"]);
+  broken = false;
+  expect((await stop($)).block).toContain("tests failed earlier");
+  expect(Object.keys(tasks).sort()).toEqual(["s1", "s2"]);
+});
+
+test("a store that fails only now and then never lets a partial task replace the stored one", async ($, on) => {
+  const tasks = JSON.parse(
+    JSON.stringify({
+      s1: { ...newTask(1, "light"), lastEditAt: 1, openKinds: ["build"] },
+    }),
+  );
+  let reads = 0;
+  const store: Record<string, unknown> = {};
+  Object.defineProperty(store, "flowTasks", {
+    enumerable: true,
+    get() {
+      reads += 1;
+      if (reads === 1) throw new Error("store unreadable"); // the load fails, the save's read works
+      return tasks;
+    },
+    set(v) {
+            Object.assign(tasks, v);
+    },
+  });
+  world(on, store);
+  await write($, "/p/app/src/b.ts");
+  expect(tasks.s1.openKinds).toEqual(["build"]);
+  expect((await stop($)).block).toContain("build failed earlier");
+  expect(tasks.s1.files).toContain("/p/app/src/b.ts");
+});
+
+test("edits while the store was unreadable count with the stored ones toward the track", async ($, on) => {
+  const tasks = JSON.parse(
+    JSON.stringify({
+      s1: {
+        ...newTask(1, "light"),
+        lastEditAt: 1,
+        files: ["/p/app/src/a.ts", "/p/app/src/b.ts"],
+        levels: { d: 1, e: 1, v: 1, r: 0 },
+      },
+    }),
+  );
+  let broken = true;
+  const store: Record<string, unknown> = {};
+  Object.defineProperty(store, "flowTasks", {
+    enumerable: true,
+    get() {
+      if (broken) throw new Error("store unreadable");
+      return tasks;
+    },
+    set(v) {
+      Object.assign(tasks, v);
+    },
+  });
+  world(on, store);
+  // Four edits make the task in memory medium on its own, as the stored one grows too.
+  for (const f of ["c", "d", "e", "f"]) await write($, `/p/app/src/${f}.ts`);
+  broken = false;
+  await stop($);
+  expect(tasks.s1.files.length).toBe(6);
+  expect(tasks.s1.track).toBe("medium");
+  expect(tasks.s1.gateV).toBe(2); // the growth raises Verify, as it does with a readable store
+
+});
+
+test("an outage that passes two tracks raises Verify twice", async ($, on) => {
+  const tasks = JSON.parse(
+    JSON.stringify({
+      s1: {
+        ...newTask(1, "light"),
+        lastEditAt: 1,
+        files: ["/p/app/src/a.ts", "/p/app/src/b.ts"],
+        levels: { d: 1, e: 1, v: 1, r: 0 },
+      },
+    }),
+  );
+  let broken = true;
+  const store: Record<string, unknown> = {};
+  Object.defineProperty(store, "flowTasks", {
+    enumerable: true,
+    get() {
+      if (broken) throw new Error("store unreadable");
+      return tasks;
+    },
+    set(v) {
+      Object.assign(tasks, v);
+    },
+  });
+  world(on, store);
+  // Four edits make the task in memory medium on its own, as the stored one grows too.
+  for (const f of ["c", "d", "e", "f", "g", "h", "i"]) await write($, `/p/app/src/${f}.ts`);
+  broken = false;
+  await stop($);
+  expect(tasks.s1.files.length).toBe(9);
+  expect(tasks.s1.track).toBe("heavy");
+  expect(tasks.s1.gateV).toBe(3); // the growth raises Verify, as it does with a readable store
+
+});
+
+test("a readiness block written while the store was unreadable goes on the stored task", async ($, on) => {
+  const BLOCK = "Goal: x\nSize: 1 file\nOpen: none";
+  const tasks = JSON.parse(
+    JSON.stringify({ s1: { ...newTask(1, "light"), lastEditAt: 1, readiness: "Goal: old\nOpen: none" } }),
+  );
+  let broken = true;
+  const store: Record<string, unknown> = {};
+  Object.defineProperty(store, "flowTasks", {
+    enumerable: true,
+    get() {
+      if (broken) throw new Error("store unreadable");
+      return tasks;
+    },
+    set(v) {
+      Object.assign(tasks, v);
+    },
+  });
+  world(on, store);
+  let said = [
+    { role: "user", text: "bouw", toolUses: [] },
+    { role: "assistant", text: BLOCK, toolUses: [] },
+  ];
+  on("session.messages", async () => ({ value: said }));
+  await $.classic.Stop({
+    stop_hook_active: false,
+    last_assistant_message: "Server runs.",
+    background_tasks: [{ id: "b1" }],
+  } as never);
+  broken = false;
+  // The next turn has no block of its own.
+  said = [{ role: "user", text: "verder", toolUses: [] }];
+  await write($, "/p/app/src/a.ts");
+  await stop($);
+  expect(tasks.s1.readiness).toBe(BLOCK);
+});
+
+test("a block an ordinary Stop writes while the store is unreadable goes on the stored task", async ($, on) => {
+  const BLOCK = "Goal: x\nSize: 1 file\nOpen: none";
+  const tasks = JSON.parse(
+    JSON.stringify({ s1: { ...newTask(1, "light"), lastEditAt: 1, readiness: "Goal: old\nOpen: none" } }),
+  );
+  let broken = true;
+  const store: Record<string, unknown> = {};
+  Object.defineProperty(store, "flowTasks", {
+    enumerable: true,
+    get() {
+      if (broken) throw new Error("store unreadable");
+      return tasks;
+    },
+    set(v) {
+      Object.assign(tasks, v);
+    },
+  });
+  world(on, store);
+  let said = [
+    { role: "user", text: "bouw", toolUses: [] },
+    { role: "assistant", text: BLOCK, toolUses: [] },
+  ];
+  on("session.messages", async () => ({ value: said }));
+  await stop($);
+  broken = false;
+  // The next turn has no block of its own.
+  said = [{ role: "user", text: "verder", toolUses: [] }];
+  await write($, "/p/app/src/a.ts");
+  await stop($);
+  expect(tasks.s1.readiness).toBe(BLOCK);
+});
+
+test("with no stored task, a block written during the outage goes to the task the go-ahead opens", async ($, on) => {
+  const BLOCK = "Goal: x\nSize: 1 file\nOpen: none";
+  const tasks = JSON.parse(
+    JSON.stringify({}),
+  );
+  let broken = true;
+  const store: Record<string, unknown> = {};
+  Object.defineProperty(store, "flowTasks", {
+    enumerable: true,
+    get() {
+      if (broken) throw new Error("store unreadable");
+      return tasks;
+    },
+    set(v) {
+      Object.assign(tasks, v);
+    },
+  });
+  world(on, store);
+  let said = [
+    { role: "user", text: "bouw", toolUses: [] },
+    { role: "assistant", text: BLOCK, toolUses: [] },
+  ];
+  on("session.messages", async () => ({ value: said }));
+  await stop($);
+  broken = false;
+  // The next turn has no block of its own.
+  said = [{ role: "user", text: "verder", toolUses: [] }];
+  await write($, "/p/app/src/a.ts");
+  await stop($);
+  expect(tasks.s1.readiness).toBe(BLOCK);
+});
+
+test("a block buffered during the outage never overwrites a newer one written then", async ($, on) => {
+  const A = "Goal: a\nSize: 1 file\nOpen: none";
+  const B = "Goal: b\nSize: 1 file\nOpen: none";
+  const tasks = JSON.parse(JSON.stringify({ s1: { ...newTask(1, "light"), lastEditAt: 1 } }));
+  let broken = true;
+  const store: Record<string, unknown> = {};
+  Object.defineProperty(store, "flowTasks", {
+    enumerable: true,
+    get() {
+      if (broken) throw new Error("store unreadable");
+      return tasks;
+    },
+    set(v) {
+      Object.assign(tasks, v);
+    },
+  });
+  world(on, store);
+  let said = [
+    { role: "user", text: "bouw", toolUses: [] },
+    { role: "assistant", text: A, toolUses: [] },
+  ];
+  on("session.messages", async () => ({ value: said }));
+  await $.classic.Stop({
+    stop_hook_active: false,
+    last_assistant_message: "Server runs.",
+    background_tasks: [{ id: "b1" }],
+  } as never);
+  said = [
+    { role: "user", text: "verder", toolUses: [] },
+    { role: "assistant", text: B, toolUses: [] },
+  ];
+  await write($, "/p/app/src/a.ts");
+  await stop($); // still unreadable: B goes on the task in memory
+  broken = false;
+  said = [{ role: "user", text: "nog iets", toolUses: [] }];
+  await write($, "/p/app/src/b.ts");
+  await stop($);
+  expect(tasks.s1.readiness).toBe(B);
+});

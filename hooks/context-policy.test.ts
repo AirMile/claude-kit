@@ -5,6 +5,7 @@ import {
   COOLDOWN_TURNS,
   LEDGER_CAP,
   addRow,
+  boundaryOf,
   endsOnQuestion,
   isBusy,
   ledgerText,
@@ -109,4 +110,11 @@ test("a question at the end counts past markdown, quotes and a short parenthetic
   const started = Date.now();
   expect(endsOnQuestion(`prefix${" ".repeat(40_000)}x`)).toBe(false);
   expect(Date.now() - started).toBeLessThan(200);
+});
+
+test("a turn that goes on is no boundary; a closed one is done; open work or a question waits", () => {
+  expect(boundaryOf({ goesOn: true, closed: true, question: false })).toBe(null);
+  expect(boundaryOf({ goesOn: false, closed: true, question: false })).toBe("done");
+  expect(boundaryOf({ goesOn: false, closed: false, question: false })).toBe("waiting");
+  expect(boundaryOf({ goesOn: false, closed: true, question: true })).toBe("waiting");
 });

@@ -1,3 +1,4 @@
+import { isReplyNote } from "./reply";
 import type { On, SessionMessage } from "claude-code";
 import { expect, test, type TestBody } from "claude-code/testing";
 
@@ -90,7 +91,8 @@ async function compact($: T$, extra: object = {}) {
     messages: HISTORY,
     ...extra,
   });
-  return r.messages ?? [];
+  // The last reply's note is reply.test.ts's.
+  return (r.messages ?? []).filter((m) => !isReplyNote(m));
 }
 
 const notesOf = (messages: readonly SessionMessage[]) =>

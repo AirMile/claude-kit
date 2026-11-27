@@ -129,12 +129,12 @@ export const isRecentNote = (m: SessionMessage) =>
   m.role === "user" && !m.toolResults?.length && m.text.startsWith(NOTE_START);
 
 // The note a completed compaction appends to what core kept: null when core kept every message
-// itself, undefined when none are noted or they could not be read (an earlier note must then
-// stay). Never throws.
+// itself, undefined when none are noted, false when they could not be read (an earlier note
+// must then stay either way). Never throws.
 export async function recentNote(
   $: EngineInterface,
   kept: readonly SessionMessage[],
-): Promise<string | null | undefined> {
+): Promise<string | null | undefined | false> {
   try {
     return await serial(async () => {
       const key = await chatKey($);
@@ -168,7 +168,7 @@ export async function recentNote(
     });
   } catch (err) {
     note($, "read", err);
-    return undefined;
+    return false;
   }
 }
 

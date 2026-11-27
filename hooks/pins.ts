@@ -152,15 +152,8 @@ export async function pinsNote(
         ),
       ].join("\n\n");
     });
-  } catch (err) {
-    try {
-      $.ui.toast(
-        `kit: your pins could not be read and are not in the new context (${String(err)}); check /pin list`,
-      );
-    } catch {
-      // A missing toast must not discard a completed compaction.
-    }
-    return undefined;
+  } catch {
+    return undefined; // compaction.ts's toast names it
   }
 }
 

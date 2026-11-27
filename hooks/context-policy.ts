@@ -1,12 +1,30 @@
-// When the main chat compacts itself, pure: at a task boundary (no open flow task, the turn did
-// not end on a question), with the context at or above half the window capped at an absolute
-// limit, and not within a few turns of the last compaction. auto-compact.ts wires it; the
-// ledger of compactions lets the threshold be tuned from data.
+// When the main chat compacts itself, pure: once the chat has sat idle after a turn that ended
+// (not held, no background work), with the context at or above half the window capped at an
+// absolute limit, and not within a few turns of the last compaction. A turn that closed every
+// task waits a few minutes, so a follow-up question still finds the full context; one that left
+// work waiting on the user (an open flow task, a question) waits longer. auto-compact.ts wires
+// it; the ledger of compactions lets the threshold be tuned from data.
 
 export const SHARE = 0.5;
 export const ABSOLUTE = 160_000;
 export const COOLDOWN_TURNS = 3;
 export const LEDGER_CAP = 50;
+
+export type Boundary = "done" | "waiting";
+export const IDLE_MS: Record<Boundary, number> = {
+  done: 3 * 60_000,
+  waiting: 10 * 60_000,
+};
+
+// What a turn's end is: no boundary when it goes on (a hold) or work still runs in the background.
+export function boundaryOf(i: {
+  goesOn: boolean;
+  closed: boolean;
+  question: boolean;
+}): Boundary | null {
+  if (i.goesOn) return null;
+  return i.closed && !i.question ? "done" : "waiting";
+}
 
 export const threshold = (window: number): number =>
   window > 0 ? Math.min(window * SHARE, ABSOLUTE) : ABSOLUTE;
@@ -43,13 +61,16 @@ export function shouldCompact(i: {
 export function endsOnQuestion(text: string | undefined): boolean {
   // Only the tail matters, and a bounded input keeps the patterns below linear enough.
   let t = (text ?? "").slice(-200).trim();
-  for (let prev = ""; prev !== t; ) {
+  for (let prev = ""; prev !== t;) {
     prev = t;
     const aside = /\s*\(([^()\n]{0,80})\)$/.exec(t);
     if (aside?.[1]?.trim().endsWith("?")) return true;
     t = t
       .replace(/\s*\([^()\n]{0,40}\)$/, "")
-      .replace(/[\s*_`"'\u201d\u2019)\]\p{Extended_Pictographic}\p{Emoji_Modifier}\uFE0F\u200D]+$/u, "");
+      .replace(
+        /[\s*_`"'\u201d\u2019)\]\p{Extended_Pictographic}\p{Emoji_Modifier}\uFE0F\u200D]+$/u,
+        "",
+      );
   }
   return t.endsWith("?");
 }
@@ -66,7 +87,11 @@ export type Row = {
   kit: boolean;
   before?: number;
   after?: number;
+  notes?: Restored; // what kit put back after the summary (compaction.ts)
 };
+
+// kit's notes after a compaction: put back, shortened, or unreadable (an earlier copy stayed).
+export type Restored = { restored: string[]; cut: string[]; failed: string[] };
 
 export const addRow = (rows: readonly Row[], row: Row): Row[] =>
   [...rows, row].slice(-LEDGER_CAP);
@@ -82,7 +107,12 @@ export function ledgerText(rows: readonly Row[], max = 5): string {
     .map(
       (r) =>
         `${new Date(r.at).toISOString().slice(0, 16).replace("T", " ")} ` +
-        `${r.kit ? "kit" : r.trigger} ${k(r.before)} → ${k(r.after)}`,
+        `${r.kit ? "kit" : r.trigger} ${k(r.before)} → ${k(r.after)}` +
+        (r.notes
+          ? ` · restored: ${r.notes.restored.join(", ") || "none"}` +
+            (r.notes.cut.length ? ` · shortened: ${r.notes.cut.join(", ")}` : "") +
+            (r.notes.failed.length ? ` · unreadable: ${r.notes.failed.join(", ")}` : "")
+          : ""),
     )
     .join("\n");
 }

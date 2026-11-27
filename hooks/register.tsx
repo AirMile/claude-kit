@@ -4,7 +4,6 @@ import { readGemini } from "./agy-usage";
 import { geminiCommand } from "./gemini-command";
 import { geminiOn } from "./gemini-switch";
 import { autoModel, modeCommand } from "./auto-model";
-import { freshStart, freshTool } from "./fresh-start";
 import { codexHint, gptOn, gptStatus } from "./codex-run";
 import { delegateTool, delegation, gptCommand } from "./delegate";
 import { runTaskTool, taskRunner } from "./task-runner";
@@ -13,19 +12,22 @@ import { commitGate, commitGateCommand } from "./commit-gate";
 import { guard, guardCommand } from "./guard";
 import {
   flow,
-  flowAtBoundary,
+  flowAnswer,
+  flowClosed,
   flowCommand,
   flowEdit,
   flowStop,
+  flowTurnEnd,
   resetFlow,
 } from "./flow";
 import {
+  afterTurn,
   autoCompact,
   autoCompactCommand,
   noteBoundary,
   resetAutoCompact,
 } from "./auto-compact";
-import { endsOnQuestion } from "./context-policy";
+import { boundaryOf, endsOnQuestion } from "./context-policy";
 import { compaction } from "./compaction";
 import { pinCommand, pins } from "./pins";
 import { recent } from "./recent";
@@ -50,7 +52,6 @@ import { syncWindows } from "./window-sync";
 // - A pause before the plan limit runs out (limit-guard), and the cache kept warm while work
 //   is open or, on Warm, while the chat is idle (keep-warm); the band's limit button or
 //   /warm sets both per chat.
-// - fresh_start: /task-readiness's safe point clears the chat and resumes (fresh-start).
 // - delegate: a review or second plan handed to GPT through Codex (on Claude Pro the rest too),
 //   ChatGPT's meters in the band while GPT is on, /gpt (delegate).
 // - run_task: a GPT change, host checks and repairs on the same thread (task-runner).
@@ -105,7 +106,6 @@ async function refresh($: EngineInterface, figures?: Figures) {
 
 export const register: Register = (on) => {
   themeView(on);
-  freshStart(on);
   readWatch(on);
   delegation(on);
   taskRunner(on);
@@ -122,7 +122,6 @@ export const register: Register = (on) => {
   on("session.start", async ($, e, next) => {
     const started = await next(e);
     await $.tool.register(themeTool);
-    await $.tool.register(freshTool);
     await $.tool.register(delegateTool);
     await $.tool.register(runTaskTool);
     await $.command.register(modeCommand);
@@ -186,18 +185,27 @@ export const register: Register = (on) => {
     // Flow holds a turn that ends with changes but no check; background work wakes it later.
     const hold =
       open || ran.block
-        ? undefined
+        ? await flowTurnEnd($).then(() => undefined) // its readiness block still counts
         : await flowStop($, e.last_assistant_message);
     noteBoundary(
-      !hold &&
-        !open &&
-        !ran.block &&
-        flowAtBoundary() &&
-        !endsOnQuestion(e.last_assistant_message),
+      boundaryOf({
+        goesOn: !!hold || open || !!ran.block,
+        closed: flowClosed(),
+        question: endsOnQuestion(e.last_assistant_message),
+      }),
     );
     if (hold) return { ...ran, block: hold };
     await noteStop($, open);
     return ran;
+  });
+
+  // A turn ended: a subagent's answer goes to flow (the verifier's PASS or FAIL, flow-agents.ts);
+  // a main-chat answer may let the chat compact itself once idle (auto-compact.ts).
+  on("turn.complete", async ($, e, next) => {
+    const done = await next(e);
+    if (e.agentId) await flowAnswer($, e.agentId, e.answer);
+    else if (e.reason === "answer") await afterTurn($);
+    return done;
   });
 
   on("tool.call", { tool: ["Edit", "Write"] }, async ($, e, next) => {
