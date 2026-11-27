@@ -18,8 +18,9 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   survives compaction word for word (`hooks/pins.ts`), the user's latest messages restored the
   same way (`hooks/recent.ts`; per-chat storage in `hooks/chat-store.ts`), usage figures, the tool
   `mcp__kit__theme_view` (`hooks/theme-view.tsx`) that `/theme` calls to open its pane, the band
-  above the prompt (`hooks/kit-band.tsx`: one line of usage, switches a press
-  cycles (the profile, the limit button (Off (default), Warm, Limit: pause + warm while work is open; per chat)), the effort with ‹ › when the profile is off; the context menu in
+  above the prompt (`hooks/kit-band.tsx`: one line of usage, the limit button a
+  press cycles (Off (default), Warm, Limit: pause + warm while work is open; per chat); the
+  profile menu (profile and effort) and the context menu in
   `hooks/band-menus.tsx`, the plan meters in `hooks/band-meters.tsx`: text on a terminal, elsewhere a 5h and a
   week ring of Claude, ChatGPT and Gemini (the pure `hooks/band-rings.ts`; a plan switched off
   leaves the ring, its figures stay in the table) with the GPT and

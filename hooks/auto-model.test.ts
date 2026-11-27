@@ -1,7 +1,7 @@
 import { expect, test } from "claude-code/testing";
 
 
-import { world, band, runText, effortLevel } from "./auto-model-fixture";
+import { world, band, runText } from "./auto-model-fixture";
 import type { LogEntry } from "./flow-log";
 import { newTask, type Task } from "./flow-policy";
 import { FOOTER } from "./delegate-run";
@@ -132,7 +132,27 @@ test("a stored switch survives a reload: no question on the stronger model", asy
   expect(w.asked).toEqual([]);
 });
 
-test("with the profile off ‹ and › step the effort; with a profile on they hide", async ($, on) => {
+// The menu marks the active choice as its primary button.
+const marked = async (ui: Awaited<ReturnType<typeof band>>, key: string) =>
+  ((await ui.find({ key })) as { props?: { variant?: string } } | undefined)
+    ?.props?.variant === "primary";
+const shownAs = async (ui: Awaited<ReturnType<typeof band>>, key: string) =>
+  ((await ui.find({ key })) as { props?: { display?: string } } | undefined)
+    ?.props?.display;
+
+test("a press on the profile mark opens its menu and keeps the profile", async ($, on) => {
+  const w = world(on, { model: "claude-haiku-5-5", label: QUESTION, drawn: true });
+  const ui = await band($, on);
+  expect(await shownAs(ui, "kit-menu-profile")).toBe("none");
+  await ui.press({ key: "kit-profile" });
+  expect(await shownAs(ui, "kit-menu-profile")).toBe("flex");
+  expect(w.store.mode).toBeUndefined();
+  expect((await ui.find({ key: "kit-profile" }))?.text).toBe("◑");
+  await ui.press({ key: "kit-menu-close" });
+  expect(await shownAs(ui, "kit-menu-profile")).toBe("none");
+});
+
+test("with the profile off the menu locks an effort, and Default unlocks it", async ($, on) => {
   const w = world(on, {
     model: "claude-haiku-5-5",
     label: QUESTION,
@@ -141,21 +161,33 @@ test("with the profile off ‹ and › step the effort; with a profile on they h
   });
   const ui = await band($, on);
   expect(await runText(ui)).toBe("Haiku 5.5");
-  expect((await ui.find({ key: "kit-profile" }))?.text).toBe("○");
-  await ui.press({ key: "kit-effort-up" }); // default → low
-  await ui.press({ key: "kit-effort-up" }); // → medium
+  expect(await marked(ui, "kit-effort-default")).toBe(true);
+  await ui.press({ key: "kit-effort-medium" });
   expect(w.store.effortLock).toBe("medium");
-  expect((await effortLevel(ui))?.trim()).toBe("▄");
-  await ui.press({ key: "kit-effort-down" });
-  await ui.press({ key: "kit-effort-down" }); // → default
-  await ui.press({ key: "kit-effort-down" }); // stays
+  expect(await runText(ui)).toBe("▄ Haiku 5.5");
+  expect(await marked(ui, "kit-effort-medium")).toBe(true);
+  expect(await marked(ui, "kit-effort-default")).toBe(false);
+  await ui.press({ key: "kit-effort-default" });
   expect(w.store.effortLock).toBe(undefined);
-  await ui.press({ key: "kit-profile" }); // Off → Lean
-  await ui.press({ key: "kit-profile" }); // → Balanced
-  expect(w.store.mode).toBe("balanced");
-  expect((await ui.find({ key: "kit-profile" }))?.text).toBe("◑");
-  expect(await ui.find({ key: "kit-effort-up" })).toBeFalsy();
-  expect(await runText(ui)).toContain("Haiku 5.5");
+  expect(await runText(ui)).toBe("Haiku 5.5");
+});
+
+test("an effort picked on a profile turns it off; the profile row picks one again", async ($, on) => {
+  const w = world(on, { model: "claude-haiku-5-5", label: QUESTION, drawn: true });
+  const ui = await band($, on);
+  const note = { type: "Text", text: "Picking an effort turns the profile off" };
+  expect(await marked(ui, "kit-mode-balanced")).toBe(true);
+  expect(await ui.find(note)).toBeDefined();
+  await ui.press({ key: "kit-effort-high" });
+  expect(w.store.mode).toBe("off");
+  expect(w.store.effortLock).toBe("high");
+  expect((await ui.find({ key: "kit-profile" }))?.text).toBe("○");
+  expect(await marked(ui, "kit-mode-off")).toBe(true);
+  expect(await ui.find(note)).toBeFalsy();
+  await ui.press({ key: "kit-mode-quality" });
+  expect(w.store.mode).toBe("quality");
+  expect((await ui.find({ key: "kit-profile" }))?.text).toBe("●");
+  expect(await marked(ui, "kit-mode-quality")).toBe(true);
 });
 
 test("a thin reply keeps the effort of the work it continues", async ($, on) => {

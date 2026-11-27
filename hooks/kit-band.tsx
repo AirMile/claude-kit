@@ -1,7 +1,12 @@
 import type { CommandSpec, EngineInterface, On } from "claude-code";
 
-import { getMode, runState, setMode } from "./auto-model";
-import { contextMenu, type Menu } from "./band-menus";
+import { getMode, runState } from "./auto-model";
+import {
+  contextMenu,
+  type Menu,
+  PROFILE_MARK,
+  profileMenu,
+} from "./band-menus";
 import { geminiCached, readGemini } from "./agy-usage";
 import {
   meterLine,
@@ -26,45 +31,25 @@ import {
 } from "./limit-guard";
 import { limitCommandRun } from "./limit-command";
 import { type Hold, nextHold } from "./limit-policy";
-import {
-  type Effort,
-  EFFORTS,
-  type Mode,
-  PROFILES,
-  displayName,
-  effortLabel,
-} from "./model-policy";
-import { setEffortLock } from "./model-switch";
+import { type Effort, displayName, effortLabel } from "./model-policy";
 
 // The band above the prompt, one line that never wraps, an open menu (a bordered
 // block) above it: shown while the pointer rests on its button, kept open by a press. Left:
 // plan usage (band-meters.tsx: text on a terminal, elsewhere a 5h and a week ring of all three
 // plans, whose table holds the GPT and Gemini switches; register.tsx measures after each turn).
-// Right: the model with the profile's effort, or with the profile off the effort between ‹
-// and ›, a step down or up (below low: the session's own); then three buttons side by side:
-// the context figure, opening Compact and Clear, run just after the press, and two switches a
-// press cycles: the profile (◔ ◑ ● for Lean, Balanced, Quality from auto-model.ts, ○ dim for
-// off) and the limit hold (limit-guard.ts): off, Limit (pause at the plan limit, the cache warm
-// while work is open) or Warm (also warm while idle, keep-warm.ts), with the pings so far. The
-// plan-limit pause with Resume now (limit-guard.ts) follows on its own line. It yields to a
-// survey. /band draws it again; /warm toggles the hold's keep warm.
+// Right, in this order: the effort main requests run at, the model and the profile's mark
+// (◔ ◑ ● for Lean, Balanced, Quality from auto-model.ts, ○ dim for off), together opening the
+// profile menu with the profiles and efforts; the limit hold (limit-guard.ts), a switch a press
+// cycles: off, Limit (pause at the plan limit, the cache warm while work is open) or Warm (also
+// warm while idle, keep-warm.ts), with the pings so far; and rightmost the context figure,
+// opening Compact and Clear, run just after the press. The plan-limit pause with Resume now
+// (limit-guard.ts) follows on its own line. It yields to a survey. /band draws it again; /warm
+// toggles the hold's keep warm.
 
 export const bandCommand: CommandSpec = {
   name: "band",
   description: "Show kit's band above the prompt (usage, model, switches)",
   immediate: true,
-};
-
-const MODES: readonly Mode[] = [...PROFILES, "off"];
-// The effort steps ‹ and › walk with the profile off: the session's own, then low to max.
-const LEVELS: readonly (Effort | undefined)[] = [undefined, ...EFFORTS];
-
-// The profile as a circle that fills with the work it allows; empty for off.
-const PROFILE_MARK: Record<Mode, string> = {
-  lean: "◔",
-  balanced: "◑",
-  quality: "●",
-  off: "○",
 };
 
 const HOLD_LABEL: Record<Hold, string> = {
@@ -133,15 +118,6 @@ export function kitBand(on: On) {
         {effortLabel(effort)}
       </Text>
     );
-    // With the profile off, ‹ and › move the hand-set effort one level.
-    const at = LEVELS.indexOf(run.effort as Effort | undefined);
-    const step = (by: number) => {
-      const to = at + by;
-      if (to < 0 || to >= LEVELS.length) return;
-      void setEffortLock($, LEVELS[to]).then(() =>
-        $.ui.invalidate("ui.render"),
-      );
-    };
     const close = (
       <Button key="kit-menu-close" label="×" dimColor onPress={done} />
     );
@@ -149,28 +125,41 @@ export function kitBand(on: On) {
     // Each menu is drawn: the pressed one open, the others hidden until the pointer rests on
     // their button (or on the menu itself), which shares its hover scope. A press still opens
     // it for the keyboard.
-    const MENUS: Menu[] = ["usage", "ctx"];
-    const menus = MENUS.map((m) => {
+    const MENUS: Menu[] = ["usage", "profile", "ctx"];
+    const bodyOf = (m: Menu) => {
       // "usage" is the rings' figures: only where rings are drawn.
-      const body =
-        m === "usage"
-          ? e.surface !== "terminal" && usageTable(ui, rows, switches, flip)
-          : contextMenu($, { ui: $.ui.resolve(e), done });
+      if (m === "usage")
+        return (
+          e.surface !== "terminal" && usageTable(ui, rows, switches, flip)
+        );
+      const state = { ui: $.ui.resolve(e), done };
+      if (m === "ctx") return contextMenu($, state);
+      const effort = run.effort as Effort | undefined;
+      return profileMenu($, { ...state, mode: now, effort });
+    };
+    const menus = MENUS.map((m) => {
+      const body = bodyOf(m);
       if (!body) return null;
       const open = menu === m;
       // The blank line below the block belongs to the hovered Box (padding, not margin), so the
       // pointer crossing it from the button keeps the menu shown. Each block sits above its
-      // button: the usage menu at the left, the context menu at the right.
+      // button: the usage menu at the left, the profile and context menus at the right.
       return (
         <Box
           key={`kit-menu-${m}`}
           flexDirection="column"
-          alignItems={m === "ctx" ? "flex-end" : "flex-start"}
+          alignItems={m === "usage" ? "flex-start" : "flex-end"}
           paddingBottom={1}
           display={open ? "flex" : "none"}
           hover={open ? undefined : { scope: `kit-${m}`, display: "flex" }}
         >
-          <Box gap={1} borderStyle="round" borderColor="#334155" paddingX={1}>
+          <Box
+            gap={1}
+            alignItems="flex-start"
+            borderStyle="round"
+            borderColor="#334155"
+            paddingX={1}
+          >
             {body}
             {open ? close : null}
           </Box>
@@ -184,7 +173,8 @@ export function kitBand(on: On) {
           : meterRings($.ui.resolve(e), ringRows)}
       </Box>
     );
-    // A trigger button in a Box that joins its menu's hover scope.
+    // A trigger (a button, for the profile with the model beside it) in a Box that joins its
+    // menu's hover scope.
     const trigger = (m: Menu, button: unknown) => (
       <Box
         key={`kit-trigger-${m}`}
@@ -203,49 +193,21 @@ export function kitBand(on: On) {
           </Box>
           <Box key="kit-actions" gap={1} flexShrink={0}>
             {trigger(
-              "ctx",
-              <Button
-                key="kit-ctx"
-                label={ctx ? ctx.value : "–"}
-                onPress={() => unfold($, "ctx")}
-              />,
-            )}
-            {run.auto ? null : (
-              <Box key="kit-effort" gap={0}>
-                <Button
-                  key="kit-effort-down"
-                  label="‹"
-                  plain
-                  dimColor={at <= 0}
-                  onPress={() => step(-1)}
-                />
-                <Text key="kit-effort-level">
-                  {" "}
-                  {run.effort ? cell(run.effort) : "default"}{" "}
+              "profile",
+              <Box gap={1} alignItems="center">
+                <Text key="kit-run" dimColor>
+                  {run.effort ? cell(run.effort) : null}
+                  {run.effort ? " " : ""}
+                  {displayName(run.model)}
                 </Text>
                 <Button
-                  key="kit-effort-up"
-                  label="›"
-                  plain
-                  dimColor={at >= LEVELS.length - 1}
-                  onPress={() => step(1)}
+                  key="kit-profile"
+                  label={PROFILE_MARK[now]}
+                  dimColor={!run.auto}
+                  onPress={() => unfold($, "profile")}
                 />
-              </Box>
+              </Box>,
             )}
-            <Text key="kit-run" dimColor>
-              {run.auto && run.effort ? cell(run.effort) : null}
-              {run.auto && run.effort ? " " : ""}
-              {displayName(run.model)}
-            </Text>
-            <Button
-              key="kit-profile"
-              label={PROFILE_MARK[run.auto ? now : "off"]}
-              dimColor={!run.auto}
-              onPress={() => {
-                const after = MODES[(MODES.indexOf(now) + 1) % MODES.length]!;
-                void setMode($, after).then(() => $.ui.invalidate("ui.render"));
-              }}
-            />
             <Button
               key="kit-hold"
               label={`${HOLD_LABEL[hold]}${warmInfo()}`}
@@ -254,6 +216,14 @@ export function kitBand(on: On) {
                 void setHold($, nextHold(hold));
               }}
             />
+            {trigger(
+              "ctx",
+              <Button
+                key="kit-ctx"
+                label={ctx ? ctx.value : "–"}
+                onPress={() => unfold($, "ctx")}
+              />,
+            )}
           </Box>
         </Box>
         {pause ? (

@@ -103,22 +103,11 @@ export function world(
   on("classic.SessionStart", async () => ({}));
   return { asked, offered, sent, cleared, store, read };
 }
-// The model and effort the band shows beside the profile.
-// The effort between ‹ and › (a Text is found by its text, not its key).
-export async function effortLevel(ui: {
-  find: (q: object) => Promise<{ text?: string } | undefined>;
-}) {
-  const levels = /^ (default|▂|▄|▆|▇|█) $/;
-  return (await ui.find({ type: "Text", text: levels }))?.text;
-}
-
-// The model and, before it, the profile's effort or the effort set by hand.
+// The model and, before it, the effort the band shows beside the profile mark.
 export async function runText(ui: {
   find: (q: object) => Promise<{ text?: string } | undefined>;
 }) {
-  const model = (await ui.find({ type: "Text", text: /\d\.\d/ }))?.text;
-  const level = (await effortLevel(ui))?.trim();
-  return level && level !== "default" ? `${level} ${model}` : model;
+  return (await ui.find({ type: "Text", text: /\d\.\d/ }))?.text;
 }
 
 // The band as the terminal draws it; a press acts as a click does.

@@ -862,23 +862,23 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   started it, what was restored). `/kitcompact status` shows the state, the threshold and the latest rows;
   `/kitcompact off|on` per project (`/autocompact` is Claude Code's own command). A compact that fails turns it off until `/clear`.
 - **The band** above the prompt, one line: usage at the left (see **Usage** below); at the
-  right the context figure, then the model with its effort, then the profile and the limit
-  button. The context figure opens a menu in its own block above the band (hover
-  to peek, press to keep it open): **Compact** and **Clear**, run at once or when the
-  running turn ends. The other buttons are switches a press cycles, none depending on
-  another:
-  - **Profile**: `◔` → `◑` → `●` (Lean, Balanced, Quality) → `○` dim (off). Beside it
-    the model and effort kit set for the last prompt (`Opus 5.5 · medium`), which can differ
-    from the session setting in the app's model picker.
-  - **Effort**, only with the profile off (you pick the model in the app's picker):
-    `‹ high ›`, a press on `‹` or `›` one level down or up (`default`, the session's own,
-    then low to max); it holds over new chats and restarts. The engine lowers a level the
-    model lacks.
-  - **Limit**: `⏸ Off` (no pause, no pings; the default) → `⏸♨ Warm` (keep the cache warm
-    while idle; `♨×3` after it counts the pings) → `⏸ Limit` (pause at the plan limit, the
-    cache warm while work is open); see Keep warm. Kept per chat, over a reload or restart; a
-    new chat starts at `⏸ Off`.
-- **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (the band's profile button cycles them,
+  right the model with its effort and the profile mark, then the limit button, and
+  rightmost the context figure. The profile mark and the context figure each open a menu in
+  its own block above the band (hover to peek, press to keep it open):
+  - **Profile menu**, on the model or the mark (`◔` `◑` `●` Lean, Balanced, Quality, `○`
+    dim off): a row of profiles and a row of efforts, the active ones marked. Beside the
+    mark the model and, as a filling block, the effort kit set for the last prompt, which can
+    differ from the session setting in the app's model picker.
+  - **Effort** in that menu: `Default` (the session's own), then low to max. A fixed effort
+    only holds with the profile off, so picking one turns the profile off (you then pick the
+    model in the app's picker); it holds over new chats and restarts. The engine lowers a
+    level the model lacks.
+  - **Context menu**: **Compact** and **Clear**, run at once or when the running turn ends.
+  - **Limit**, a switch a press cycles: `⏸ Off` (no pause, no pings; the default) →
+    `⏸♨ Warm` (keep the cache warm while idle; `♨×3` after it counts the pings) → `⏸ Limit`
+    (pause at the plan limit, the cache warm while work is open); see Keep warm. Kept per
+    chat, over a reload or restart; a new chat starts at `⏸ Off`.
+- **Model and effort**: the profile is **Lean**, **Balanced** or **Quality** (picked in the band's profile menu,
   or `/mode lean|balanced|quality|off`). The choice is kept across sessions. Each prompt is sorted (kit's own skills by name, the rest by a Haiku
   classifier) into question, routine, planning or heavy work, and the profile maps that to a
   model and effort. A short
