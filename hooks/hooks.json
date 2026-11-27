@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-backlog.cjs\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-vault.cjs\"",
             "timeout": 10
           }
         ]

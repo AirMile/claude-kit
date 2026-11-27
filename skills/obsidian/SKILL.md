@@ -1,35 +1,42 @@
 ---
 name: obsidian
-description: Keep a project's human side in the user's Obsidian vault - the backlog note, notes for the user to read (explanations, handoffs, overviews) and the docs link that shows the repo's docs/ there. Use when the backlog in AGENTS.md § Backlog is an Obsidian note, when the user asks to put something in their vault or notes, to move a Todoist backlog to Obsidian, or when a session-start note reports a missing backlog note or docs link.
+description: Keep a project's human side in the user's Obsidian vault - notes for the user to read (explanations, handoffs, overviews), a view note on the Todoist backlog, and the docs link that shows the repo's docs/ there. Use when the user asks to put something in their vault or notes, to set up a project's vault folder, or when a session-start note reports a missing vault folder or docs link.
 ---
 
 # Obsidian
 
-The user reads in Obsidian, not in the IDE. Everything written for the user to read lives in or
-shows up in the vault; everything the model or the mod reads stays in the repo.
+The user reads in Obsidian, not in the IDE. What is written for the user to read lives in or
+shows up in the vault; what the model or the mod reads stays in the repo. The backlog stays where
+`AGENTS.md § Backlog` says (Todoist): the vault only shows it.
 
 ## Where things go
 
 The vault path comes from the user's instructions (`Notes Vault`). None named → ask once.
 
-| What                                        | Lives in                                    | Shown in Obsidian by    |
-| ------------------------------------------- | ------------------------------------------- | ----------------------- |
-| Backlog                                     | `<vault>/Projects/<Name>/<Name> backlog.md` | the note itself         |
-| Explanations, handoffs, overviews, canvases | `<vault>/Projects/<Name>/`                  | the note itself         |
-| `docs/` (product, specs, decisions, seo)    | the repo                                    | the docs link           |
-| `AGENTS.md`, lessons                        | the repo                                    | not shown: model-facing |
+| What                                        | Lives in                   | Shown in Obsidian by    |
+| ------------------------------------------- | -------------------------- | ----------------------- |
+| Explanations, handoffs, overviews, canvases | `<vault>/Projects/<Name>/` | the note itself         |
+| Backlog                                     | Todoist (`§ Backlog`)      | the view note           |
+| `docs/` (product, specs, decisions, seo)    | the repo                   | the docs link           |
+| `AGENTS.md`, lessons                        | the repo                   | not shown: model-facing |
 
 Never move `docs/` or `AGENTS.md` into the vault: the mod reads specs for the verify gate,
 specs follow branches, and Claude Code and Codex load `AGENTS.md` only from the repo.
 
 `<Name>` is the project name from `docs/product.md`'s title or the repo folder; an existing
-`Projects/` folder for the same project wins over a new spelling.
+`Projects/` folder for the same project wins over a new spelling. `AGENTS.md § Backlog` names
+the folder, with `~` for the home folder, so the session-start check can find it:
+
+```markdown
+- Notes for the user: the Obsidian folder `~/Documents/Vault/Projects/<Name>` (its `docs`
+  links to this repo's `docs/`).
+```
 
 ## The docs link
 
 `<vault>/Projects/<Name>/docs` links to `<repo>/docs`, so specs and product.md open in Obsidian
 while staying in git. Create it only when `<repo>/docs` exists, the link does not, and the user
-said yes to it (a yes to an Obsidian backlog counts):
+said yes to it by name:
 
 - macOS/Linux: `ln -s "<repo>/docs" "<vault>/Projects/<Name>/docs"`
 - Windows: `cmd /c mklink /J "<vault>\Projects\<Name>\docs" "<repo>\docs"` (a junction needs
@@ -39,67 +46,30 @@ A real folder named `docs` is already there → stop and ask; never replace it. 
 `rm` on the link path (Windows: `rmdir`), which leaves the repo's files alone. A worktree has its
 own `docs/`: the link points at the main checkout only.
 
-## The backlog note
+## The Todoist view note
 
-`AGENTS.md § Backlog` names it by path, with `~` for the home folder:
+`<vault>/Projects/<Name>/<Name> taken.md` holds only a query block for the todoist-sync plugin,
+so the backlog shows in Obsidian (shaped like an existing one):
 
-```markdown
-## Backlog
-
-- The backlog is the Obsidian note `~/Documents/Vault/Projects/<Name>/<Name> backlog.md`
-  (sections `Nu`, `Hierna`, `Ideeën`). Do not keep a list in the repo.
-- Add items only after the user confirms; complete one only after the user confirms.
+````markdown
+```todoist
+name: "<Name>"
+filter: "#<Todoist project>"
+autorefresh: 300
+groupBy: section
+sorting:
+  - order
 ```
+````
 
-The note's format (section names follow the user's language):
+Offer it when the folder has none; write it only on a yes. Never edit tasks through it: backlog
+changes go through the Todoist connector, each after the user's confirmation.
 
-```markdown
----
-project: <Name>
-repo: <absolute repo path>
----
+## Writing notes
 
-# <Name> backlog
-
-## Nu
-
-- [ ] <item> · [[<spec slug>]]
-
-## Hierna
-
-- [ ] <item>
-
-## Ideeën
-
-- [ ] <item>
-```
-
-- One line per item, a `[[slug]]` link once it has a spec (it resolves through the docs link).
-- Order inside a section = priority. Move an item between sections by moving its line.
-- Done → `- [x]`, and move it to a `## Klaar` section at the bottom (kept, not deleted).
-- Every add, move, rewording or completion waits for the user's confirmation, as with any
-  backlog. Show the changed lines after writing.
-- Read it with Read, edit it with Edit: it is a plain file. No Obsidian running needed.
-
-## Moving from Todoist
-
-When `§ Backlog` names a Todoist project and the user asks to move it:
-
-1. Read the open tasks per section with the Todoist connector's tools.
-2. Show the note as it would be written (sections mapped by name; unknown sections become their
-   own heading) and ask once: write it. A backlog note already exists there → show what it
-   already has and merge (add only missing lines); never overwrite it.
-3. Yes → write the note, rewrite `§ Backlog` to the note's path, create the docs link, and
-   replace a `todoist` query note in that project folder only on a separate yes.
-4. Leave the Todoist project alone: archiving or deleting it is the user's step. Say so.
-
-No Todoist connector (Codex) → say the move needs it and stop.
-
-## Writing other notes
-
-- Write a note only when the user asks for it; the backlog only by its confirmation rule; the
-  docs link only on a yes. A session-start note about a missing note or link is a reason to
-  offer, never to write.
+- Write a note only when the user asks for it; the view note and the docs link only on a yes.
+  A session-start note about a missing folder or link is a reason to offer, never to write.
+- A note with that name already exists → read it, add to it; never overwrite it.
 - Obsidian conventions: `[[wiki links]]` between notes, YAML frontmatter between `---`, never
   touch `.obsidian/`, `Images/` or `.base` files, and follow the vault's own instructions file.
 - A handoff note: `handoff-<date>-<slug>.md`. An explanation: a title the user would search for.
@@ -108,8 +78,7 @@ No Todoist connector (Codex) → say the move needs it and stop.
 ## Report
 
 ```
-OBSIDIAN · <backlog | note | link | move>
+OBSIDIAN · <note | link | view | setup>
 written     <paths>
-backlog     <n in Nu> · next: <first open item>
 docs link   <ok | created | missing: reason>
 ```

@@ -37,8 +37,10 @@
 
 ## Backlog
 
-- The backlog is <where: Obsidian note `<path>` | Todoist project `<name>` | tracker>. Do not keep a list in the repo.
+- The backlog is <where: Todoist project `<name>` | tracker>. Do not keep a list in the repo.
 - Add items only after the user confirms; complete one only after the user confirms.
+- <only with a notes vault> Notes for the user: the Obsidian folder `<~/vault/Projects/Name>`
+  (its `docs` links to this repo's `docs/`).
 
 ## Docs
 
