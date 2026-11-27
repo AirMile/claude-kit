@@ -41,7 +41,7 @@ export function ringSvg(shares: Shares): string {
       track +
       circle(
         r,
-        `stroke="${PLAN_COLOUR[plan]}"stroke-dasharray="${used.toFixed(2)} ${round.toFixed(2)}" transform="rotate(-90 12 12)"`,
+        `stroke="${PLAN_COLOUR[plan]}" stroke-dasharray="${used.toFixed(2)} ${round.toFixed(2)}" transform="rotate(-90 12 12)"`,
       )
     );
   });

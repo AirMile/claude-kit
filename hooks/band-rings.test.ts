@@ -37,3 +37,11 @@ test("an arc keeps its plan's colour when nearly full, is clamped to a full circ
   expect(drawn[2]!.share > 0.04).toBe(true);
   expect(arcs(ringSvg({ claude: 0, gpt: Number.NaN }))).toEqual([]);
 });
+
+// A surface draws the SVG as an image: XML without space between two attributes shows broken.
+test("the SVG is well-formed: a space separates every attribute", () => {
+  const svg = ringSvg({ claude: 50, gpt: 25, gemini: 75 });
+  const tags = svg.match(/<[^>]+>/g)!;
+  const wellFormed = /^<\/?[a-z]+(\s+[a-zA-Z-]+="[^"<]*")*\s*\/?>$/;
+  expect(tags.filter((t) => !wellFormed.test(t))).toEqual([]);
+});
