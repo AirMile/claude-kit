@@ -201,6 +201,14 @@ export function kitBand(on: On) {
             {e.surface === "terminal" ? meters : trigger("usage", meters)}
           </Box>
           <Box key="kit-actions" gap={1} flexShrink={0}>
+            {trigger(
+              "ctx",
+              <Button
+                key="kit-ctx"
+                label={ctx ? ctx.value : "–"}
+                onPress={() => unfold($, "ctx")}
+              />,
+            )}
             {run.auto ? null : (
               <Box key="kit-effort" gap={0}>
                 <Button
@@ -228,14 +236,6 @@ export function kitBand(on: On) {
               {run.auto && run.effort ? " " : ""}
               {displayName(run.model)}
             </Text>
-            {trigger(
-              "ctx",
-              <Button
-                key="kit-ctx"
-                label={ctx ? ctx.value : "–"}
-                onPress={() => unfold($, "ctx")}
-              />,
-            )}
             <Button
               key="kit-profile"
               label={PROFILE_MARK[run.auto ? now : "off"]}

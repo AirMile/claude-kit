@@ -27,12 +27,12 @@ test("the desktop band draws a 5h and a week ring, with only the time until rese
   await ui.unmount();
 });
 
-test("on the right the model comes first, then context, profile and limit side by side", async ($, on) => {
+test("on the right the context comes first, then the model, profile and limit side by side", async ($, on) => {
   bandWorld(on);
   await twice($);
   const ui = await mountBand($, "desktop");
   expect((await ui.find({ key: "kit-actions" }))?.text).toMatch(
-    /Sonnet 5\.5[^k]*\d+k[○◔◑●]⏸ Off$/,
+    /^\d+k.*Sonnet 5\.5[○◔◑●]⏸ Off$/,
   );
   await ui.unmount();
 });
