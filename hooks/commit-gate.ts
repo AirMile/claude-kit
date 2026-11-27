@@ -1,8 +1,7 @@
 import type { CommandSpec, EngineInterface, On } from "claude-code";
 
 import { commitBlock, isCommit } from "./commit-gate-policy";
-import { load, state } from "./flow-state";
-import { worktreePrint } from "./flow-store";
+import { load, settled, state, taskPrint } from "./flow-state";
 import { clean } from "./guard-policy";
 
 // The commit gate (commit-gate-policy.ts says when): a `git commit` in the Bash tool is denied
@@ -13,7 +12,8 @@ const KEY = "kit:commitgate";
 
 export const commitGateCommand: CommandSpec = {
   name: "commitgate",
-  description: "kit: hold git commit while the open task is unverified (on by default)",
+  description:
+    "kit: hold git commit while the open task is unverified (on by default)",
   argumentHint: "[on | off | status]",
   immediate: true,
 };
@@ -22,9 +22,14 @@ const key = (dir: string) => clean(dir).replace(/\/$/, "").toLowerCase();
 
 async function offFor($: EngineInterface, dir: string): Promise<boolean> {
   const stored = await $.store.get(KEY).catch(() => undefined);
-  const off = stored && typeof stored === "object" ? (stored as Record<string, boolean>) : {};
+  const off =
+    stored && typeof stored === "object"
+      ? (stored as Record<string, boolean>)
+      : {};
   const k = key(dir);
-  return Object.keys(off).some((r) => off[r] && (k === r || k.startsWith(`${r}/`)));
+  return Object.keys(off).some(
+    (r) => off[r] && (k === r || k.startsWith(`${r}/`)),
+  );
 }
 
 export async function commitGateCommandRun(
@@ -36,13 +41,19 @@ export async function commitGateCommandRun(
   const verb = e.args.trim().toLowerCase() || "status";
   const stored = await $.store.get(KEY).catch(() => undefined);
   const all = {
-    ...(stored && typeof stored === "object" ? (stored as Record<string, boolean>) : {}),
+    ...(stored && typeof stored === "object"
+      ? (stored as Record<string, boolean>)
+      : {}),
   };
   if (verb === "on" || verb === "off") {
     if (verb === "off") all[key(dir)] = true;
     else
       for (const r of Object.keys(all))
-        if (key(dir) === r || key(dir).startsWith(`${r}/`) || r.startsWith(`${key(dir)}/`))
+        if (
+          key(dir) === r ||
+          key(dir).startsWith(`${r}/`) ||
+          r.startsWith(`${key(dir)}/`)
+        )
           delete all[r];
     await $.store.set(KEY, all).catch(() => {});
   }
@@ -58,8 +69,11 @@ export function commitGate(on: On) {
     if (!isCommit(command)) return next(e);
     const dir = await $.session.root().catch(() => undefined);
     if (dir && (await offFor($, dir))) return next(e);
-    await load($);
-    const block = commitBlock(state.task, await worktreePrint($));
+    // An edit's repo still being found decides whether the task goes by this print (flow.ts).
+    const block = await settled(async () => {
+      await load($);
+      return commitBlock(state.task, await taskPrint($));
+    });
     return block ? { deny: block } : next(e);
   });
   on("command.run", { command: "commitgate" }, commitGateCommandRun);

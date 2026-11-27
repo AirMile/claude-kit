@@ -13,8 +13,8 @@ import { promptLevels, raiseLevels } from "./flow-levels";
 import { classifyPrompt, isResume } from "./flow-prompt";
 import { endEntry, type Ending } from "./flow-log";
 import * as policy from "./flow-policy";
-import { log, worktreePrint } from "./flow-store";
-import { state, load, save } from "./flow-state";
+import { awayRoot, log, within, worktreePrint } from "./flow-store";
+import { state, load, save, taskPrint } from "./flow-state";
 import { FLOW_NOTE, isKitNote } from "./kit-notes";
 import { isThin, type Kind } from "./model-policy";
 import { turnBlock } from "./readiness";
@@ -43,6 +43,7 @@ export type CheckStart = {
   startedAt: number;
   startPrint: string | undefined;
   kinds: CheckKind[];
+  away?: string; // the task's other repo when the folder was judged
 };
 
 let promptPrint: string | undefined; // the worktree when the last prompt came in
@@ -87,20 +88,58 @@ export async function flowGeminiWrote($: EngineInterface): Promise<boolean> {
   return !!state.task?.geminiWrote;
 }
 
-// A check counts for the worktree it started on, whoever ran it (a subagent's too).
+// Where a shell command runs: a leading `cd <dir> &&`, else the session's folder. Any other
+// `cd` (`;` after it, a second one) is not followed: undefined, so it counts nowhere.
+async function commandDir(
+  $: EngineInterface,
+  command: string,
+): Promise<string | undefined> {
+  const base =
+    (await $.session.cwd().catch(() => undefined)) ??
+    (await $.session.root().catch(() => undefined));
+  // Every cd the shell may run (`command cd`, `builtin cd`, a quoted "cd" where a command
+  // starts too); other quoted text (a test filter `-t "cd"`) and comments left out.
+  const cds = command
+    .replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, (q, at: number) =>
+      /^["'](?:cd|pushd|popd)["']$/.test(q) &&
+      /(?:^|[;&|(\n]|\b(?:command|builtin|exec|then|do|else))\s*$/.test(
+        command.slice(0, at),
+      )
+        ? "cd"
+        : '""',
+    )
+    .replace(/(^|\s)#[^\n]*/g, "$1")
+    .match(/(?<![\w./-])(?:cd|pushd|popd)(?![\w./-])/g);
+  if (!cds) return base;
+  const m = /^\s*cd\s+("[^"]+"|'[^']+'|[^\s;&|]+)\s*&&/.exec(command);
+  if (!m || cds.length > 1) return undefined;
+  const dir = m[1]!.replace(/^["']|["']$/g, "");
+  if (/^[~$]/.test(dir)) return undefined; // not resolved here: counts nowhere
+  if (/^(?:[a-zA-Z]:)?[\\/]/.test(dir)) return dir;
+  return base ? `${base.replace(/[\\/]+$/, "")}/${dir}` : undefined;
+}
+
+// A check counts for the worktree it started on, whoever ran it (a subagent's too). `where`:
+// the folder it runs in, when known; a task whose code is in another repo (`away`) takes no
+// evidence from a check outside it, and gets that repo back to say so.
 export async function flowCheckStart(
   $: EngineInterface,
   kinds: CheckKind[],
-): Promise<CheckStart | undefined> {
+  where?: { dir: string | undefined },
+): Promise<CheckStart | { away: string } | undefined> {
+  await state.lookup; // an edit's repo, still being found, decides where this check counts
   await load($);
   if (!state.task) return undefined;
+  const away = state.task.away;
+  if (away && where && !(where.dir && within(where.dir, away))) return { away };
   await ensureRequired($);
   state.task = { ...state.task, checkCalls: (state.task.checkCalls ?? 0) + 1 };
   await save($);
   return {
     startedAt: await $.clock.now(),
-    startPrint: await worktreePrint($),
+    startPrint: await taskPrint($),
     kinds,
+    away,
   };
 }
 
@@ -118,8 +157,12 @@ export async function flowCheckEnd(
   passed: boolean,
   output?: string,
 ): Promise<string | undefined> {
+  await state.lookup;
   await load($);
   if (!state.task) return undefined;
+  // An edit moved the task to another repo while the check started: the folder judged then no
+  // longer says where its code is.
+  if (state.task.away !== start.away) return undefined;
   const before = state.task;
   state.task = policy.onCheck(
     state.task,
@@ -165,8 +208,9 @@ export async function flowPrompt(
   )
     pendingBlock = undefined;
   const now = await $.clock.now();
-  const p = await worktreePrint($);
-  promptPrint = p;
+  const raw = await worktreePrint($);
+  promptPrint = raw; // a new task's base, in the session root
+  const p = state.task?.away ? undefined : raw; // what the open task is judged by
   // A short reply ("ja") continues an open task; without one it is a request of its own.
   const thin = !!state.task && isThin(text);
   const labels = await classifyPrompt($, text, kind, thin);
@@ -189,6 +233,14 @@ export async function flowPrompt(
       ctx: await contextNow($),
     });
   state.task = step.task;
+  // A task the prompt opened starts from the session root, whatever the last one was judged by.
+  if (
+    state.task &&
+    state.task.id === now &&
+    !state.task.away &&
+    state.task.basePrint === undefined
+  )
+    state.task = { ...state.task, basePrint: raw };
   await ensureRequired($);
   const kept = ["continue", "escalate", "fold"].includes(step.event);
   const decided = await promptLevels($, {
@@ -243,7 +295,36 @@ export async function flowEdit(
   const unedited = !state.task || state.task.lastEditAt === 0;
   const step = policy.onEdit(state.task, path, now, now, promptPrint, gpt);
   if (!step) return undefined;
-  state.task = step.task;
+  state.task = step.task; // recorded at once: a commit meanwhile sees this edit
+  // Code in another repo (a worktree): the session root's print would credit or hold this task
+  // for what happens there, so it goes by tool calls, its checks run there, and its commands
+  // are read again from both repos. Checks and the commit gate wait for it (`state.lookup`).
+  const source = policy.isSource(path.replace(/\\/g, "/"));
+  if (source) state.lookups = (state.lookups ?? 0) + 1; // a judgement under way is made again
+  const found = source
+    ? awayRoot($, path).catch(() => undefined)
+    : Promise.resolve(undefined);
+  // Set the moment it is known, before anyone waiting on it goes on.
+  const lookup = found.then((away) => {
+    if (away && state.task && state.task.away !== away)
+      state.task = {
+        ...state.task,
+        away,
+        basePrint: undefined,
+        required: undefined,
+        requiredRoot: undefined,
+        // Failures seen before the first edit were the session root's, not that repo's.
+        baseline: {},
+      };
+  });
+  // Chained: a quicker edit meanwhile must not end the wait for this one.
+  const all = Promise.all([state.lookup, lookup]);
+  state.lookup = all;
+  await lookup; // only its own: an edit never waits on another's git
+  void all.then(() => {
+    if (state.lookup === all) state.lookup = undefined;
+  });
+  if (!state.task) return undefined;
   await ensureRequired($);
   await save($);
   if (step.started)
@@ -292,14 +373,15 @@ export async function flowStop(
   $: EngineInterface,
   lastMessage: string | undefined,
 ): Promise<string | undefined> {
+  await state.lookup; // a task found to be away goes by tool calls, not by this print
   await load($);
-  const p = await worktreePrint($);
+  const raw = await worktreePrint($);
   // Code changed this turn with no task open (a shell edit, a subagent): git saw it.
   if (
     !state.task &&
-    p !== undefined &&
+    raw !== undefined &&
     promptPrint !== undefined &&
-    p !== promptPrint
+    raw !== promptPrint
   ) {
     const now = await $.clock.now();
     state.task = policy.newTask(now, "light", promptPrint);
@@ -313,9 +395,10 @@ export async function flowStop(
   }
   await noteBlock($);
   const before = state.task;
+  const p = state.task?.away ? undefined : raw; // what the open task is judged by
   const v = policy.stopVerdict(state.task, lastMessage, p);
   endedOnQuestion = (lastMessage ?? "").trim().endsWith("?");
-  promptPrint = p; // the next turn's changes count from here
+  promptPrint = raw; // the next turn's changes count from here
   state.task = v.task;
   await save($);
   const now = await $.clock.now();
@@ -361,7 +444,6 @@ export function flowRecovery(): string | undefined {
   return `${FLOW_NOTE}${state.task.track} task changed ${files}; before you finish, run the check that covers it${verifier}${review}.`;
 }
 
-
 // A readiness block seen at the end of a turn with no task open: the task the next turn opens
 // takes it (a block, then the user's go-ahead, then the first edit). One turn only.
 let pendingBlock: { block: string; at: number; prompts: number } | undefined;
@@ -374,10 +456,13 @@ function keepBlock(block: string | undefined, now: number) {
     return;
   }
   const adopted =
-    pendingBlock && state.task.id >= pendingBlock.at ? pendingBlock.block : undefined;
+    pendingBlock && state.task.id >= pendingBlock.at
+      ? pendingBlock.block
+      : undefined;
   pendingBlock = undefined;
   const readiness = block ?? state.task.readiness ?? adopted;
-  if (readiness !== state.task.readiness) state.task = { ...state.task, readiness };
+  if (readiness !== state.task.readiness)
+    state.task = { ...state.task, readiness };
 }
 
 // The readiness block the turn wrote, at its end (flowStop, or flowTurnEnd when flow does not
@@ -439,10 +524,25 @@ export async function resetFlow($: EngineInterface) {
 
 export function flow(on: On) {
   on("tool.call", { tool: "Bash" }, async ($, e, next) => {
-    const check = checkOf(e.command);
-    const start = check ? await flowCheckStart($, check.kinds) : undefined;
+    const found = checkOf(e.command);
+    const begun = found
+      ? await flowCheckStart($, found.kinds, {
+          dir: await commandDir($, e.command),
+        })
+      : undefined;
+    const away = begun && !("startedAt" in begun) ? begun.away : undefined;
+    const start = begun && "startedAt" in begun ? begun : undefined;
+    const check = away ? undefined : found;
     if (!check) await flowShellSeen($);
     const ran = await next(e);
+    if (away && ran.deny === undefined)
+      return {
+        ...ran,
+        context: [
+          ...(ran.context ?? []),
+          `kit flow: this check ran outside ${away}, where this task's code is, so it does not count for it. Run it there: cd ${away} && <check>.`,
+        ],
+      };
     if (!start || !check || ran.deny !== undefined) return ran;
     const passed = checkSettled(check, ran.isError === true, ran.text ?? "");
     if (passed === undefined) return ran; // a masked status: no evidence either way

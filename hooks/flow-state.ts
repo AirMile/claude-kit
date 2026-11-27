@@ -2,7 +2,7 @@ import type { EngineInterface } from "claude-code";
 
 import { reopen } from "./flow-evidence";
 import { maxTrack, sizeTrack, type Task } from "./flow-policy";
-import { loadTask, saveTask } from "./flow-store";
+import { loadTask, saveTask, worktreePrint } from "./flow-store";
 
 // Shared by the turn and agent glue: one session's task in memory, backed by $.store.
 // `unreadFor`: the session whose stored task could not be read yet; until it is, the task in
@@ -13,7 +13,19 @@ export const state: {
   loadedFor?: string;
   unreadFor?: string;
   block?: { for: string; text: string };
+  lookup?: Promise<unknown>; // edits' repo lookups still running (flow.ts): checks and the commit gate wait
+  lookups?: number; // how many have started: a judgement made while one began is made again
 } = {};
+
+// `judge` once no repo lookup runs, again (a few times at most) when one started meanwhile.
+export async function settled<T>(judge: () => Promise<T>): Promise<T> {
+  for (let i = 0; ; i += 1) {
+    const seen = state.lookups ?? 0;
+    await state.lookup;
+    const verdict = await judge();
+    if ((state.lookups ?? 0) === seen || i >= 4) return verdict;
+  }
+}
 
 // true once the session's stored task is known.
 export async function load($: EngineInterface): Promise<boolean> {
@@ -70,6 +82,17 @@ function joined(stored?: Task, meanwhile?: Task): Task | undefined {
       : 0;
   return {
     ...base,
+    // Code in another repo meanwhile: the whole task goes by tool calls from now (flow.ts).
+    // Its commands are read again, from both repos.
+    ...(meanwhile.away && !base.away
+      ? {
+          away: meanwhile.away,
+          basePrint: undefined,
+          required: undefined,
+          requiredRoot: undefined,
+          baseline: {},
+        }
+      : {}),
     files,
     lastEditAt: Math.max(stored.lastEditAt, meanwhile.lastEditAt),
     readiness: meanwhile.readiness ?? stored.readiness,
@@ -81,6 +104,14 @@ function joined(stored?: Task, meanwhile?: Task): Task | undefined {
     geminiWrote: base.geminiWrote || meanwhile.geminiWrote || undefined,
     claudeWrote: base.claudeWrote || meanwhile.claudeWrote || undefined,
   };
+}
+
+// The print the open task is judged by: none for a task whose code is in another repo
+// (flow.ts's `away`), which goes by tool calls; the session root's otherwise.
+export async function taskPrint(
+  $: EngineInterface,
+): Promise<string | undefined> {
+  return state.task?.away ? undefined : worktreePrint($);
 }
 
 // Nothing is written while the stored task is unread: the task in memory may be only part of

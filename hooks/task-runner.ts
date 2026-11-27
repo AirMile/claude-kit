@@ -7,7 +7,11 @@ import {
   routeDelegation,
   runDelegated,
 } from "./delegate-run";
-import { flowCheckEnd, flowCheckStart, flowLevels } from "./flow";
+import {
+  flowCheckEnd,
+  flowCheckStart,
+  flowLevels,
+} from "./flow";
 import { checkKindOfArgv } from "./flow-check";
 import {
   CHECK_MS,
@@ -142,7 +146,11 @@ async function runTask($: EngineInterface, input: RunInput, toolUseId: string) {
         if ((await $.clock.now()) - began >= TOTAL_MS) break;
         // Flow counts only what a Bash check would count: `["true"]` verifies nothing.
         const kind = checkKindOfArgv(check);
-        const start = kind ? await flowCheckStart($, [kind]) : undefined;
+        // It runs in the session root: no evidence for a task whose code is in another repo.
+        const begun = kind
+          ? await flowCheckStart($, [kind], { dir: root })
+          : undefined;
+        const start = begun && "startedAt" in begun ? begun : undefined;
         const at = await $.clock.now();
         const timeoutMs = Math.min(CHECK_MS, TOTAL_MS - (at - began));
         if (timeoutMs <= 0) break;

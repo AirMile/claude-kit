@@ -60,6 +60,9 @@ export type Task = {
   files: string[]; // code files this chat changed in the task (Edit, Write, GPT)
   spec: boolean; // a spec under docs/specs/ was written, recorded in flow statistics
   basePrint?: string; // the worktree when the task began; undefined: no git
+  // The git root of an edit outside the session root's repo (a worktree): the session root's
+  // print says nothing about that code, so the task goes by tool calls (no basePrint).
+  away?: string;
   checkedPrint?: string; // the worktree a passing check started on
   verifiedPrint?: string; // the worktree the verifier said PASS on
   lastEditAt: number; // without git: when code last changed (0: not yet)
@@ -75,7 +78,7 @@ export type Task = {
   closedPrints?: Partial<Record<CheckKind, string>>; // the worktree each closed kind passed on
   failedAt?: Partial<Record<CheckKind, number>>; // when each kind last failed or was reopened
   required?: CheckKind[]; // the kinds AGENTS.md § Commands lists; undefined: not read yet
-  requiredRoot?: string; // the session root those commands came from
+  requiredRoot?: string; // the root those commands came from (the session's, or `away`)
   passedPrints?: Partial<Record<CheckKind, string>>; // the worktree each kind last passed on
   passedAt?: Partial<Record<CheckKind, number>>; // when each kind last passed (no git)
   baseline?: Partial<Record<CheckKind, string>>; // failure hash of a kind red before the first edit
@@ -221,12 +224,14 @@ const RISKY = /migrat|(^|\/)schema|\.sql$/i;
 // (`p`, the file just edited; every file without it).
 export function sizeTrack(t: Task, p?: string): Track {
   const n = t.files.length - (t.requestFiles ?? 0);
-  const risky = p !== undefined ? RISKY.test(p) : t.files.some((f) => RISKY.test(f));
+  const risky =
+    p !== undefined ? RISKY.test(p) : t.files.some((f) => RISKY.test(f));
   return n > 8 || risky ? "heavy" : n > 3 ? "medium" : "light";
 }
 
 // The larger of two tracks.
-export const maxTrack = (a: Track, b: Track): Track => (RANK[a] >= RANK[b] ? a : b);
+export const maxTrack = (a: Track, b: Track): Track =>
+  RANK[a] >= RANK[b] ? a : b;
 const SPEC = /(^|\/)docs\/specs\/[^/]+\.md$/;
 export const isSource = (path: string): boolean =>
   !DOCS.test(path.replace(/\\/g, "/"));

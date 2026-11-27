@@ -91,10 +91,21 @@ export const pristine = (t: Task, print: string | undefined): boolean =>
 export async function ensureRequired($: EngineInterface) {
   const task = state.task;
   if (!task || task.required !== undefined) return;
-  const root = await $.session.root().catch(() => undefined);
-  const text = root
-    ? String(await $.fs.read(inRoot(root, "AGENTS.md")).catch(() => ""))
-    : "";
+  const session = await $.session.root().catch(() => undefined);
+  // A task with code in another repo (flow.ts's `away`) is held to that repo's commands too: it
+  // may have changed code in both.
+  const roots = [session, task.away].filter((r): r is string => !!r);
+  const required = new Set<CheckKind>();
+  for (const root of roots) {
+    const text = String(
+      await $.fs.read(inRoot(root, "AGENTS.md")).catch(() => ""),
+    );
+    for (const kind of parseRequired(text)) required.add(kind);
+  }
   if (state.task === task)
-    state.task = { ...task, required: parseRequired(text), requiredRoot: root };
+    state.task = {
+      ...task,
+      required: [...required],
+      requiredRoot: task.away ?? session,
+    };
 }

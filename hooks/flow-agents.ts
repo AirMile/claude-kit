@@ -13,8 +13,7 @@ import {
   verifierPassed,
   type Task,
 } from "./flow-policy";
-import { state, load, save } from "./flow-state";
-import { worktreePrint } from "./flow-store";
+import { state, load, save, taskPrint } from "./flow-state";
 
 // taskId: the task open at the start; an answer for another task's work is dropped. No task
 // then: it counts for the task the work starts (a verifier's first edit may create it).
@@ -46,7 +45,7 @@ export async function flowSpawned(
   const taskId = state.task?.id; // the task at spawn, before any await
   spawned.set(agentId, {
     kind,
-    print: await worktreePrint($),
+    print: await taskPrint($),
     at: await $.clock.now(),
     taskId,
   });
@@ -103,7 +102,7 @@ export async function flowReviewStart(
   if (!state.task) return undefined;
   const taskId = state.task.id; // read before the awaits below
   return {
-    print: await worktreePrint($),
+    print: await taskPrint($),
     at: await $.clock.now(),
     taskId,
   };
@@ -125,6 +124,6 @@ export async function flowReviewEnd(
 export async function flowNoReviewer($: EngineInterface, reason: string) {
   await load($);
   if (!state.task) return;
-  state.task = onNoReviewer(state.task, reason, await worktreePrint($));
+  state.task = onNoReviewer(state.task, reason, await taskPrint($));
   await save($);
 }

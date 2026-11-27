@@ -3,7 +3,8 @@ import type { TestBody } from "claude-code/testing";
 
 // kit's own mod is loaded around the test; these hooks only answer what is beneath it.
 // `git`: src/a.ts's blob in git's index and in the worktree; absent, no git and flow goes by
-// tool calls. A commit makes the index the worktree's.
+// tool calls. A commit makes the index the worktree's. Its prints are the session root's only;
+// a folder under /p/app/.claude/worktrees/<name> is a repo of its own (rev-parse).
 function result(value: unknown, failed: boolean): ToolCallResult {
   return failed ? { result: value, isError: true } : { result: value };
 }
@@ -11,7 +12,18 @@ function result(value: unknown, failed: boolean): ToolCallResult {
 export function world(
   on: On,
   store: Record<string, unknown> = {},
-  git?: { index: string; work: string; fresh?: string },
+  // `hold`: the next git call `at` names (default: a rev-parse in a worktree) calls `entered`
+  // and waits for `until`.
+  git?: {
+    index: string;
+    work: string;
+    fresh?: string;
+    hold?: {
+      entered: () => void;
+      until: Promise<void>;
+      at?: (sub: string | undefined, cwd: string) => boolean;
+    };
+  },
   out: (command: string) => string = () => "",
   tokens?: number, // the context reading; absent: none
 ) {
@@ -43,18 +55,32 @@ export function world(
         },
       };
     const edited = git.work !== git.index;
+    // A worktree under the session root is a repo of its own; the rest is the root's.
+    const cwd = e.init?.cwd ?? "/p/app";
+    const hold = git.hold;
+    const at =
+      hold?.at ??
+      ((s: string | undefined, dir: string) =>
+        s === "rev-parse" && dir.includes("/.claude/worktrees/"));
+    if (hold && at(sub, cwd)) {
+      git.hold = undefined;
+      hold.entered();
+      await hold.until;
+    }
     const stdout =
-      sub === "ls-files"
-        ? flag === "-s"
-          ? `100644 ${git.index} 0\tsrc/a.ts\n`
-          : `${git.fresh ?? ""}\n`
-        : sub === "diff"
-          ? edited
-            ? "M\tsrc/a.ts\n"
-            : ""
-          : sub === "hash-object"
-            ? `${git.work}\n`
-            : "";
+      sub === "rev-parse"
+        ? `${/\/\.claude\/worktrees\/[^/]+/.exec(cwd)?.[0] ? cwd.replace(/(\/\.claude\/worktrees\/[^/]+).*/, "$1") : "/p/app"}\n`
+        : sub === "ls-files"
+          ? flag === "-s"
+            ? `100644 ${git.index} 0\tsrc/a.ts\n`
+            : `${git.fresh ?? ""}\n`
+          : sub === "diff"
+            ? edited
+              ? "M\tsrc/a.ts\n"
+              : ""
+            : sub === "hash-object"
+              ? `${git.work}\n`
+              : "";
     return {
       value: {
         exitCode: 0,

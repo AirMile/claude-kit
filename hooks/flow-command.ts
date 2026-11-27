@@ -1,9 +1,9 @@
 import type { CommandSpec, EngineInterface } from "claude-code";
 
 import { openLine } from "./flow-evidence";
-import { load, state } from "./flow-state";
+import { load, state, taskPrint } from "./flow-state";
 import { type Mark, MARKS, marked, report } from "./flow-log";
-import { readLog, worktreePrint, writeLog } from "./flow-store";
+import { readLog, writeLog } from "./flow-store";
 
 export const flowCommand: CommandSpec = {
   name: "flow",
@@ -25,7 +25,7 @@ export async function flowCommandRun($: EngineInterface, e: { args: string }) {
       : `No mark: /flow mark <n> ${MARKS.join("|")}.\n`;
   }
   await load($);
-  const open = openLine(state.task, await worktreePrint($));
+  const open = openLine(state.task, await taskPrint($));
   return {
     text: open + "\n" + note + report(await readLog($)),
   };

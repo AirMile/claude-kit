@@ -85,6 +85,62 @@ export async function saveTask(
   await $.store.set(TASKS_KEY, recent).catch(() => {});
 }
 
+// A directory's git root; undefined outside git or when git cannot tell. Asked again each time:
+// a folder can become a worktree.
+async function toplevel(
+  $: EngineInterface,
+  dir: string,
+): Promise<string | undefined> {
+  const r = await $.process
+    .run(["git", "rev-parse", "--show-toplevel"], {
+      cwd: dir,
+      timeoutMs: 10_000,
+    })
+    .catch(() => null);
+  const top = r && r.exitCode === 0 ? r.stdout.trim() : "";
+  return top || undefined;
+}
+
+// An absolute path with `\` read as `/` and `.` and `..` resolved; case kept.
+function plain(path: string): string {
+  const parts: string[] = [];
+  for (const s of path.replace(/\\/g, "/").split("/")) {
+    if (s === "" || s === ".") continue;
+    if (s === "..") parts.pop();
+    else parts.push(s);
+  }
+  return `${/^[\\/]/.test(path) ? "/" : ""}${parts.join("/")}`;
+}
+
+// Whether a folder lies in a repo root (both absolute).
+export function within(dir: string, root: string): boolean {
+  const d = plain(dir);
+  const r = plain(root);
+  return d === r || d.startsWith(`${r}/`);
+}
+
+// The git root of a file in another repo than the session root's (a worktree under it, or a
+// second checkout); undefined when it is the same repo or either cannot be told. A new file's
+// folder may not exist yet: its nearest parents are asked, three at most.
+export async function awayRoot(
+  $: EngineInterface,
+  path: string,
+): Promise<string | undefined> {
+  const root = await $.session.root().catch(() => undefined);
+  if (!root) return undefined;
+  const mine = await toplevel($, root);
+  if (!mine) return undefined;
+  let dir = path.replace(/\\/g, "/");
+  for (let i = 0; i < 4; i += 1) {
+    const up = dir.replace(/\/[^/]*$/, "");
+    if (!up || up === dir) return undefined;
+    dir = up;
+    const theirs = await toplevel($, dir);
+    if (theirs) return theirs === mine ? undefined : theirs;
+  }
+  return undefined;
+}
+
 // The worktree's fingerprint: each code file's content (git's blob id, never written), docs
 // left out. It names the content, not the change from HEAD, so a commit leaves it as it was.
 // Undefined outside git: flow then goes by the tool calls.
