@@ -61,6 +61,9 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
 - Skill Feedback inbox: `~/.agents/kit/feedback.md`, one Markdown line per point (format in its
   header), written by the model in any project and read by `/improve`. No script
 - `skills/agy/SKILL.md`: Gemini through the `agy` CLI, parallel to `codex`
+- `skills/obsidian/SKILL.md`: the user-facing side in the Obsidian vault (backlog note, notes,
+  the `docs` link from the vault to the repo); `hooks/session-backlog.cjs` (SessionStart, + test)
+  adds one line on that note and link, silent for non-Obsidian backlogs
 - `skills/<name>/scripts/`: deterministic helpers (commit: `staging-check.js`, setup:
   `migrate-v1.js` and `detect-tools.js` (+ test: Test/Lint/Build/Security/Quality from manifests), scan: `seo-facts.js`, codex: `codex-status.js`), called via `${CLAUDE_SKILL_DIR}` and allowed in the
   skill's `allowed-tools`
@@ -111,8 +114,8 @@ product and `§ Backlog`, `setup` for AGENTS/decisions, `task-readiness/referenc
 
 ## Backlog
 
-- The backlog is the Todoist project `claude-kit` (the newer one, not `Claude-Kit`; sections
-  `Nu`, `Hierna`, `Ideeën`). Do not keep a list in the repo.
+- The backlog is the Obsidian note `~/Documents/Vault/Projects/claude-kit/claude-kit backlog.md`
+  (sections `Nu`, `Hierna`, `Ideeën`). Do not keep a list in the repo.
 - Add items only after the user confirms; complete one only after the user confirms.
 
 ## Git

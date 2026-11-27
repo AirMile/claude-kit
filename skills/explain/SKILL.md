@@ -53,4 +53,4 @@ before…", not "on which line…".
 ## 4. Close
 
 Offer: go deeper into one part, explain a related piece, or stop. Write notes to a file only
-when the user asks (to the Obsidian vault only on explicit request).
+when the user asks (to the project's folder in the Obsidian vault, per the `obsidian` skill).

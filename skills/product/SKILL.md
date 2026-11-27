@@ -11,20 +11,21 @@ later step reads. When they exist, it updates them instead.
 
 ## The backlog
 
-`AGENTS.md § Backlog` names where it lives (a Todoist project, an issue tracker) and its rules.
-It is the only list: no copy in the repo, no `docs/roadmap.md`.
+`AGENTS.md § Backlog` names where it lives (an Obsidian note, a Todoist project, an issue
+tracker) and its rules. It is the only list: no copy in the repo, no `docs/roadmap.md`.
 
-- Read and write it with that tool (Todoist: the connector's tools). Every write waits for the
-  confirmation below.
-- No `## Backlog` yet → ask once where it lives (Todoist project (Recommended with a Todoist
-  connection) / another tracker / none), create the project only on that answer, and write the
-  section (format below; none → the one line `- No backlog.`, so it isn't asked again). No
-  `AGENTS.md` yet → note the answer for `/setup`.
-- None, or unreachable (no connector, e.g. in Codex) → show the items in the chat and say they
-  were not saved. Never create a file for them instead.
-- Items added to Todoist, and the notes vault in the user's instructions has no view of them →
-  offer `Projects/<Name>/<Name> taken.md` there with a `todoist` query block (shaped like an
-  existing one); write it only on a yes.
+- Read and write it there: an Obsidian note per the `obsidian` skill (Read/Edit), Todoist with
+  the connector's tools. Every write waits for the confirmation below.
+- No `## Backlog` yet → ask once where it lives (Obsidian note (Recommended when the user's
+  instructions name a notes vault) / Todoist project / another tracker / none), create the note
+  or project only on that answer and, in **New**, only at Accept, and write the section
+  (Obsidian: the `obsidian` skill's format, plus its docs link once `docs/` exists; others:
+  format below; none → the one line `- No backlog.`, so it
+  isn't asked again). No `AGENTS.md` yet → note the answer for `/setup`.
+- None, or unreachable (no connector, e.g. Todoist in Codex) → show the items in the chat and
+  say they were not saved. Never create a file in the repo for them instead.
+- Items added to Todoist, and the notes vault has no view of them → offer to move the backlog to
+  an Obsidian note (`obsidian` skill § Moving from Todoist); write only on a yes.
 - The repo has a `docs/roadmap.md` without a `moved to the backlog` line → offer to move its
   open lines and `## Later`, only those the backlog lacks. Only once all of them are in, add
   `<!-- moved to the backlog <date> -->` at its top. The file stays; delete it only on an
@@ -125,7 +126,8 @@ in dialogue, then pick which land on the backlog via **Update**. Follow
 ```markdown
 ## Backlog
 
-- The backlog is <the Todoist project `<name>` (sections `<in progress>`, `<next>`, `<ideas>`)>.
+- The backlog is <the Obsidian note `<path>` | the Todoist project `<name>`> (sections
+  `<in progress>`, `<next>`, `<ideas>`).
   Do not keep a list in the repo.
 - Add items only after the user confirms; complete one only after the user confirms.
 ```
