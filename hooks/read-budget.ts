@@ -35,7 +35,7 @@ export function countRead(
 ): string | undefined {
   state.calls++;
   state.chars += chars;
-  if (state.noted || (state.calls < 5 && state.chars < 15000))
+  if (state.noted || state.calls < 5)
     return undefined;
   state.noted = true;
   return `kit: this turn read ${state.calls} times (${state.chars} characters) itself. Hand the rest of the exploring to mcp__kit__delegate as one brief (role search or research); keep the decision here.`;

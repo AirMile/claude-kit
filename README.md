@@ -74,9 +74,8 @@ claude plugin marketplace add ~/Projects/claude-kit
 claude plugin install kit@airmile
 ```
 
-The install is a copy in `~/.claude/plugins/cache/airmile/kit/<version>/`: edits in the clone
-take effect only after a version bump + update (see [Update](#update--uninstall)); `/commit`
-pushes them to GitHub.
+The plugin is read straight from the clone, uncommitted edits included (see
+[Update](#update--uninstall)); `/commit` pushes them to GitHub.
 
 Check with `claude plugin details kit`: it should list 18 skills, 1 agent and 2 hooks. Skills
 are available in **new** sessions; in a running session use `/reload-plugins`.
@@ -109,7 +108,10 @@ On Windows, copy the file instead (symlinks need admin rights there).
 
 ### Update / uninstall
 
-- Edits to this repo take effect only after you bump `version` in `.claude-plugin/plugin.json`, then `claude plugin marketplace update airmile && claude plugin update kit@airmile` and start a new session. Without the bump the cached copy stays as it was.
+- A local-folder install reads this repo directly: start a new session or run `/reload-plugins`
+  to use edits. A release for the copies (Codex, claude.ai) bumps `version` in both
+  `plugin.json` files. A GitHub install updates with `claude plugin marketplace update airmile
+  && claude plugin update kit@airmile`.
 - The desktop app can load its own copy from the claude.ai marketplace `claude-kit` (synced from
   GitHub) instead. After a push, press **Check for updates** there (claude.ai › Add › Manage
   marketplaces; "Sync automatically" has lagged behind) and start a new session.
@@ -573,7 +575,7 @@ appear in Claude's skill list, so it costs no context).
    and replacing beat adding; net growth needs a one-sentence reason; budgets still hold.
 4. **Check**: budgets, `claude plugin validate`, the push-guard test when hooks changed, a real
    run of a touched script.
-5. **Commit** in the kit repo as `fix(<skill>)` or `refactor(<skill>)`; to use it, bump `version` in `.claude-plugin/plugin.json`, then `claude plugin marketplace update airmile && claude plugin update kit@airmile` and start a new session.
+5. **Commit** in the kit repo as `fix(<skill>)` or `refactor(<skill>)`; to use it, start a new session or run `/reload-plugins`.
 
 Together with the Skill Feedback rule in your global instructions this is the loop: friction
 is noticed during a run → raised after the report and saved in `~/.agents/kit/feedback.md` →
@@ -1297,8 +1299,8 @@ node hooks/push-guard.test.cjs
 claude plugin details kit
 ```
 
-Then run the skill on a sandbox project in `claude --plugin-dir ~/Projects/claude-kit`, or
-bump `version` in `.claude-plugin/plugin.json`, then `claude plugin marketplace update airmile && claude plugin update kit@airmile` and start a new session.
+Then run the skill on a sandbox project in a new session (a local-folder install reads the
+repo), or with `claude --plugin-dir ~/Projects/claude-kit`.
 
 The scripts can also be run by hand: `node skills/commit/scripts/staging-check.js` in any repo,
 `node skills/setup/scripts/migrate-v1.js <project>` on a v1 project (read-only), and

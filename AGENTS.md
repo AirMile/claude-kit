@@ -135,10 +135,10 @@ product and `§ Backlog`, `setup` for AGENTS/decisions, `task-readiness/referenc
   `node hooks/codex-hooks.test.cjs`. At the root that validate only checks `marketplace.json`,
   never the mod: for hooks, copy `.claude-plugin/{plugin.json,types}`, `hooks`, `skills`,
   `agents` to a scratch dir and validate there. `node hooks/fixtures-shellcheck.test.cjs`
-  (shellcheck on `evals/*/fixture.sh`; skips when `shellcheck` isn't installed). The install is a cached copy per version: to
-  use edits, bump `version` in both `plugin.json` files, then
-  `claude plugin marketplace update airmile && claude plugin update kit@airmile` (or test with
-  `claude --plugin-dir .`). The desktop app can load the claude.ai copy (marketplace
+  (shellcheck on `evals/*/fixture.sh`; skips when `shellcheck` isn't installed). The local CLI
+  install reads this folder directly, uncommitted work included: a new session or
+  `/reload-plugins` uses edits. A release (Codex, claude.ai) still bumps `version` in both
+  `plugin.json` files. The desktop app can load the claude.ai copy (marketplace
   `claude-kit`, from GitHub) instead: after a push the user presses **Check for updates** there
   (claude.ai › Add › Manage marketplaces) and starts a new session.
 

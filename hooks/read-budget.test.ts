@@ -34,16 +34,10 @@ test("only read tools and wholly reading shell commands count", async () => {
     expect(isExplore(tool)).toBe(false);
 });
 
-test("five calls or 15000 characters send one note per prompt", async () => {
+test("the fifth read sends one note per prompt, however large the reads", async () => {
   const calls = readBudget();
   for (let i = 0; i < 4; i++)
-    expect(countRead(calls, 10)).toBe(undefined);
-  expect(countRead(calls, 10)).toContain("read 5 times (50 characters)");
+    expect(countRead(calls, 20000)).toBe(undefined);
+  expect(countRead(calls, 10)).toContain("read 5 times (80010 characters)");
   expect(countRead(calls, 20000)).toBe(undefined);
-  const chars = readBudget();
-  expect(countRead(chars, 14999)).toBe(undefined);
-  expect(countRead(chars, 1)).toContain(
-    "read 2 times (15000 characters)",
-  );
-  expect(countRead(readBudget(), 15000)).toContain("read 1 times");
 });

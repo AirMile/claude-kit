@@ -16,8 +16,9 @@ criterion fail).
 
 ## Rules
 
-- **Do not edit source files.** You may write throwaway scripts (e.g. a Playwright script) under
-  a temp directory inside the project, and must delete them before returning.
+- **Do not edit source files.** Throwaway scripts (e.g. a Playwright script) go in a new folder
+  you create for this run (`mktemp -d`; inside the project only when imports need it). Never
+  write or delete a file you did not create; remove your folder before returning.
 - Read the spec, then the changed files, then the tests that claim to cover each criterion.
 - Asked to re-check named criteria after a fix → judge only those; the suite still runs whole.
 - Run the full test suite and typecheck/lint (commands from `AGENTS.md`). `Security:` or

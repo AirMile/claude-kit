@@ -90,7 +90,8 @@ Run what applies, all from the repo root:
 - `node hooks/push-guard.test.cjs` when hooks changed
 - a touched script: run it once on a realistic case
 - the skill's evals again (same command): every case at least its baseline score, the new
-  regression cases pass. A drop → revise the change, don't commit it.
+  regression cases pass. A drop → rerun that case with `--runs 2 --keep-temp`; still
+  lower → revise the change, don't commit it.
 
 Fail → fix before reporting.
 

@@ -85,13 +85,12 @@ test("read notes preserve tool context, exclude subagents and checks, and reset 
   expect(String(fifth.context)).toContain("read 5 times (5 characters)");
   expect((await read($)).context).toEqual(["existing context"]);
   await prompt($);
-  expect((await read($, 15000)).context?.length).toBe(2);
+  expect((await read($, 15000)).context?.length).toBe(1);
   const notes = (w.store.flowLog as { event: string; text: string }[]).filter(
     (e) => e.event === "read-note",
   );
   expect(notes.map((e) => e.text)).toEqual([
     "5 calls, 5 chars",
-    "1 calls, 15000 chars",
   ]);
 });
 
