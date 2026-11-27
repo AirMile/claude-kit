@@ -39,14 +39,14 @@ import { setEffortLock } from "./model-switch";
 // block) above it: shown while the pointer rests on its button, kept open by a press. Left:
 // plan usage (band-meters.tsx: text on a terminal, elsewhere a 5h and a week ring of all three
 // plans, whose table holds the GPT and Gemini switches; register.tsx measures after each turn).
-// Right: the context figure, a button opening Compact and Clear, run just after the press; the
-// model with the profile's effort, or with the profile off the effort between ‹
-// and ›, a step down or up (below low: the session's own); then switches a press cycles: the
-// profile (◔ ◑ ● for Lean, Balanced, Quality from auto-model.ts, ○ dim for off) and the
-// limit hold (limit-guard.ts): off, Limit (pause at the plan limit, the cache warm while work
-// is open) or Warm (also warm while idle, keep-warm.ts), with the pings so far. The plan-limit
-// pause with Resume now (limit-guard.ts) follows on its own line. It yields to a survey. /band
-// draws it again; /warm toggles the hold's keep warm.
+// Right: the model with the profile's effort, or with the profile off the effort between ‹
+// and ›, a step down or up (below low: the session's own); then three buttons side by side:
+// the context figure, opening Compact and Clear, run just after the press, and two switches a
+// press cycles: the profile (◔ ◑ ● for Lean, Balanced, Quality from auto-model.ts, ○ dim for
+// off) and the limit hold (limit-guard.ts): off, Limit (pause at the plan limit, the cache warm
+// while work is open) or Warm (also warm while idle, keep-warm.ts), with the pings so far. The
+// plan-limit pause with Resume now (limit-guard.ts) follows on its own line. It yields to a
+// survey. /band draws it again; /warm toggles the hold's keep warm.
 
 export const bandCommand: CommandSpec = {
   name: "band",
@@ -201,14 +201,6 @@ export function kitBand(on: On) {
             {e.surface === "terminal" ? meters : trigger("usage", meters)}
           </Box>
           <Box key="kit-actions" gap={1} flexShrink={0}>
-            {trigger(
-              "ctx",
-              <Button
-                key="kit-ctx"
-                label={ctx ? ctx.value : "–"}
-                onPress={() => unfold($, "ctx")}
-              />,
-            )}
             {run.auto ? null : (
               <Box key="kit-effort" gap={0}>
                 <Button
@@ -236,6 +228,14 @@ export function kitBand(on: On) {
               {run.auto && run.effort ? " " : ""}
               {displayName(run.model)}
             </Text>
+            {trigger(
+              "ctx",
+              <Button
+                key="kit-ctx"
+                label={ctx ? ctx.value : "–"}
+                onPress={() => unfold($, "ctx")}
+              />,
+            )}
             <Button
               key="kit-profile"
               label={PROFILE_MARK[run.auto ? now : "off"]}

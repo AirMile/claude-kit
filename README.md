@@ -844,11 +844,12 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   `/kitcompact off|on` per project (`/autocompact` is Claude Code's own command). A compact that fails turns it off until `/clear`.
 - **Above the prompt**, only while the spec is `defined` (the safe point): your context % and
   whether a fresh start is worth it (from 60%). After a `/clear` the old figure is dropped.
-- **The band** above the prompt, one line: usage at the left (see **Usage** below), then
-  the model with its effort, the profile and the limit button. The context figure opens
-  a menu in its own block above the band (hover to peek, press to keep it open): **Compact**
-  and **Clear**, run at once or when the running turn ends. The buttons at the right are
-  switches a press cycles, none depending on another:
+- **The band** above the prompt, one line: usage at the left (see **Usage** below); at the
+  right the model with its effort, then three buttons: the context figure, the profile and
+  the limit button. The context figure opens a menu in its own block above the band (hover
+  to peek, press to keep it open): **Compact** and **Clear**, run at once or when the
+  running turn ends. The other buttons are switches a press cycles, none depending on
+  another:
   - **Profile**: `◔` → `◑` → `●` (Lean, Balanced, Quality) → `○` dim (off). Beside it
     the model and effort kit set for the last prompt (`Opus 5.5 · medium`), which can differ
     from the session setting in the app's model picker.
@@ -1086,12 +1087,13 @@ task-readiness command, falling back to the current `feat/<slug>` or `fix/<slug>
   turn, sleep included; a ping's own turn does not reset them.
 
 - **`/band`** draws the band above the prompt again; folded (`[+]`)? `ctrl+x ctrl+a` unfolds it.
-- **Usage** at the band's left: the context, then the 5-hour and 7-day limits, updated after
-  every turn. On a terminal as text: `5h 55%·2% 2h53m`, Claude's share, ChatGPT's dim beside it
-  and Claude's time until reset. In the desktop app (and wherever the app draws pictures) as one
-  ring per window, `5h` and `wk`, each with three arcs: Claude outside, ChatGPT between, Gemini
-  inside, red from 90%. Claude's share and reset always stand beside the ring; pointing at the
-  rings shows all three plans in figures, with the **GPT** and **Gemini** switches (`on` /
+- **Usage** at the band's left: the 5-hour and 7-day limits, updated after every turn. On a
+  terminal as text: `5h 55%·2% 2h53m`, Claude's share, ChatGPT's dim beside it and Claude's
+  time until reset. In the desktop app (and wherever the app draws pictures) as one ring per
+  window, 5-hour then week, each with three arcs in the plan's colour: Claude outside, ChatGPT
+  between, Gemini inside. Beside a ring stands only Claude's time until reset (`5h –` or
+  `wk –` while there is none); pointing at the rings shows all three plans in figures, with
+  the **GPT** and **Gemini** switches (`on` /
   `off`, kept across chats; in a terminal `/gpt` and `/gemini`). Gemini's come from `agy --print=/usage` (no model
   run, no tokens), read at most every 10 minutes while the rings are drawn; without agy or a
   reading its arc stays empty.

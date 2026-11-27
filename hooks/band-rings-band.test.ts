@@ -12,19 +12,28 @@ const twice = async ($: $) => {
   await wait();
 };
 
-test("the desktop band draws a 5h and a week ring, with Claude's figures beside each", async ($, on) => {
+test("the desktop band draws a 5h and a week ring, with only the time until reset beside each", async ($, on) => {
   bandWorld(on);
   await twice($);
   const ui = await mountBand($, "desktop");
   expect(await ui.findAll({ type: "Svg" })).toHaveLength(2);
-  expect(await ui.find({ type: "Text", text: "6%" })).toBeDefined();
-  expect(await ui.find({ type: "Text", text: " 4h25m" })).toBeDefined();
-  expect(await ui.find({ type: "Text", text: "35%" })).toBeDefined();
+  // the ring is the share: no percentage beside it, only the time
+  expect((await ui.find({ key: "kit-meters" }))?.text).toBe("4h25m4d13h");
   // the hover table names all three with their own figures
   for (const name of ["● Claude", "● GPT", "● Gemini"])
     expect(await ui.find({ type: "Text", text: name })).toBeDefined();
   expect(await ui.find({ type: "Text", text: "wk 25%" })).toBeDefined();
   expect(await ui.find({ type: "Text", text: "5h 10%" })).toBeDefined();
+  await ui.unmount();
+});
+
+test("on the right the model comes first, then context, profile and limit side by side", async ($, on) => {
+  bandWorld(on);
+  await twice($);
+  const ui = await mountBand($, "desktop");
+  expect((await ui.find({ key: "kit-actions" }))?.text).toMatch(
+    /Sonnet 5\.5[^k]*\d+k[○◔◑●]⏸ Off$/,
+  );
   await ui.unmount();
 });
 
@@ -50,7 +59,9 @@ test("agy is asked at most every 10 minutes, read-only", async ($, on) => {
 });
 
 test("an agy that answers /usage with anything else is not asked again", async ($, on) => {
-  const w = bandWorld(on, { usage: JSON.stringify({ status: "SUCCESS", response: "hi" }) });
+  const w = bandWorld(on, {
+    usage: JSON.stringify({ status: "SUCCESS", response: "hi" }),
+  });
   await twice($);
   w.clock.now += 11 * 60_000;
   await twice($);

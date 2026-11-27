@@ -12,7 +12,7 @@ import {
 // The band's plan meters, per window (5h, week). A terminal draws text: Claude's share with
 // ChatGPT's dim beside it and Claude's time until reset (`5h 30%·2% 3h29m`). Every other
 // surface draws a ring per window (band-rings.ts: Claude, ChatGPT and Gemini in one) with
-// Claude's share and reset beside it, and on hover a table of all three with the GPT and Gemini
+// Claude's time until reset beside it, and on hover a table of all three with the GPT and Gemini
 // switches. A plan switched off has no figures.
 
 // One usage figure: "ctx 266k", "session 70% · 1h18m"; pct colors it from 60% and 85%.
@@ -112,7 +112,8 @@ export function meterLine(ui: Ui, rows: readonly MeterRow[]) {
     ));
 }
 
-// Per window its ring, with Claude's share and reset always in words beside it.
+// Per window its ring, with Claude's time until reset beside it: the ring shows the shares and
+// its table the figures. Without a time the window is named (`5h –`).
 export function meterRings(ui: DrawnUi, rows: readonly MeterRow[]) {
   const { Box, Svg, Text } = ui;
   return rows.map((r) => (
@@ -134,11 +135,7 @@ export function meterRings(ui: DrawnUi, rows: readonly MeterRow[]) {
         width={RING_SIZE}
         height={RING_SIZE}
       />
-      <Text>
-        <Text dimColor>{`${r.label} `}</Text>
-        <Text bold>{r.claude?.value ?? "–"}</Text>
-        {r.claude?.note ? <Text dimColor>{` ${r.claude.note}`}</Text> : null}
-      </Text>
+      <Text dimColor>{r.claude?.note ?? `${r.label} –`}</Text>
     </Box>
   ));
 }
