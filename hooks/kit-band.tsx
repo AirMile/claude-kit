@@ -37,11 +37,10 @@ import { setEffortLock } from "./model-switch";
 
 // The band above the prompt, one line that never wraps, an open menu (a bordered
 // block) above it: shown while the pointer rests on its button, kept open by a press. Left:
-// context and plan usage (band-meters.tsx: text on a terminal, elsewhere a 5h and a week ring
-// of all three plans, whose table holds the GPT and Gemini switches; register.tsx measures
-// after each turn); the context figure is a button opening Compact and Clear, run just after
-// the press.
-// Right: the model with the profile's effort, or with the profile off the effort between ‹
+// plan usage (band-meters.tsx: text on a terminal, elsewhere a 5h and a week ring of all three
+// plans, whose table holds the GPT and Gemini switches; register.tsx measures after each turn).
+// Right: the context figure, a button opening Compact and Clear, run just after the press; the
+// model with the profile's effort, or with the profile off the effort between ‹
 // and ›, a step down or up (below low: the session's own); then switches a press cycles: the
 // profile (◔ ◑ ● for Lean, Balanced, Quality from auto-model.ts, ○ dim for off) and the
 // limit hold (limit-guard.ts): off, Limit (pause at the plan limit, the cache warm while work
@@ -160,12 +159,12 @@ export function kitBand(on: On) {
       const open = menu === m;
       // The blank line below the block belongs to the hovered Box (padding, not margin), so the
       // pointer crossing it from the button keeps the menu shown. Each block sits above its
-      // button, at the left.
+      // button: the usage menu at the left, the context menu at the right.
       return (
         <Box
           key={`kit-menu-${m}`}
           flexDirection="column"
-          alignItems="flex-start"
+          alignItems={m === "ctx" ? "flex-end" : "flex-start"}
           paddingBottom={1}
           display={open ? "flex" : "none"}
           hover={open ? undefined : { scope: `kit-${m}`, display: "flex" }}
@@ -199,6 +198,9 @@ export function kitBand(on: On) {
         {menus}
         <Box justifyContent="space-between" gap={2}>
           <Box key="kit-usage" gap={2} flexShrink={1}>
+            {e.surface === "terminal" ? meters : trigger("usage", meters)}
+          </Box>
+          <Box key="kit-actions" gap={1} flexShrink={0}>
             {trigger(
               "ctx",
               <Button
@@ -207,9 +209,6 @@ export function kitBand(on: On) {
                 onPress={() => unfold($, "ctx")}
               />,
             )}
-            {e.surface === "terminal" ? meters : trigger("usage", meters)}
-          </Box>
-          <Box key="kit-actions" gap={1} flexShrink={0}>
             {run.auto ? null : (
               <Box key="kit-effort" gap={0}>
                 <Button

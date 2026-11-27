@@ -4,9 +4,15 @@ import { ringSvg } from "./band-rings";
 
 // The arcs drawn: radius, colour and drawn length of every circle with a dash.
 const arcs = (svg: string) =>
-  [...svg.matchAll(/r="([\d.]+)"[^>]*?stroke="(#[0-9A-F]{6})"[^>]*?stroke-dasharray="([\d.]+) ([\d.]+)"/g)].map(
-    (m) => ({ r: Number(m[1]), colour: m[2], share: Number(m[3]) / Number(m[4]) }),
-  );
+  [
+    ...svg.matchAll(
+      /r="([\d.]+)"[^>]*?stroke="(#[0-9A-F]{6})"[^>]*?stroke-dasharray="([\d.]+) ([\d.]+)"/g,
+    ),
+  ].map((m) => ({
+    r: Number(m[1]),
+    colour: m[2],
+    share: Number(m[3]) / Number(m[4]),
+  }));
 
 test("one ring holds three arcs: Claude outside, ChatGPT between, Gemini inside", () => {
   const drawn = arcs(ringSvg({ claude: 50, gpt: 25, gemini: 75 }));
@@ -19,12 +25,14 @@ test("an unread plan keeps its track and draws no arc, so the others stay in pla
   const svg = ringSvg({ claude: 10, gemini: 20 });
   expect(svg.match(/stroke-opacity/g)).toHaveLength(3);
   expect(arcs(svg).map((a) => a.colour)).toEqual(["#D97757", "#4285F4"]);
-  expect(arcs(svg)[1]!.r).toBe(arcs(ringSvg({ claude: 10, gpt: 1, gemini: 20 }))[2]!.r);
+  expect(arcs(svg)[1]!.r).toBe(
+    arcs(ringSvg({ claude: 10, gpt: 1, gemini: 20 }))[2]!.r,
+  );
 });
 
-test("an arc turns red from 90%, is clamped to a full circle, and a little use stays visible", () => {
+test("an arc keeps its plan's colour when nearly full, is clamped to a full circle, and a little use stays visible", () => {
   const drawn = arcs(ringSvg({ claude: 90, gpt: 140, gemini: 0.4 }));
-  expect(drawn.map((a) => a.colour)).toEqual(["#E5484D", "#E5484D", "#4285F4"]);
+  expect(drawn.map((a) => a.colour)).toEqual(["#D97757", "#10A37F", "#4285F4"]);
   expect(Math.round(drawn[1]!.share * 100)).toBe(100);
   expect(drawn[2]!.share > 0.04).toBe(true);
   expect(arcs(ringSvg({ claude: 0, gpt: Number.NaN }))).toEqual([]);

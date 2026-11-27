@@ -17,9 +17,11 @@ export const PLAN_COLOUR: Record<PlanName, string> = {
 };
 export const RING_SIZE = 24; // CSS pixels
 
-const RADIUS: Record<PlanName, number> = { claude: 10.5, gpt: 7.2, gemini: 3.9 };
-const FULL_FROM = 90; // an arc turns red here
-const FULL_COLOUR = "#E5484D";
+const RADIUS: Record<PlanName, number> = {
+  claude: 10.5,
+  gpt: 7.2,
+  gemini: 3.9,
+};
 const MIN_ARC = 1.2; // a little use stays visible, on the small inner arc too
 
 const circle = (r: number, rest: string) =>
@@ -34,12 +36,12 @@ export function ringSvg(shares: Shares): string {
     if (pct === undefined || !(pct > 0)) return track;
     const round = 2 * Math.PI * r;
     const used = Math.min(round, Math.max(MIN_ARC, (pct / 100) * round));
-    const colour = pct >= FULL_FROM ? FULL_COLOUR : PLAN_COLOUR[plan];
+    // An arc always keeps its plan's colour, so the three stay apart when nearly full.
     return (
       track +
       circle(
         r,
-        `stroke="${colour}" stroke-dasharray="${used.toFixed(2)} ${round.toFixed(2)}" transform="rotate(-90 12 12)"`,
+        `stroke="${PLAN_COLOUR[plan]}"stroke-dasharray="${used.toFixed(2)} ${round.toFixed(2)}" transform="rotate(-90 12 12)"`,
       )
     );
   });
