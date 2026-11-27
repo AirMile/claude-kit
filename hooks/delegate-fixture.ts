@@ -37,6 +37,7 @@ export function world(
     usage?: { fails: boolean }; // Claude's week reads 0% used, until the read fails
     agyJsons?: string[]; // one stdout per agy run, in order (a retry gets the second)
     noAgy?: boolean; // agy is not installed
+    agyUsage?: string; // what `agy --print=/usage` prints; absent: the model list (no reading)
     brokenKey?: string; // reading this store key fails
     brokenWrite?: string; // writing this store key fails
     offDuring?: "diff" | "status" | "agy"; // the Gemini switch is turned off during that run
@@ -115,7 +116,10 @@ export function world(
           exitCode: 0,
           isStdoutTruncated: false,
           isStderrTruncated: false,
-          stdout: AGY_MODELS,
+          stdout:
+            opts.agyUsage && e.argv.includes("--print=/usage")
+              ? opts.agyUsage
+              : AGY_MODELS,
           stderr: "",
         },
       };

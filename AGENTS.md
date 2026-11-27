@@ -21,7 +21,8 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   above the prompt (`hooks/kit-band.tsx`: one line of usage, switches a press
   cycles (the profile, the limit button (Off (default), Warm, Limit: pause + warm while work is open; per chat)), the effort with ‹ › when the profile is off; the context menu in
   `hooks/band-menus.tsx`, the plan meters in `hooks/band-meters.tsx`: text on a terminal, elsewhere a 5h and a
-  week ring of Claude, ChatGPT and Gemini (the pure `hooks/band-rings.ts`) with the GPT and
+  week ring of Claude, ChatGPT and Gemini (the pure `hooks/band-rings.ts`; a plan switched off
+  leaves the ring, its figures stay in the table) with the GPT and
   Gemini switches in their hover table (`hooks/gemini-switch.ts`, `/gemini` in
   `hooks/gemini-command.ts`), Gemini's figures from
   `agy --print=/usage` in `hooks/agy-usage.ts`), model/effort per prompt and subagent
@@ -30,14 +31,18 @@ as `/kit:<skill>` (or bare `/<skill>` when unambiguous).
   `hooks/flow-evidence.ts` with hold advice in `hooks/flow-advice.ts`, task state in `hooks/flow-state.ts`, storage and git fingerprint in
   `hooks/flow-store.ts`: each change task's
   track light/medium/heavy, its note pointing to task-readiness at the start or on growth, the verify gate on `classic.Stop`
-  from the worktree's git fingerprint, the checks (a masked exit status never credits a pass: `;`/`||` after the check, `||` before it in the same list, a background `&` or a pipe without `set -o pipefail` leave it indeterminate; only the check's own trailing `; echo <word>=$?` or `; echo $?` whose output shows 0 passes, and a final echo does not rescue a preceding `||`; a hold says so when no command this task was recognised as a check, counted by `checkCalls`/`shellCalls`, `noCheckSeen` in `hooks/flow-evidence.ts`), reviews and verifier's answer; unverified work stays open, `/flow` in `hooks/flow-command.ts`),
+  from the worktree's git fingerprint (a task with code in another repo, a worktree under the
+  root too, goes by its tool calls and both repos' `AGENTS.md`; its checks count only when run
+  in that repo), the checks (a masked exit status never credits a pass: `;`/`||` after the check, `||` before it in the same list, a background `&` or a pipe without `set -o pipefail` leave it indeterminate; only the check's own trailing `; echo <word>=$?` or `; echo $?` whose output shows 0 passes, and a final echo does not rescue a preceding `||`; a hold says so when no command this task was recognised as a check, counted by `checkCalls`/`shellCalls`, `noCheckSeen` in `hooks/flow-evidence.ts`), reviews and verifier's answer; unverified work stays open, `/flow` in `hooks/flow-command.ts`),
   the checker guard (`hooks/guard.ts` on the pure `hooks/guard-policy.ts`: `/guard on` denies edits to the
   `Protected:` globs of `AGENTS.md § Commands`, the lock in `$.store`), the commit gate (`hooks/commit-gate.ts` on
   `hooks/commit-gate-policy.ts`: `git commit` is denied while the open medium or heavy task is unverified, by the
   Stop gate's own evidence, `/commitgate off` per project),
   `mcp__kit__delegate` (`hooks/delegate.ts` on the pure `hooks/delegate-policy.ts`: review,
   second plan and a named model to GPT (Gemini stands in for a review or plan GPT cannot
-  take), on Claude Pro research and building too, within
+  take, reviews GPT's code, and with both switches on takes its share by whose plan is used
+  less: `hooks/family-turn.ts` on the pure `hooks/family-balance.ts`; a V3 review stays on
+  GPT), on Claude Pro research and building too, within
   ChatGPT's limits (`hooks/gpt-limits.ts`), the newest GPT model per family; the
   Codex side, its catalog, the ChatGPT meters, the GPT switch and a run, in `hooks/codex-run.ts`;
   `/gpt` command in `hooks/gpt-command.ts`; its GPT run, route and writer lock in

@@ -13,7 +13,7 @@ import {
 // ChatGPT's dim beside it and Claude's time until reset (`5h 30%·2% 3h29m`). Every other
 // surface draws a ring per window (band-rings.ts: Claude, ChatGPT and Gemini in one) with
 // Claude's time until reset beside it, and on hover a table of all three with the GPT and Gemini
-// switches. A plan switched off has no figures.
+// switches. A plan switched off leaves the ring and the line; the table still shows its figures.
 
 // One usage figure: "ctx 266k", "session 70% · 1h18m"; pct colors it from 60% and 85%.
 export type Usage = {
@@ -82,19 +82,29 @@ export const NO_FIGURES: readonly MeterRow[] = WINDOWS.map((label) => ({
   label,
 }));
 
-// The two windows, each with whichever plan reported it, without a plan that is switched off.
-export function meterRows(
-  usage: readonly Usage[],
-  on: Switches = BOTH,
-): MeterRow[] {
+// The two windows, each with whichever plan reported it: the hover table's figures, a plan
+// switched off included.
+export function meterRows(usage: readonly Usage[]): MeterRow[] {
   return WINDOWS.map((label) => ({
     label,
     claude: usage.find((u) => u.label === label),
-    gpt: on.gpt ? usage.find((u) => u.label === `gpt ${label}`) : undefined,
-    gemini: on.gemini
-      ? usage.find((u) => u.label === `gem ${label}`)
-      : undefined,
+    gpt: usage.find((u) => u.label === `gpt ${label}`),
+    gemini: usage.find((u) => u.label === `gem ${label}`),
   })).filter((r) => r.claude || r.gpt || r.gemini);
+}
+
+// What the rings and the terminal line draw: the rows without a plan that is switched off.
+export function shownRows(
+  rows: readonly MeterRow[],
+  on: Switches = BOTH,
+): MeterRow[] {
+  return rows
+    .map((r) => ({
+      ...r,
+      gpt: on.gpt ? r.gpt : undefined,
+      gemini: on.gemini ? r.gemini : undefined,
+    }))
+    .filter((r) => r.claude || r.gpt || r.gemini);
 }
 
 // The terminal's line: `5h 30%·2% 3h29m`, GPT's share dim beside Claude's, then Claude's reset.
@@ -140,8 +150,10 @@ export function meterRings(ui: DrawnUi, rows: readonly MeterRow[]) {
   ));
 }
 
-// The rings in figures: a line per plan in its arc's colour, GPT's and Gemini's ending in the
-// switch (shown also while off, so it can be turned on again).
+const SWITCHED: readonly Switched[] = ["gpt", "gemini"];
+
+// The rings in figures: a line per plan in its arc's colour, then GPT's and Gemini's switch
+// (shown also while off, so it can be turned on again).
 export function usageTable(
   ui: Ui,
   rows: readonly MeterRow[],
@@ -163,16 +175,23 @@ export function usageTable(
               {r[p]?.note ? <Text dimColor>{` ${r[p]!.note}`}</Text> : null}
             </Box>
           ))}
-          {p === "claude" ? null : (
+        </Box>
+      ))}
+      {/* The switches share one row under the table: a desktop's native button is taller
+          than a text line, so one per row overlapped the next. */}
+      <Box key="kit-switches" gap={2} alignItems="center">
+        {SWITCHED.map((p) => (
+          <Box key={`kit-switch-row-${p}`} gap={1} alignItems="center">
+            <Text color={PLAN_COLOUR[p]}>{PLAN_NAME[p]}</Text>
             <Button
               key={`kit-switch-${p}`}
               label={on[p] ? "on" : "off"}
               dimColor={!on[p]}
               onPress={() => flip(p)}
             />
-          )}
-        </Box>
-      ))}
+          </Box>
+        ))}
+      </Box>
     </Box>
   );
 }

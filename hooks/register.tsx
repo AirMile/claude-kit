@@ -2,7 +2,6 @@ import type { EngineInterface, Register, SessionUsage } from "claude-code";
 
 import { readGemini } from "./agy-usage";
 import { geminiCommand } from "./gemini-command";
-import { geminiOn } from "./gemini-switch";
 import { autoModel, modeCommand } from "./auto-model";
 import { codexHint, gptOn, gptStatus } from "./codex-run";
 import { delegateTool, delegation, gptCommand } from "./delegate";
@@ -91,12 +90,14 @@ async function refresh($: EngineInterface, figures?: Figures) {
       });
   }
   // The other plans' windows are drawn by the band from what was last read (kit-band.tsx):
-  // here they are only read again when old, while their switch is on.
-  if (await gptOn($)) void gptStatus($);
-  // Only rings show Gemini, so agy is asked only where a surface draws them; in the
-  // background, and a new reading is drawn as it arrives.
+  // here they are only read again when old. Where rings are drawn, their hover table shows a
+  // plan that is switched off too, so both are read there (a meter read runs no model); a
+  // terminal shows GPT only while it is on, and never Gemini.
   const surfaces = await $.session.surfaces().catch(() => []);
-  if (surfaces.some((s) => s !== "terminal") && (await geminiOn($)))
+  const rings = surfaces.some((s) => s !== "terminal");
+  if (rings || (await gptOn($))) void gptStatus($);
+  // In the background; a new reading is drawn as it arrives.
+  if (rings)
     void readGemini($)
       .then((read) => (read ? refresh($) : undefined))
       .catch(() => {});

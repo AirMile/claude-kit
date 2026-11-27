@@ -13,8 +13,8 @@ export const geminiCommand: CommandSpec = {
 };
 
 const TURNED = {
-  on: "Gemini on: a review or second plan GPT cannot take goes to Gemini, so that code goes to Google.",
-  off: "Gemini off: it runs only when you ask for it, and the band does not read its meters.",
+  on: "Gemini on: it takes its share of reviews and second plans (by whose plan is used less), one GPT cannot take and a review of GPT's code, so that code goes to Google.",
+  off: "Gemini off: it runs only when you ask for it, and its ring is hidden (the band's table still shows its meters).",
 };
 
 export async function geminiCommandRun(
@@ -46,9 +46,11 @@ export async function geminiCommandRun(
   return {
     text: [
       "Gemini: on",
-      r.provider === "none" ? `review: ${r.reason}` : `review: ${r.name} (${r.model})`,
+      r.provider === "none"
+        ? `review: ${r.reason}`
+        : `review: ${r.name} (${r.model})`,
       `used: 5h ${pct("five_hour")} · weekly ${pct("seven_day")}`,
-      "Gemini does: the review or second plan GPT cannot take; anything else you ask it for",
+      "Gemini does: its share of reviews and second plans (whose plan is used less), one GPT cannot take, a review of GPT's code; anything else you ask it for",
     ].join("\n"),
   };
 }

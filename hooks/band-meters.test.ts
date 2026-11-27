@@ -1,6 +1,6 @@
 import { expect, test } from "claude-code/testing";
 
-import { meterRows } from "./band-meters";
+import { meterRows, shownRows } from "./band-meters";
 
 const u = (label: string, value: string, note?: string) => ({
   label,
@@ -30,11 +30,17 @@ test("with GPT off or unread only Claude shows; a window nobody reported is left
   expect(meterRows([])).toEqual([]);
 });
 
-test("with GPT off its shares are left out, even while still in the usage", () => {
+test("with GPT off the drawn rows leave its shares out; the table rows keep them", () => {
   const off = { gpt: false, gemini: true };
-  const rows = meterRows([u("5h", "30%", "3h29m"), u("gpt 5h", "2%", "4h12m")], off);
-  expect(rows.map((r) => [r.label, r.claude?.value, r.gpt])).toEqual([
+  const rows = meterRows([u("5h", "30%", "3h29m"), u("gpt 5h", "2%", "4h12m")]);
+  expect(rows[0]?.gpt?.value).toBe("2%");
+  expect(shownRows(rows, off).map((r) => [r.label, r.claude?.value, r.gpt])).toEqual([
     ["5h", "30%", undefined],
   ]);
-  expect(meterRows([u("gpt wk", "1%")], off)).toEqual([]);
+  expect(shownRows(meterRows([u("gpt wk", "1%")]), off)).toEqual([]);
+  const gemOff = shownRows(meterRows([u("gem 5h", "40%"), u("gpt 5h", "2%")]), {
+    gpt: true,
+    gemini: false,
+  });
+  expect(gemOff.map((r) => [r.gpt?.value, r.gemini])).toEqual([["2%", undefined]]);
 });

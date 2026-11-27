@@ -9,6 +9,7 @@ import {
   meterRows,
   NO_FIGURES,
   planMeters,
+  shownRows,
   type Switched,
   type Usage,
   usageTable,
@@ -113,15 +114,15 @@ export function kitBand(on: On) {
     // The other plans' figures come from their last read, so a switch shows them at once.
     const time = await $.clock.now();
     const codex = gptCached();
-    const read = meterRows(
-      [
-        ...usage,
-        ...planMeters("gpt", codex?.error ? undefined : codex?.limits, time),
-        ...planMeters("gem", geminiCached(), time),
-      ],
-      switches,
-    );
+    const read = meterRows([
+      ...usage,
+      ...planMeters("gpt", codex?.error ? undefined : codex?.limits, time),
+      ...planMeters("gem", geminiCached(), time),
+    ]);
     const rows = read.length || e.surface === "terminal" ? read : NO_FIGURES;
+    // The rings and the line leave a plan that is off out; its table keeps the figures.
+    const drawn = shownRows(rows, switches);
+    const ringRows = drawn.length ? drawn : NO_FIGURES;
     const flip = (plan: Switched) => {
       void switchPlan($, plan, !switches[plan]);
     };
@@ -179,8 +180,8 @@ export function kitBand(on: On) {
     const meters = (
       <Box key="kit-meters" gap={2}>
         {e.surface === "terminal"
-          ? meterLine(ui, rows)
-          : meterRings($.ui.resolve(e), rows)}
+          ? meterLine(ui, drawn)
+          : meterRings($.ui.resolve(e), ringRows)}
       </Box>
     );
     // A trigger button in a Box that joins its menu's hover scope.

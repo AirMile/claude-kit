@@ -28,50 +28,53 @@ test("no GPT button: the rings' table holds a switch for GPT and for Gemini", as
   await ui.unmount();
 });
 
-test("a press turns Gemini off: its figures go and agy is not asked again", async ($, on) => {
+type Rings = { findAll: (q: object) => Promise<unknown[]> };
+// The rings' alt texts: which plans each ring draws.
+const rings = async (ui: Rings) =>
+  (await ui.findAll({ type: "Svg" }))
+    .map((n) => String((n as { props?: { alt?: string } }).props?.alt))
+    .join(" | ");
+
+test("a press turns Gemini off: its ring arc goes, its figures stay in the table", async ($, on) => {
   const w = bandWorld(on);
   await twice($);
   const ui = await mountBand($, "desktop");
-  expect(await shows(ui, "wk 25%")).toBe(true);
+  expect(await rings(ui)).toContain("Gemini");
   await ui.press({ key: "kit-switch-gemini" });
   await wait();
   expect(w.store.gemini).toBe(false);
   expect(await state(ui, "gemini")).toBe("off");
-  expect(await shows(ui, "wk 25%")).toBe(false);
-  w.clock.now += 11 * 60_000;
-  await twice($);
-  expect(w.asked).toHaveLength(1);
+  expect(await rings(ui)).not.toContain("Gemini");
+  expect(await shows(ui, "wk 25%")).toBe(true);
   await ui.unmount();
 });
 
-test("GPT off and on again shows ChatGPT's figures at once", async ($, on) => {
+test("GPT off and on again: its arc goes and comes back, the table keeps its figures", async ($, on) => {
   const w = bandWorld(on);
   await twice($);
   const ui = await mountBand($, "desktop");
-  expect(await shows(ui, "5h 10%")).toBe(true);
+  expect(await rings(ui)).toContain("GPT ");
   await ui.press({ key: "kit-switch-gpt" });
   await wait();
   expect(w.store.gpt).toBe(false);
-  expect(await shows(ui, "5h 10%")).toBe(false);
+  expect(await rings(ui)).not.toContain("GPT ");
+  expect(await shows(ui, "5h 10%")).toBe(true);
   await measure($); // a turn while it is off
   await ui.press({ key: "kit-switch-gpt" });
   await wait();
   expect(await state(ui, "gpt")).toBe("on");
-  expect(await shows(ui, "5h 10%")).toBe(true);
+  expect(await rings(ui)).toContain("GPT ");
   await ui.unmount();
 });
 
-test("both off from the start: the table still offers them and nothing is read", async ($, on) => {
-  const w = bandWorld(on, { store: { gpt: false, gemini: false } });
+test("both off from the start: the table offers them with their figures, the rings show Claude only", async ($, on) => {
+  bandWorld(on, { store: { gpt: false, gemini: false } });
   await twice($);
   const ui = await mountBand($, "desktop");
   expect(await state(ui, "gpt")).toBe("off");
   expect(await state(ui, "gemini")).toBe("off");
-  expect(w.asked).toHaveLength(0);
-  await ui.press({ key: "kit-switch-gemini" });
-  await wait();
-  expect(w.asked).toHaveLength(1);
   expect(await shows(ui, "wk 25%")).toBe(true);
+  expect(await rings(ui)).not.toMatch(/GPT |Gemini/);
   await ui.unmount();
 });
 
@@ -93,8 +96,8 @@ test("before any plan reported, the desktop band still offers both switches", as
   await ui.unmount();
 });
 
-test("a switch that cannot be saved stays off and reads nothing", async ($, on) => {
-  const w = bandWorld(on, {
+test("a switch that cannot be saved stays off", async ($, on) => {
+  bandWorld(on, {
     store: { gemini: false },
     brokenWrite: "gemini",
   });
@@ -103,6 +106,6 @@ test("a switch that cannot be saved stays off and reads nothing", async ($, on) 
   await ui.press({ key: "kit-switch-gemini" });
   await wait();
   expect(await state(ui, "gemini")).toBe("off");
-  expect(w.asked).toHaveLength(0);
+  expect(await rings(ui)).not.toContain("Gemini");
   await ui.unmount();
 });

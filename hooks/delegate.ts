@@ -13,6 +13,7 @@ import {
   type Route,
 } from "./delegate-policy";
 import { delegateGemini, geminiStandsIn } from "./delegate-gemini";
+import { geminiTurn } from "./family-turn";
 import {
   flowGeminiWrote,
   flowNoReviewer,
@@ -56,8 +57,10 @@ export const delegateTool: ToolSpec = {
     "constraints, files, checks to run. family: a GPT model the user asked for by name (sol, " +
     "terra, luna, astra), which then runs any role, or a Gemini one (hydrogen, the default, flash, pro; naming one sets " +
     "provider gemini). provider: gemini when the user asks for Gemini, agy or Antigravity. " +
-    "Unasked, Gemini only takes a review or plan GPT cannot (switched off or no room) while " +
-    "kit's Gemini switch is on, and the answer says so; provider gpt rules that out. " +
+    "Unasked, while kit's Gemini switch is on, Gemini takes a review or plan GPT cannot (switched " +
+    "off or no room), a review of GPT's code, and with both switches on its share of reviews and " +
+    "plans by whose plan is used less (a V3 review stays on GPT); the answer says so; provider " +
+    "gpt rules that out. " +
     "A brief states the decision you need, facts already known, files in scope and when to stop. " +
     "dirs: Gemini only, absolute folders besides the project that agy may read (goes through the permission check). " +
     "thread: continue an earlier GPT or Gemini run with a follow-up brief. A run returns its final " +
@@ -92,7 +95,8 @@ type Input = {
 
 // A folder agy may also read goes to Google: absolute, not a root or home folder, no '..'.
 function wideEnough(d: unknown): d is string {
-  if (typeof d !== "string" || !/^(\/|[A-Za-z]:[\\/]|\\\\)/.test(d)) return false;
+  if (typeof d !== "string" || !/^(\/|[A-Za-z]:[\\/]|\\\\)/.test(d))
+    return false;
   const parts = d.split(/[\\/]+/).filter((x) => x && x !== ".");
   // /Users/me is a home folder (2); C:\Users\me is 3 parts; \\server\share is a share root (2).
   const least = /^[A-Za-z]:/.test(d) ? 4 : 3;
@@ -140,7 +144,17 @@ function readInput(e: unknown): Input | string {
     dirs = i.dirs;
   }
   const asked = i.provider === "gpt"; // GPT picked by name: no stand-in
-  return { role, brief: i.brief, author, family, provider, asked, geminiFamily, thread, dirs };
+  return {
+    role,
+    brief: i.brief,
+    author,
+    family,
+    provider,
+    asked,
+    geminiFamily,
+    thread,
+    dirs,
+  };
 }
 
 function claudeAnswer(
@@ -165,6 +179,14 @@ async function delegate(
     return (await delegateGemini($, input, toolUseId)).text;
   if (input.thread && agyThreads.has(input.thread))
     return "Not run: that thread is a Gemini run; continue it with provider gemini.";
+  let missed = ""; // why Gemini could not take it
+  const turn = await geminiTurn($, input);
+  if (turn) {
+    const took = await delegateGemini($, input, toolUseId, true);
+    if (took.ok)
+      return `${turn}: Gemini takes this ${input.role} (/gemini off stops this).\n${took.text}`;
+    missed = `Gemini could not take it: ${took.text.split("\n")[0]}\n`;
+  }
   const picked = await routeDelegation($, {
     ...input,
     // A Gemini-written change reviewed on GPT is another family: not the Claude-only rule.
@@ -175,9 +197,9 @@ async function delegate(
       ? picked.r.provider === "claude" && picked.r.gptOut
       : picked.provider === "none" && picked.gptOut;
   // The user's own pick of GPT, a thread and Gemini's own code keep Gemini out.
-  let missed = ""; // why Gemini could not stand in
   if (
     gptOut &&
+    !turn &&
     !input.asked &&
     !input.thread &&
     input.author !== "gemini" &&
@@ -197,7 +219,7 @@ async function delegate(
     return `${missed}${claudeAnswer(picked.r, picked.why, input.role)}`;
   if (picked.provider === "unavailable") {
     if (input.role === "review") await flowNoReviewer($, picked.reason);
-    return `Not delegated: ${picked.reason}. Do it here.`;
+    return `${missed}Not delegated: ${picked.reason}. Do it here.`;
   }
   const { r, argv } = picked;
   const writes = r.sandbox === "workspace-write";
@@ -252,8 +274,7 @@ export function delegation(on: On) {
   // request); any other change asks first, as any tool does.
   on("tool.check", { tool: TOOL }, async ($, e, next) => {
     const inp = e.input as
-      | { role?: Role; provider?: string; family?: string }
-      | undefined;
+      { role?: Role; provider?: string; family?: string } | undefined;
     const role = inp?.role;
     const writes = role !== undefined && WRITES.includes(role);
     // The band's GPT switch is a standing request for GPT only: Gemini writing asks first.
