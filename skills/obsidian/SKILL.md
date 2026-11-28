@@ -32,6 +32,10 @@ the folder, with `~` for the home folder, so the session-start check can find it
   links to this repo's `docs/`).
 ```
 
+That line is missing when you create the docs link or the view note → offer to add it in the
+same step; without it the check stays silent for this repo. No `## Backlog` yet → write that
+section per the `product` skill first, never a heading that holds only this line.
+
 ## The docs link
 
 `<vault>/Projects/<Name>/docs` links to `<repo>/docs`, so specs and product.md open in Obsidian
